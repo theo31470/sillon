@@ -25,6 +25,7 @@ export type CatalogModel = {
   research_notes: string | null;
   research_sources: { name: string; url: string }[];
   sheet_id: string | null;
+  photo_status: 'found' | 'none' | 'error' | null;
   attempts: number;
   queued_at: string | null;
   locked_at: string | null;

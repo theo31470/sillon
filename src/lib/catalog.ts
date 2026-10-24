@@ -4,6 +4,7 @@ import { researchModel, sheetFromResearch } from '@/lib/ai-web';
 import { countPendingReview } from '@/lib/sheets/schema';
 import { uniqueSheetSlug } from '@/lib/sheets/slug';
 import { logAudit } from '@/lib/audit';
+import { attachCommonsPhoto } from '@/lib/photos';
 import type { Session } from '@/lib/auth';
 import { CATALOG_DAILY_LIMIT, CATALOG_PARALLEL, type CatalogModel } from '@/lib/catalog-shared';
 
@@ -75,7 +76,20 @@ export async function processNextJob(): Promise<ProcessResult> {
       if (insertError || !sheet) throw new Error('Création de la fiche impossible');
       sheetId = sheet.id as string;
     }
-    await db.from('catalog_models').update({ status: 'done', sheet_id: sheetId, locked_at: null }).eq('id', job.id);
+    // Photo libre (Wikimedia Commons) : facultative, son échec ne bloque pas la fiche.
+    let photo_status: 'found' | 'none' | 'error' = 'none';
+    const { data: current } = await db.from('tech_sheets').select('cover_url').eq('id', sheetId).single();
+    if (current?.cover_url) {
+      photo_status = 'found';
+    } else {
+      try {
+        photo_status = (await attachCommonsPhoto({ userId, sheetId, brand: job.brand, model: job.model })) ? 'found' : 'none';
+      } catch (err) {
+        console.error('[catalogue] photo', label, err);
+        photo_status = 'error';
+      }
+    }
+    await db.from('catalog_models').update({ status: 'done', sheet_id: sheetId, photo_status, locked_at: null }).eq('id', job.id);
     await logAudit(actor, 'fiche.importee_par_ia', { type: 'tech_sheet', id: sheetId }, { modele: label, a_verifier: pending, sources: sources.length });
     return { idle: false, id: job.id, label, phase, ok: true, sheetId, pending };
   } catch (err) {

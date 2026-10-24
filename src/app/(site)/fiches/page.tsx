@@ -6,6 +6,7 @@ import { parseSheetContent } from '@/lib/sheets/schema';
 import { keyFigures, machineKind, MACHINE_KIND_LABELS } from '@/lib/sheets/insights';
 import { MachineScene, FurrowBand } from '@/components/sheets/machine-art';
 import { FIGURE_ICONS, Icon } from '@/components/sheets/icons';
+import { PhotoCreditLine } from '@/components/sheets/photo-credit';
 import { btn, inputClass } from '@/components/ui';
 import { SHEET_CATEGORIES } from '@/lib/types';
 
@@ -83,7 +84,10 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
                     >
                       <div className="relative h-44 overflow-hidden bg-photo">
                         {s.cover_url ? (
-                          <Image src={s.cover_url} alt="" fill sizes="(min-width: 768px) 320px, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                          <>
+                            <Image src={s.cover_url} alt="" fill sizes="(min-width: 768px) 320px, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                            <PhotoCreditLine credit={s.cover_credit} compact />
+                          </>
                         ) : (
                           <MachineScene kind={kind} uid={s.id} label="" className="size-full" />
                         )}

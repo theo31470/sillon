@@ -1,4 +1,6 @@
+import Image from 'next/image';
 import Link from 'next/link';
+import { PhotoCreditLine } from '@/components/sheets/photo-credit';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -9,7 +11,7 @@ import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
 import { Badge, Card, Field, Input, Notice, Textarea } from '@/components/ui';
 import { CheckSourced } from './check-sourced';
-import { askClaude, changeStatus, deleteSheet, publishSheet, regenerateSheet, saveReview } from './actions';
+import { askClaude, changeStatus, deleteSheet, findPhoto, publishSheet, regenerateSheet, removePhoto, saveReview, uploadPhoto } from './actions';
 
 export const metadata = { title: 'Relecture de fiche' };
 export const maxDuration = 300; // corrections par Claude
@@ -187,6 +189,43 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
                 <form action={changeStatus}><input type="hidden" name="id" value={sheet.id} /><input type="hidden" name="to" value="rejected" /><button className="font-semibold text-danger">Rejeter</button></form>
               )}
             </div>
+          </Card>
+          <Card>
+            <h2 className="mb-2 text-lg font-semibold">Photo</h2>
+            {sheet.cover_url ? (
+              <div className="relative mb-3 overflow-hidden rounded-xl">
+                <Image src={sheet.cover_url} alt={sheet.title} width={560} height={360} className="h-44 w-full object-cover" />
+                <PhotoCreditLine credit={sheet.cover_credit} />
+              </div>
+            ) : (
+              <p className="mb-3 text-sm text-muted">Pas de photo : la fiche affiche une illustration.</p>
+            )}
+            <ActionForm action={findPhoto} resetOnSuccess={false} className="flex flex-col gap-2">
+              <input type="hidden" name="id" value={sheet.id} />
+              <SubmitButton variant="secondary" pendingLabel="Claude regarde les photos…">✦ Chercher une photo libre</SubmitButton>
+              <p className="text-xs text-muted">Wikimedia Commons, licences libres uniquement. Auteur et licence affichés sur la fiche.</p>
+            </ActionForm>
+            <details className="mt-3 rounded-lg border border-line px-3 py-2">
+              <summary className="text-sm font-semibold">Déposer une photo (photo presse, photo personnelle…)</summary>
+              <ActionForm action={uploadPhoto} className="mt-3 flex flex-col gap-3">
+                <input type="hidden" name="id" value={sheet.id} />
+                <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required className="text-sm" />
+                <Field label="Auteur / détenteur des droits" htmlFor="author"><Input id="author" name="author" required maxLength={120} placeholder="Ex. : © Deutz-Fahr" /></Field>
+                <Field label="Licence ou autorisation" htmlFor="license"><Input id="license" name="license" required maxLength={160} placeholder="Ex. : photo presse, usage éditorial autorisé" /></Field>
+                <Field label="Lien vers la source (facultatif)" htmlFor="source_url"><Input id="source_url" name="source_url" type="url" maxLength={500} /></Field>
+                <label className="flex gap-2 text-sm">
+                  <input type="checkbox" name="rights" required className="mt-0.5 size-4 flex-none accent-brand" />
+                  J’ai l’autorisation de publier cette photo sur Sillon (citer la source ne suffit pas).
+                </label>
+                <SubmitButton variant="secondary" pendingLabel="Envoi…">Enregistrer la photo</SubmitButton>
+              </ActionForm>
+            </details>
+            {sheet.cover_url ? (
+              <form action={removePhoto} className="mt-3 text-right">
+                <input type="hidden" name="id" value={sheet.id} />
+                <button type="submit" className="text-sm text-danger hover:underline">Retirer la photo</button>
+              </form>
+            ) : null}
           </Card>
           <Card>
             <h2 className="mb-2 text-lg font-semibold">✦ Demander une correction à Claude</h2>

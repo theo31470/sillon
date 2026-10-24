@@ -8,6 +8,7 @@ import { keyFigures, machineKind, MACHINE_KIND_LABELS } from '@/lib/sheets/insig
 import { SheetView } from '@/components/sheet-view';
 import { MachineScene, FurrowBand } from '@/components/sheets/machine-art';
 import { FIGURE_ICONS, Icon } from '@/components/sheets/icons';
+import { PhotoCreditLine } from '@/components/sheets/photo-credit';
 import { btn } from '@/components/ui';
 import { SubmitButton } from '@/components/form-bits';
 import { formatDate } from '@/lib/format';
@@ -63,7 +64,10 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
           <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
             <div className="relative min-h-[260px] overflow-hidden bg-photo sm:min-h-[340px]">
               {sheet.cover_url ? (
-                <Image src={sheet.cover_url} alt={sheet.title} fill priority sizes="(min-width: 1024px) 600px, 100vw" className="object-cover" />
+                <>
+                  <Image src={sheet.cover_url} alt={sheet.title} fill priority sizes="(min-width: 1024px) 600px, 100vw" className="object-cover" />
+                  <PhotoCreditLine credit={sheet.cover_credit} />
+                </>
               ) : (
                 <MachineScene kind={kind} uid={sheet.id} label={`Illustration : ${MACHINE_KIND_LABELS[kind].toLowerCase()}`} className="hero-scene absolute inset-0 size-full" tall />
               )}

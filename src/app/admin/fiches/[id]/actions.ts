@@ -12,7 +12,9 @@ import { countPendingReview, parseSheetContent, sheetContentSchema, type SheetCo
 import { slugify } from '@/lib/format';
 import { rateLimit } from '@/lib/rate-limit';
 import type { FormState } from '@/components/form-bits';
-import type { TechSheet } from '@/lib/types';
+import type { PhotoCredit, TechSheet } from '@/lib/types';
+import { attachCommonsPhoto } from '@/lib/photos';
+import { createServiceClient } from '@/lib/supabase/admin';
 
 async function loadSheet(id: unknown) {
   const parsed = z.string().uuid().safeParse(id);
@@ -230,4 +232,90 @@ export async function regenerateSheet(_prev: FormState, formData: FormData): Pro
   }
   revalidatePath(`/admin/fiches/${sheet.id}`);
   return { ok: true, message: 'Fiche rédigée par Claude. Relisez chaque champ avant de publier.' };
+}
+
+// ---------------------------------------------------------------------
+// Photo de la fiche
+// ---------------------------------------------------------------------
+
+const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+/** Supprime du stockage une ancienne photo déposée chez nous. */
+async function removeStoredPhoto(url: string | null) {
+  const marker = '/storage/v1/object/public/media/';
+  if (!url?.includes(marker)) return;
+  const path = decodeURIComponent(url.split(marker)[1] ?? '');
+  if (/^fiches\/[0-9a-f-]{36}\/[\w.-]+$/.test(path)) await createServiceClient().storage.from('media').remove([path]);
+}
+
+/** Cherche une photo libre (Wikimedia Commons) et la choisit avec Claude. */
+export async function findPhoto(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { session } = await requireAdmin('/admin/fiches');
+  const sheet = await loadSheet(formData.get('id'));
+  if (!sheet) return { error: 'Fiche introuvable.' };
+  if (!process.env.ANTHROPIC_API_KEY) return { error: 'Claude n’est pas configuré.' };
+  if (!rateLimit(`photo:${session.userId}`, 30, 60 * 60_000).ok) return { error: 'Limite de recherches de photos atteinte pour cette heure.' };
+  const previous = sheet.cover_url;
+  try {
+    const credit = await attachCommonsPhoto({ userId: session.userId, sheetId: sheet.id, brand: sheet.brand, model: sheet.model || sheet.title });
+    if (!credit) return { error: 'Aucune photo libre ne montre clairement ce modèle. Vous pouvez en déposer une.' };
+    await removeStoredPhoto(previous);
+    await logAudit(session, 'fiche.photo_libre', { type: 'tech_sheet', id: sheet.id }, { auteur: credit.author, licence: credit.license, source: credit.source_url });
+  } catch (err) {
+    return { error: `Recherche impossible : ${err instanceof Error ? err.message : 'erreur inconnue'}` };
+  }
+  revalidatePath(`/admin/fiches/${sheet.id}`);
+  revalidatePath('/fiches', 'layout');
+  return { ok: true, message: 'Photo ajoutée avec son crédit. Vérifiez qu’elle montre bien ce modèle.' };
+}
+
+const manualPhotoSchema = z.object({
+  author: z.string().trim().min(2, 'Indiquez l’auteur ou le détenteur des droits').max(120),
+  license: z.string().trim().min(3, 'Indiquez la licence ou l’autorisation obtenue').max(160),
+  source_url: z.union([z.literal(''), z.string().trim().url('Adresse de la source invalide').max(500)]),
+  rights: z.literal('on', { error: 'Confirmez que vous avez le droit de publier cette photo' }),
+});
+
+/** Dépôt manuel d'une photo (photo presse autorisée, photo personnelle…), crédit obligatoire. */
+export async function uploadPhoto(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { session } = await requireAdmin('/admin/fiches');
+  const sheet = await loadSheet(formData.get('id'));
+  if (!sheet) return { error: 'Fiche introuvable.' };
+  const meta = manualPhotoSchema.safeParse({
+    author: formData.get('author'),
+    license: formData.get('license'),
+    source_url: formData.get('source_url') ?? '',
+    rights: formData.get('rights'),
+  });
+  if (!meta.success) return { error: meta.error.issues[0].message };
+  const file = formData.get('photo');
+  if (!(file instanceof File) || file.size === 0) return { error: 'Choisissez une photo.' };
+  const ext = IMAGE_TYPES[file.type];
+  if (!ext) return { error: 'Formats acceptés : JPG, PNG ou WebP.' };
+  if (file.size > 5 * 1024 * 1024) return { error: 'Photo trop lourde (5 Mo maximum).' };
+
+  const supabase = await createClient();
+  const path = `fiches/${sheet.id}/${Date.now()}.${ext}`;
+  const { error: upErr } = await supabase.storage.from('media').upload(path, file, { contentType: file.type, upsert: false });
+  if (upErr) return { error: 'Envoi de la photo impossible.' };
+  const cover_url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+  const credit: PhotoCredit = { source: 'manual', author: meta.data.author, license: meta.data.license, license_url: null, source_url: meta.data.source_url || null };
+  await supabase.from('tech_sheets').update({ cover_url, cover_credit: credit }).eq('id', sheet.id);
+  await removeStoredPhoto(sheet.cover_url);
+  await logAudit(session, 'fiche.photo_deposee', { type: 'tech_sheet', id: sheet.id }, { auteur: credit.author, licence: credit.license });
+  revalidatePath(`/admin/fiches/${sheet.id}`);
+  revalidatePath('/fiches', 'layout');
+  return { ok: true, message: 'Photo enregistrée avec son crédit.' };
+}
+
+export async function removePhoto(formData: FormData) {
+  const { session } = await requireAdmin('/admin/fiches');
+  const sheet = await loadSheet(formData.get('id'));
+  if (!sheet) return;
+  const supabase = await createClient();
+  await supabase.from('tech_sheets').update({ cover_url: null, cover_credit: null }).eq('id', sheet.id);
+  await removeStoredPhoto(sheet.cover_url);
+  await logAudit(session, 'fiche.photo_retiree', { type: 'tech_sheet', id: sheet.id });
+  revalidatePath(`/admin/fiches/${sheet.id}`);
+  revalidatePath('/fiches', 'layout');
 }

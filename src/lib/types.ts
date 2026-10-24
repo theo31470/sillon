@@ -89,6 +89,16 @@ export type SheetStatus = keyof typeof SHEET_STATUSES;
 /** Document PDF déposé (path) ou page web consultée par Claude (url). */
 export type SheetSource = { name: string; path?: string; url?: string };
 
+/** Crédit d'une photo : obligatoire pour toute photo publiée. */
+export type PhotoCredit = {
+  source: 'commons' | 'manual';
+  author: string;
+  license: string;
+  license_url: string | null;
+  source_url: string | null;
+  title?: string | null;
+};
+
 export type TechSheet = {
   id: string;
   slug: string;
@@ -98,6 +108,7 @@ export type TechSheet = {
   model: string;
   summary: string;
   cover_url: string | null;
+  cover_credit: PhotoCredit | null;
   content: unknown;
   sources: SheetSource[];
   status: SheetStatus;

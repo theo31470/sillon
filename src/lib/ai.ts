@@ -33,7 +33,7 @@ Règles impératives :
 - Pannes : uniquement celles décrites dans les documents (section dépannage, incidents…). Vérifications de la plus simple à la plus complexe. difficulty = "atelier" dès qu'il faut démonter un organe interne ou intervenir sur l'hydraulique haute pression, l'injection ou l'électronique.
 - Unités du système métrique, format français (virgule décimale).`;
 
-export type AiFeature = 'diagnostic' | 'sheet_generation' | 'sheet_revision' | 'sheet_research' | 'catalog_listing';
+export type AiFeature = 'diagnostic' | 'sheet_generation' | 'sheet_revision' | 'sheet_research' | 'catalog_listing' | 'photo_selection';
 
 export async function recordUsage(
   userId: string,

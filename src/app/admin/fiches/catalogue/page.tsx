@@ -32,7 +32,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
   const supabase = await createClient();
   let query = supabase
     .from('catalog_models')
-    .select('id, brand, series, model, years, power_hp, source_url, status, error, sheet_id, updated_at')
+    .select('id, brand, series, model, years, power_hp, source_url, status, error, sheet_id, photo_status, updated_at')
     .order('brand')
     .order('series')
     .order('power_hp', { ascending: true, nullsFirst: false })
@@ -40,7 +40,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
   if (brandFilter) query = query.ilike('brand', brandFilter);
   if (statusFilter) query = query.eq('status', statusFilter);
   const [{ data }, { data: all }, used] = await Promise.all([query, supabase.from('catalog_models').select('brand, status'), researchesToday()]);
-  const models = (data ?? []) as Pick<CatalogModel, 'id' | 'brand' | 'series' | 'model' | 'years' | 'power_hp' | 'source_url' | 'status' | 'error' | 'sheet_id' | 'updated_at'>[];
+  const models = (data ?? []) as Pick<CatalogModel, 'id' | 'brand' | 'series' | 'model' | 'years' | 'power_hp' | 'source_url' | 'status' | 'error' | 'sheet_id' | 'photo_status' | 'updated_at'>[];
 
   const counts = (all ?? []).reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
   const brands = [...new Set((all ?? []).map((r) => r.brand))].sort((a, b) => a.localeCompare(b, 'fr'));
@@ -182,6 +182,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
                             {m.error ? <p className="mt-1 max-w-xs text-xs text-danger">{m.error}</p> : null}
                           </td>
                           <td className="border-b border-[#eef0eb] px-3 py-2.5 text-right">
+                            {m.photo_status === 'found' ? <span className="mr-3 text-xs text-muted" title="Photo libre trouvée">📷 photo</span> : m.photo_status === 'none' ? <span className="mr-3 text-xs text-muted" title="Aucune photo libre : illustration affichée">sans photo</span> : null}
                             {m.sheet_id ? <Link href={`/admin/fiches/${m.sheet_id}`} className="font-semibold text-brand hover:text-brand-dark">Relire →</Link> : null}
                           </td>
                         </tr>

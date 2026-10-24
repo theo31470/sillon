@@ -163,6 +163,14 @@ appelle `/api/catalogue/tick`, qui traite une étape. Au plus 3 étapes en paral
 recherches par jour (150 par défaut). Mise en place : exécuter **`supabase/cron.sql`** une fois dans le SQL Editor
 (en remplaçant l’adresse du site).
 
+**Photos** : après la rédaction, Sillon cherche une photo du modèle sur **Wikimedia Commons** (licences libres
+uniquement : CC BY, CC BY-SA, CC0, domaine public). Claude regarde les candidates et ne retient qu’une photo qui montre
+clairement ce modèle ; sinon la fiche garde son illustration. La photo est copiée dans le stockage `media` et la fiche
+affiche **auteur, licence et lien vers la source**, comme l’exigent ces licences. Dans la relecture, l’admin peut
+relancer la recherche, retirer la photo ou **déposer une photo** (photo presse, photo personnelle) : auteur et
+autorisation sont alors obligatoires. Les photos des constructeurs, de la presse ou des annonces sont protégées
+par le droit d’auteur : citer la source ne suffit pas, il faut l’accord du détenteur des droits.
+
 **Sources exclues** (`BLOCKED_DOMAINS` dans `src/lib/ai-web.ts`) : bases de caractéristiques d’autres éditeurs et
 petites annonces. En droit européen, reprendre systématiquement le contenu d’une base de données tierce est interdit,
 même valeur par valeur (droit *sui generis* des bases de données). Les sites des constructeurs restent la source principale.
