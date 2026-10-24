@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { pwnedPasswordError } from '@/lib/pwned';
 import { createClient } from '@/lib/supabase/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { clientIp, logAudit } from '@/lib/audit';
@@ -64,6 +65,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   if (!rateLimit(`signup:${ip}`, 5, 60 * 60_000).ok) {
     return { error: 'Trop d’inscriptions depuis cette connexion. Réessayez plus tard.' };
   }
+  const leaked = await pwnedPasswordError(parsed.data.password);
+  if (leaked) return { error: leaked };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
@@ -105,6 +108,8 @@ export async function updatePassword(_prev: FormState, formData: FormData): Prom
     .refine((v) => v.password === v.confirm, { message: 'Les deux mots de passe ne correspondent pas' })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const leaked = await pwnedPasswordError(parsed.data.password);
+  if (leaked) return { error: leaked };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });

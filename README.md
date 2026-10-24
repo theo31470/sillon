@@ -144,6 +144,10 @@ Plusieurs couches indépendantes protègent les données :
 - **Paiements** : aucune donnée de carte ne transite par Sillon ; le webhook vérifie la signature Stripe.
 - **Contenus** : les articles sont rendus avec échappement du HTML (pas d’injection de script possible).
 - **En-têtes HTTP** : HSTS, CSP, interdiction d’affichage en iframe, etc. (`next.config.ts`).
+- **Mots de passe** : 10 caractères minimum avec majuscule, minuscule et chiffre (mêmes règles que dans Supabase),
+  et refus des mots de passe déjà apparus dans des fuites (service Pwned Passwords, méthode « k-anonymat » :
+  seuls 5 caractères de l’empreinte SHA-1 sont envoyés, voir `src/lib/pwned.ts`). Si le service ne répond pas,
+  l’inscription n’est pas bloquée.
 - **Limitation de débit** sur la connexion, l’inscription, l’IA et les exports.
 - **Redirections** limitées aux pages internes (pas de redirection vers un site piégé).
 
