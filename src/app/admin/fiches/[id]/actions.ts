@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
-import { reviseSheet } from '@/lib/ai';
+import { generateSheet, reviseSheet } from '@/lib/ai';
 import { downloadSources } from '@/lib/sheets/sources';
 import { countPendingReview, parseSheetContent, sheetContentSchema, type SheetContent } from '@/lib/sheets/schema';
 import { slugify } from '@/lib/format';
@@ -175,4 +175,38 @@ export async function deleteSheet(formData: FormData) {
   await logAudit(session, 'fiche.supprimee', { type: 'tech_sheet', id: sheet.id }, { titre: sheet.title });
   revalidatePath('/fiches', 'layout');
   redirect('/admin/fiches');
+}
+
+/** Relance la rédaction par Claude avec les documents déjà envoyés (après un échec). */
+export async function regenerateSheet(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { session } = await requireAdmin('/admin/fiches');
+  const sheet = await loadSheet(formData.get('id'));
+  if (!sheet) return { error: 'Fiche introuvable.' };
+  if (!sheet.sources?.length) return { error: 'Aucun document source enregistré pour cette fiche.' };
+  if (!process.env.ANTHROPIC_API_KEY) return { error: 'Claude n’est pas encore configuré (ANTHROPIC_API_KEY manquante).' };
+  if (!rateLimit(`sheetgen:${session.userId}`, 20, 60 * 60_000).ok) return { error: 'Limite de 20 générations par heure atteinte.' };
+
+  const supabase = await createClient();
+  await supabase.from('tech_sheets').update({ status: 'generating', summary: '' }).eq('id', sheet.id);
+  try {
+    const pdfs = await downloadSources(sheet.sources);
+    const { content, model } = await generateSheet({
+      userId: session.userId,
+      title: sheet.title,
+      category: sheet.category,
+      brand: sheet.brand,
+      model: sheet.model,
+      sections: ['caractéristiques techniques', 'plan d’entretien', 'pannes fréquentes et vérifications', 'pièces d’entretien et références'],
+      sources: pdfs,
+    });
+    await supabase.from('tech_sheets').update({ content, summary: content.summary, status: 'review', ai_model: model }).eq('id', sheet.id);
+    await logAudit(session, 'fiche.generee_par_ia', { type: 'tech_sheet', id: sheet.id }, { relance: true, a_verifier: countPendingReview(content), modele: model });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'erreur inconnue';
+    await supabase.from('tech_sheets').update({ status: 'rejected', summary: `Échec de la génération : ${message}`.slice(0, 300) }).eq('id', sheet.id);
+    revalidatePath(`/admin/fiches/${sheet.id}`);
+    return { error: `La génération a échoué : ${message}` };
+  }
+  revalidatePath(`/admin/fiches/${sheet.id}`);
+  return { ok: true, message: 'Fiche rédigée par Claude. Relisez chaque champ avant de publier.' };
 }

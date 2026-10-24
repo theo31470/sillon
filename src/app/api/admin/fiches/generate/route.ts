@@ -52,6 +52,14 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   const input = parsed.data;
 
+  // Vérifie la configuration AVANT de créer la fiche, pour ne pas laisser de fiche vide.
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json(
+      { error: 'Claude n’est pas encore configuré : ajoutez ANTHROPIC_API_KEY dans les variables d’environnement (voir README).' },
+      { status: 503 },
+    );
+  }
+
   const db = createServiceClient();
   const { data: sheet, error } = await db
     .from('tech_sheets')

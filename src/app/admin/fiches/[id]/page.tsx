@@ -8,7 +8,7 @@ import { SHEET_STATUSES, type TechSheet } from '@/lib/types';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
 import { Badge, Card, Field, Input, Notice, Textarea } from '@/components/ui';
-import { askClaude, changeStatus, deleteSheet, publishSheet, saveReview } from './actions';
+import { askClaude, changeStatus, deleteSheet, publishSheet, regenerateSheet, saveReview } from './actions';
 
 export const metadata = { title: 'Relecture de fiche' };
 export const maxDuration = 300; // corrections par Claude
@@ -56,6 +56,15 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
 
       {sheet.status === 'generating' ? <Notice tone="gray">Génération en cours… Rechargez la page dans une minute.</Notice> : null}
       {sheet.status === 'rejected' ? <Notice tone="red">{sheet.summary || 'Fiche rejetée.'}</Notice> : null}
+      {(sheet.status === 'rejected' || sheet.status === 'generating') && (sheet.sources ?? []).length > 0 ? (
+        <Card className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-muted">Les documents sources sont conservés : vous pouvez relancer la rédaction sans les renvoyer.</p>
+          <ActionForm action={regenerateSheet} resetOnSuccess={false} className="flex flex-col gap-2">
+            <input type="hidden" name="id" value={sheet.id} />
+            <SubmitButton pendingLabel="Claude lit les documents (1 à 3 min)…">✦ Relancer avec Claude</SubmitButton>
+          </ActionForm>
+        </Card>
+      ) : null}
 
       <div className="flex flex-wrap items-start gap-5">
         <ActionForm action={saveReview} resetOnSuccess={false} id="review" className="flex min-w-0 flex-[3_1_620px] flex-col gap-5">
