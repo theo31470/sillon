@@ -14,7 +14,11 @@ const emailSchema = z.string().trim().toLowerCase().email('Adresse e-mail invali
 const passwordSchema = z
   .string()
   .min(10, 'Le mot de passe doit faire au moins 10 caractères')
-  .max(128, 'Mot de passe trop long');
+  .max(128, 'Mot de passe trop long')
+  // Mêmes règles que dans Supabase (Authentication → Email → Password requirements).
+  .regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule')
+  .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule')
+  .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre');
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z
@@ -71,7 +75,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     },
   });
   if (error) {
-    if (error.code === 'weak_password') return { error: 'Mot de passe trop faible ou déjà exposé dans une fuite. Choisissez-en un autre.' };
+    if (error.code === 'weak_password') return { error: 'Mot de passe trop faible : 10 caractères minimum, avec majuscule, minuscule et chiffre.' };
     return { error: 'Inscription impossible pour le moment. Réessayez dans quelques minutes.' };
   }
   return { ok: true, message: 'Presque fini ! Ouvrez l’e-mail que nous venons de vous envoyer pour activer votre compte.' };
@@ -106,6 +110,8 @@ export async function updatePassword(_prev: FormState, formData: FormData): Prom
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) {
     if (error.code === 'insufficient_aal') return { error: 'Validez d’abord votre code de double authentification.' };
+    if (error.code === 'weak_password') return { error: 'Mot de passe trop faible : 10 caractères minimum, avec majuscule, minuscule et chiffre.' };
+    if (error.code === 'same_password') return { error: 'Choisissez un mot de passe différent de l’actuel.' };
     return { error: 'Impossible de changer le mot de passe. Choisissez-en un autre.' };
   }
   await logAudit(session, 'compte.mot_de_passe_modifie');

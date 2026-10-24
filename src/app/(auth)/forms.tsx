@@ -37,7 +37,7 @@ export function SignUpForm() {
       <Field label="Adresse e-mail" htmlFor="email">
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
-      <Field label="Mot de passe" htmlFor="password" hint="10 caractères minimum.">
+      <Field label="Mot de passe" htmlFor="password" hint="10 caractères minimum, avec une majuscule, une minuscule et un chiffre.">
         <Input id="password" name="password" type="password" autoComplete="new-password" minLength={10} required />
       </Field>
       <label className="flex items-start gap-3 text-sm text-muted">
@@ -70,7 +70,7 @@ export function NewPasswordForm() {
   const [state, action] = useActionState(updatePassword, undefined);
   return (
     <form action={action} className="flex flex-col gap-4">
-      <Field label="Nouveau mot de passe" htmlFor="password" hint="10 caractères minimum.">
+      <Field label="Nouveau mot de passe" htmlFor="password" hint="10 caractères minimum, avec une majuscule, une minuscule et un chiffre.">
         <Input id="password" name="password" type="password" autoComplete="new-password" minLength={10} required />
       </Field>
       <Field label="Confirmer le mot de passe" htmlFor="confirm">
