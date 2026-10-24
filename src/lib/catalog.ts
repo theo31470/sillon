@@ -1,6 +1,6 @@
 import 'server-only';
 import { createServiceClient } from '@/lib/supabase/admin';
-import { researchSeries, sheetFromResearch } from '@/lib/ai-web';
+import { researchSeries, researchUpkeep, sheetFromResearch, UPKEEP_MARKER } from '@/lib/ai-web';
 import { countPendingReview } from '@/lib/sheets/schema';
 import { uniqueSheetSlug } from '@/lib/sheets/slug';
 import { logAudit } from '@/lib/audit';
@@ -60,7 +60,7 @@ export async function processNextJob(): Promise<ProcessResult> {
           .select('research_notes, research_sources')
           .ilike('brand', job.brand)
           .eq('series', job.series)
-          .not('research_notes', 'is', null)
+          .like('research_notes', `%${UPKEEP_MARKER}%`)
           .neq('id', job.id)
           .gte('updated_at', new Date(Date.now() - 60 * 86_400_000).toISOString())
           .limit(1)
@@ -82,7 +82,11 @@ export async function processNextJob(): Promise<ProcessResult> {
         const { data: siblings } = await db.from('catalog_models').select('model').ilike('brand', job.brand).eq('series', job.series).limit(20);
         models = [...new Set([job.model, ...(siblings ?? []).map((r) => r.model as string)])];
       }
-      const { notes, sources } = await researchSeries({ userId, brand: job.brand, series: job.series, models, years: job.years });
+      // Dossier technique et dossier entretien/pannes en parallèle.
+      const params = { userId, brand: job.brand, series: job.series, models, years: job.years };
+      const [specs, upkeep] = await Promise.all([researchSeries(params), researchUpkeep(params)]);
+      const notes = `${specs.notes}\n\n${UPKEEP_MARKER}\n${upkeep.notes || 'Rien trouvé.'}`;
+      const sources = [...new Map([...specs.sources, ...upkeep.sources].map((x) => [x.url, x])).values()];
       await db
         .from('catalog_models')
         .update({ status: 'researched', research_notes: notes, research_sources: sources, locked_at: null })

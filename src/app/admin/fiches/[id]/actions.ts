@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
 import { generateSheet, reviseSheet } from '@/lib/ai';
 import { downloadSources } from '@/lib/sheets/sources';
-import { countPendingReview, parseSheetContent, sheetContentSchema, type SheetContent } from '@/lib/sheets/schema';
+import { countPendingReview, ORIGINS, parseSheetContent, sheetContentSchema, type InfoOrigin, type SheetContent } from '@/lib/sheets/schema';
 import { slugify } from '@/lib/format';
 import { rateLimit } from '@/lib/rate-limit';
 import type { FormState } from '@/components/form-bits';
@@ -41,6 +41,7 @@ const num = (v: string) => {
   const n = Number(v.replace(',', '.'));
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
+const pickOrigin = (v: string, fallback: InfoOrigin): InfoOrigin => ((ORIGINS as readonly string[]).includes(v) ? (v as InfoOrigin) : fallback);
 const lines = (v: string) => v.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 20);
 
 /**
@@ -65,6 +66,7 @@ function applyForm(content: SheetContent, fd: FormData): SheetContent {
       interval_months: num(str(fd, `maintenance.${i}.interval_months`)),
       product: nullable(str(fd, `maintenance.${i}.product`).slice(0, 160)),
       capacity: nullable(str(fd, `maintenance.${i}.capacity`).slice(0, 80)),
+      origin: pickOrigin(str(fd, `maintenance.${i}.origin`), m.origin),
       needs_review: fd.get(`maintenance.${i}.ok`) !== 'on',
     })),
     faults: content.faults.map((f, i) => ({
@@ -72,6 +74,7 @@ function applyForm(content: SheetContent, fd: FormData): SheetContent {
       difficulty: str(fd, `faults.${i}.difficulty`) === 'atelier' ? 'atelier' : 'facile',
       causes: lines(str(fd, `faults.${i}.causes`)),
       checks: lines(str(fd, `faults.${i}.checks`)),
+      origin: pickOrigin(str(fd, `faults.${i}.origin`), f.origin),
       needs_review: fd.get(`faults.${i}.ok`) !== 'on',
     })),
     parts: content.parts.map((p, i) => ({

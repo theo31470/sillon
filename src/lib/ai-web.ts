@@ -230,19 +230,69 @@ Prépare le dossier.`,
 }
 
 // ---------------------------------------------------------------------
+// 2 bis. Dossier ENTRETIEN et PANNES (en parallèle du dossier technique)
+// ---------------------------------------------------------------------
+
+export const UPKEEP_MARKER = '=== ENTRETIEN ET PANNES ===';
+
+const UPKEEP_SYSTEM = `Tu es documentaliste technique pour Sillon, un site destiné aux agriculteurs français.
+Tu prépares la partie ENTRETIEN et PANNES du dossier d'une série de tracteurs (ou d'un modèle).
+
+À chercher (4 recherches au maximum, 1 seule page lue en entier) :
+1. Plan d'entretien : manuel d'utilisation ou carnet d'entretien officiel (sites de documentation des constructeurs), intervalles en heures, normes et types d'huile, capacités.
+2. Pannes connues sur cette série : rappels du constructeur, essais longue durée et retours d'expérience de la presse agricole, problèmes rapportés par PLUSIEURS propriétaires sur des forums agricoles (un témoignage isolé ne suffit pas).
+3. Pour chaque panne : symptômes, causes, et tests à faire dans l'ordre (contrôles visuels, niveaux, codes défaut affichés, filtres, mesures de pression ou de tension avec leurs valeurs si elles sont publiées).
+
+Règles impératives :
+- N'écris QUE ce que tu as lu dans les pages consultées. Jamais de mémoire.
+- Une information par ligne : « [constructeur|presse|utilisateurs] Libellé : contenu — source : URL ».
+- Indique le nombre de témoignages concordants pour les pannes rapportées par des utilisateurs.
+- Si tu ne trouves rien sur un point, écris-le simplement.
+- Français, concis : des lignes de données, pas de phrases d'introduction.`;
+
+export async function researchUpkeep(params: { userId: string; brand: string; series: string; models: string[]; years: string }) {
+  const target = params.series
+    ? `Série : ${params.brand} ${params.series} (modèles : ${params.models.join(', ')}).`
+    : `Tracteur : ${params.brand} ${params.models[0]}.`;
+  const result = await runWithWebTools({
+    system: UPKEEP_SYSTEM,
+    prompt: `${target}${params.years ? ` Années : ${params.years}.` : ''}\nPrépare la partie entretien et pannes du dossier.`,
+    searches: 4,
+    fetches: 1,
+    maxTokens: 6000,
+    deadlineMs: 230_000,
+  });
+  await recordUsage(params.userId, 'sheet_research', result.usage, result.model);
+  return { notes: result.text, sources: result.sources };
+}
+
+// ---------------------------------------------------------------------
 // 3. Fiche structurée à partir du dossier
 // ---------------------------------------------------------------------
 
 const WRITE_SYSTEM = `Tu es rédacteur technique pour Sillon. Tu remplis la fiche technique d'UN tracteur en français, uniquement à partir du dossier de recherche fourni.
 
 Règles impératives :
-- N'utilise QUE le dossier. N'ajoute rien de tes connaissances générales.
+- Caractéristiques et pièces : n'utilise QUE le dossier, rien de tes connaissances générales. Seule exception : les repères d'entretien et de pannes d'origine "general" décrits plus bas, toujours à faire vérifier.
 - Le dossier peut couvrir toute une série : garde les valeurs communes à la série et les valeurs propres à CE modèle ; jamais celles d'un autre modèle.
 - Chaque valeur porte sa source : document = titre de la page ou nom du site, url = adresse exacte indiquée dans le dossier pour cette valeur, page = null (ou le numéro de page s'il s'agit d'une brochure PDF et qu'il est indiqué).
 - needs_review = false seulement si la valeur vient du site ou d'une brochure du constructeur, ou de deux sources concordantes. Sinon (source unique non officielle, contradiction, version incertaine) : needs_review = true.
 - Valeur absente : ne crée pas la ligne, sauf si elle est indispensable (puissance, poids) : alors value = null, source = null, needs_review = true.
 - Groupes de caractéristiques dans cet ordre quand ils existent : Moteur, Transmission et prise de force, Hydraulique et relevage, Pneus, Dimensions, Masses, Capacités.
-- Entretien : uniquement les intervalles trouvés. Pannes : uniquement les incidents documentés par le constructeur (sinon liste vide). Pièces : références d'origine seulement si elles figurent dans le dossier.
+- Chaque opération d'entretien et chaque panne porte son origine : "constructeur", "presse" ou "utilisateurs" selon la source du dossier (marquée entre crochets), ou "general" (voir plus bas).
+- Une panne d'origine "utilisateurs" a toujours needs_review = true.
+
+Entretien :
+- Reprends les opérations et intervalles du dossier.
+- Si le dossier ne couvre pas les opérations courantes, complète avec les repères habituels pour ce type de tracteur (vidange moteur et filtre, filtres à carburant, filtre à air, huile de transmission et d'hydraulique, ponts, liquide de refroidissement, graissage), avec origin = "general", source = null, needs_review = true. Reste prudent (intervalles usuels du marché) et n'invente JAMAIS une capacité, une référence ou une norme d'huile précise : product = null, capacity = null pour ces repères.
+
+Pannes et tests :
+- Reprends toutes les pannes du dossier, avec leur origine.
+- S'il y en a moins de 4, complète avec 2 ou 3 pannes courantes pour ce type de tracteur (selon sa transmission, son hydraulique, son électronique et son post-traitement moteur), avec origin = "general", source = null, needs_review = true.
+- checks = tests concrets dans l'ordre, du plus simple au plus poussé : mise en sécurité si nécessaire, niveaux, fusibles, codes défaut affichés sur le terminal, filtres, puis mesures (pression, tension) en donnant les valeurs de contrôle seulement si elles figurent dans le dossier.
+- difficulty = "atelier" dès qu'il faut démonter un organe interne ou intervenir sur l'hydraulique haute pression, l'injection ou l'électronique.
+
+Pièces : références d'origine seulement si elles figurent dans le dossier.
 - Résumé : 2 phrases factuelles (type de tracteur, puissance, transmission, usage).
 - Format français : virgule décimale, espace pour les milliers, unités métriques.`;
 

@@ -30,6 +30,16 @@ function SourceChip({ source, needsReview }: { source: Src; needsReview: boolean
   );
 }
 
+const ORIGIN_OPTIONS = { constructeur: 'Constructeur', presse: 'Presse', utilisateurs: 'Utilisateurs', general: 'Repère indicatif' } as const;
+
+function OriginSelect({ name, value }: { name: string; value?: string }) {
+  return (
+    <select aria-label="Origine de l’information" name={name} defaultValue={value ?? 'constructeur'} className="ml-2 rounded-md border border-line px-1.5 py-0.5 text-xs font-normal">
+      {Object.entries(ORIGIN_OPTIONS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+    </select>
+  );
+}
+
 function Verified({ name, needsReview, sourced }: { name: string; needsReview: boolean; sourced: boolean }) {
   return (
     <label className="flex items-center gap-1.5 whitespace-nowrap text-sm">
@@ -108,7 +118,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
               {content.maintenance.map((m, i) => (
                 <div key={m.operation} className={`flex flex-col gap-2 border-b border-[#eef0eb] px-4 py-3 text-sm last:border-0 ${m.needs_review ? 'bg-warn-soft' : ''}`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong>{m.operation}</strong>
+                    <strong>{m.operation} <OriginSelect name={`maintenance.${i}.origin`} value={m.origin} /></strong>
                     <span className="flex items-center gap-3"><SourceChip source={m.source} needsReview={m.needs_review} /><Verified name={`maintenance.${i}.ok`} needsReview={m.needs_review} sourced={Boolean(m.source)} /></span>
                   </div>
                   <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(130px,1fr))]">
@@ -128,7 +138,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
               {content.faults.map((f, i) => (
                 <div key={f.symptom} className={`flex flex-col gap-2 border-b border-[#eef0eb] px-4 py-3 text-sm last:border-0 ${f.needs_review ? 'bg-warn-soft' : ''}`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong>{f.symptom}</strong>
+                    <strong>{f.symptom} <OriginSelect name={`faults.${i}.origin`} value={f.origin} /></strong>
                     <span className="flex items-center gap-3">
                       <select aria-label="Difficulté" name={`faults.${i}.difficulty`} defaultValue={f.difficulty} className={field}>
                         <option value="facile">Réparable soi-même</option>

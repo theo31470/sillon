@@ -31,7 +31,8 @@ Règles impératives :
 - Une valeur trouvée clairement dans un document a needs_review à false.
 - N'invente jamais de référence de pièce, de dose, de capacité ou de couple de serrage.
 - Pannes : uniquement celles décrites dans les documents (section dépannage, incidents…). Vérifications de la plus simple à la plus complexe. difficulty = "atelier" dès qu'il faut démonter un organe interne ou intervenir sur l'hydraulique haute pression, l'injection ou l'électronique.
-- Unités du système métrique, format français (virgule décimale).`;
+- Unités du système métrique, format français (virgule décimale).
+- origin = "constructeur" pour les informations tirées de documents du constructeur, "presse" pour un article de presse.`;
 
 export type AiFeature = 'diagnostic' | 'sheet_generation' | 'sheet_revision' | 'sheet_research' | 'catalog_listing' | 'photo_selection';
 

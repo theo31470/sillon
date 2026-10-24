@@ -40,7 +40,7 @@ export type CatalogModel = {
 export const CATALOG_DAILY_BUDGET_USD = Number(process.env.CATALOG_DAILY_BUDGET_USD) || 1;
 
 /** Coûts moyens constatés (USD), pour l'estimation affichée avant de lancer. */
-export const ESTIMATED_COST_USD = { perSeries: 0.12, perModel: 0.01 };
+export const ESTIMATED_COST_USD = { perSeries: 0.2, perModel: 0.012 };
 
 /** Nombre d'étapes traitées en parallèle par la file. */
 export const CATALOG_PARALLEL = 3;

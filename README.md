@@ -173,6 +173,14 @@ appelle `/api/catalogue/tick`, qui traite une étape. Au plus 3 étapes en paral
   crédits Anthropic sont épuisés.
 Fixez aussi une limite de dépense mensuelle dans la console Anthropic.
 
+**Entretien, pannes et tests** : en parallèle du dossier technique, une seconde recherche par série cible le plan
+d’entretien (manuels, carnets), les pannes connues (rappels, presse agricole, problèmes rapportés par plusieurs
+propriétaires sur les forums) et les tests à faire. Chaque opération et chaque panne affiche son **origine** :
+*Constructeur*, *Presse agricole*, *Retours d’utilisateurs* ou *Repère indicatif* (pratique habituelle pour ce type de
+tracteur, ajoutée quand les sources sont muettes, sans capacité ni référence inventée). Les retours d’utilisateurs et
+les repères indicatifs sont toujours « à vérifier » : la fiche ne peut pas être publiée sans relecture. L’origine est
+modifiable dans la relecture.
+
 **Photos** : après la rédaction, Sillon cherche une photo du modèle sur **Wikimedia Commons** (licences libres
 uniquement : CC BY, CC BY-SA, CC0, domaine public). Claude regarde les candidates et ne retient qu’une photo qui montre
 clairement ce modèle ; sinon la fiche garde son illustration. La photo est copiée dans le stockage `media` et la fiche
@@ -226,7 +234,7 @@ Le plus simple : [Vercel](https://vercel.com).
 
 - **Import des tracteurs — budget** (24/10/2026) : premier essai à ~1,30 $ par fiche (Sonnet, brochures lues en
   entier) ; version corrigée (Haiku, une recherche par série) estimée à ~3,5 centimes par fiche, soit ~250 fiches
-  pour 10 €. **À valider** : lancer une seule série (Fendt 700 Vario, 5 modèles, estimation ≈ 0,17 $), comparer avec
+  pour 10 € ; avec la recherche entretien/pannes ajoutée le 25/10 : ~5 centimes par fiche, soit ~180 fiches pour 10 €. **À valider** : lancer une seule série (Fendt 700 Vario, 5 modèles, estimation ≈ 0,17 $), comparer avec
   la dépense affichée dans l’écran d’import, puis recalculer. Les 57 Fendt sont déjà listés (« À générer »).
   Penser à fixer une limite de dépense mensuelle dans la console Anthropic.
 - Si la qualité des fiches rédigées par Haiku déçoit : repasser Sonnet pour la seule étape de rédaction (peu coûteuse).

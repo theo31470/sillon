@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { SheetContent } from '@/lib/sheets/schema';
+import type { InfoOrigin, SheetContent } from '@/lib/sheets/schema';
 import { dimensions, groupIcon, hourScalePosition, maintenanceBuckets, type MachineKind } from '@/lib/sheets/insights';
 import { Icon } from '@/components/sheets/icons';
 import { DimensionDiagram } from '@/components/sheets/dimension-diagram';
@@ -14,6 +14,22 @@ function SourceTag({ source }: { source: Source }) {
       <Icon name="book" size={12} />
       {source.document}
       {source.page ? `, p. ${source.page}` : ''}
+    </span>
+  );
+}
+
+const ORIGIN_LABELS: Record<InfoOrigin, { label: string; title: string; className: string }> = {
+  constructeur: { label: 'Constructeur', title: 'Manuel, notice ou site du constructeur', className: 'bg-brand-soft text-brand-dark' },
+  presse: { label: 'Presse agricole', title: 'Essai ou dossier de la presse spécialisée', className: 'bg-info-soft text-info' },
+  utilisateurs: { label: 'Retours d’utilisateurs', title: 'Problème rapporté par plusieurs propriétaires', className: 'bg-warn-soft text-warn' },
+  general: { label: 'Repère indicatif', title: 'Pratique habituelle pour ce type de tracteur, à confirmer dans le carnet d’entretien', className: 'bg-ground text-muted ring-1 ring-line' },
+};
+
+function OriginTag({ origin }: { origin?: InfoOrigin }) {
+  const o = ORIGIN_LABELS[origin ?? 'constructeur'];
+  return (
+    <span title={o.title} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${o.className}`}>
+      {o.label}
     </span>
   );
 }
@@ -148,7 +164,10 @@ export function SheetView({
                 <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
                   {b.items.map((m) => (
                     <div key={m.operation} className="lift-card rounded-xl border border-line bg-ground/60 p-3.5">
-                      <p className="font-medium leading-snug">{m.operation}</p>
+                      <p className="flex items-start justify-between gap-2 font-medium leading-snug">
+                        {m.operation}
+                        {m.origin && m.origin !== 'constructeur' ? <OriginTag origin={m.origin} /> : null}
+                      </p>
                       {m.product || m.capacity ? (
                         <p className="mt-2 flex flex-wrap gap-1.5 text-[13px]">
                           {m.product ? (
@@ -167,7 +186,12 @@ export function SheetView({
             ))}
           </ol>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-warn-soft px-4 py-3 text-sm text-[#6b5426]">
-            <p className="flex items-center gap-2"><Icon name="book" size={16} /> Le manuel du constructeur fait toujours foi. Au premier des deux termes atteint (heures ou mois).</p>
+            <p className="flex items-center gap-2">
+              <Icon name="book" size={16} />
+              {content.maintenance.some((m) => m.origin === 'general')
+                ? 'Les « repères indicatifs » sont des pratiques habituelles : vérifiez toujours dans le carnet d’entretien de votre machine.'
+                : 'Le manuel du constructeur fait toujours foi. Au premier des deux termes atteint (heures ou mois).'}
+            </p>
             {maintenanceCta}
           </div>
         </section>
@@ -175,7 +199,7 @@ export function SheetView({
 
       {content.faults.length > 0 ? (
         <section id="pannes" className="reveal scroll-mt-24 rounded-2xl border border-line bg-white p-4 sm:p-7">
-          <SectionTitle icon="warning" title="Pannes fréquentes" subtitle="Causes possibles et vérifications, de la plus simple à la plus poussée" />
+          <SectionTitle icon="warning" title="Pannes connues et tests" subtitle="Causes possibles et tests à faire, du plus simple au plus poussé" />
           <div className="flex flex-col gap-3">
             {content.faults.map((f, i) => (
               <details key={f.symptom} open={i === 0} className="fault group rounded-xl border border-line transition-colors open:border-[#d5dccf] open:bg-[#fcfdfb]">
@@ -183,7 +207,10 @@ export function SheetView({
                   <span className={`flex size-9 flex-none items-center justify-center rounded-full ${f.difficulty === 'facile' ? 'bg-brand-soft text-brand-dark' : 'bg-warn-soft text-warn'}`}>
                     <Icon name={f.difficulty === 'facile' ? 'wrench' : 'warning'} size={18} />
                   </span>
-                  <span className="min-w-0 flex-1 text-[17px] font-semibold leading-snug">{f.symptom}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[17px] font-semibold leading-snug">{f.symptom}</span>
+                    <span className="mt-1 block"><OriginTag origin={f.origin} /></span>
+                  </span>
                   <span className={`hidden rounded-full px-2.5 py-1 text-xs font-semibold sm:inline ${f.difficulty === 'facile' ? 'bg-brand-soft text-brand-dark' : 'bg-warn-soft text-warn'}`}>
                     {f.difficulty === 'facile' ? 'Réparable soi-même' : 'Atelier conseillé'}
                   </span>
@@ -199,7 +226,7 @@ export function SheetView({
                     </ul>
                   </div>
                   <div>
-                    <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted">À vérifier, dans l’ordre</p>
+                    <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted">Tests à faire, dans l’ordre</p>
                     <ol className="flex flex-col">
                       {f.checks.map((c, n) => (
                         <li key={c} className="relative flex gap-3 pb-3 last:pb-0">

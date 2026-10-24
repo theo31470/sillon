@@ -27,6 +27,20 @@ const reviewFields = {
     .describe('true si l’information est absente, ambiguë ou contradictoire entre sources'),
 };
 
+/**
+ * Origine d'une information d'entretien ou de panne, affichée sur la fiche :
+ *  - constructeur : manuel, notice, site ou rappel officiel ;
+ *  - presse : essais et dossiers de la presse agricole spécialisée ;
+ *  - utilisateurs : problème rapporté par plusieurs propriétaires (forums, retours d'expérience) ;
+ *  - general : repère habituel pour ce type de tracteur (bonne pratique), à confirmer dans le carnet.
+ */
+export const ORIGINS = ['constructeur', 'presse', 'utilisateurs', 'general'] as const;
+export type InfoOrigin = (typeof ORIGINS)[number];
+const originField = z
+  .enum(ORIGINS)
+  .default('constructeur')
+  .describe('Origine : constructeur, presse, utilisateurs (plusieurs témoignages) ou general (repère habituel, sans source)');
+
 export const specItemSchema = z.object({
   label: z.string(),
   value: z.string().nullable().describe('Valeur avec unité, ou null si non trouvée'),
@@ -45,6 +59,7 @@ export const sheetContentSchema = z.object({
       interval_months: z.number().nullable(),
       product: z.string().nullable(),
       capacity: z.string().nullable(),
+      origin: originField,
       ...reviewFields,
     }),
   ),
@@ -53,7 +68,10 @@ export const sheetContentSchema = z.object({
       symptom: z.string(),
       difficulty: z.enum(['facile', 'atelier']),
       causes: z.array(z.string()),
-      checks: z.array(z.string()).describe('Vérifications dans l’ordre, de la plus simple à la plus complexe'),
+      checks: z
+        .array(z.string())
+        .describe('Tests et vérifications concrets, dans l’ordre, du plus simple au plus poussé (avec valeurs de contrôle si connues)'),
+      origin: originField,
       ...reviewFields,
     }),
   ),
