@@ -7,11 +7,11 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: {
-    default: 'Sillon — gérez votre exploitation simplement',
+    default: 'Sillon — le carnet de santé de votre matériel agricole',
     template: '%s · Sillon',
   },
   description:
-    'Parcelles, registre des interventions, météo, suivi du matériel et fiches techniques : l’application simple pour les exploitations agricoles.',
+    'Le carnet de santé de votre matériel agricole : entretiens, compteurs, coût de revient à l’heure, fiches techniques et aide au diagnostic.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

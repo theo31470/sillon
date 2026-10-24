@@ -2,32 +2,37 @@
  * Formules affichées sur le site. Le prix réel facturé est celui configuré
  * dans Stripe (variable STRIPE_PRICE_COMPLET) : pensez à garder les deux alignés.
  */
+export const FREE_MACHINE_LIMIT = 3;
+export const TRIAL_DAYS = 30;
+
 export const PLANS = {
   free: {
     name: 'Gratuit',
     priceLabel: '0 €',
     period: '',
-    features: ['Jusqu’à 5 parcelles', 'Registre des interventions', 'Météo de l’exploitation', 'Fiches techniques en lecture'],
+    features: [
+      `Jusqu’à ${FREE_MACHINE_LIMIT} machines`,
+      'Carnet d’entretien et rappels',
+      'Relevés de compteur et dépenses',
+      'Fiches techniques',
+    ],
   },
   complet: {
     name: 'Complet',
     priceLabel: process.env.NEXT_PUBLIC_PRICE_COMPLET_LABEL ?? '[PRIX]',
     period: '/ mois',
     features: [
-      'Parcelles illimitées',
-      'Suivi du matériel et rappels d’entretien',
+      'Parc matériel illimité',
+      'Coût de revient à l’heure, machine par machine',
+      'Rapport d’historique pour la revente',
       'Aide au diagnostic des pannes',
-      'Registre imprimable pour les contrôles',
-      '30 jours d’essai gratuit',
+      `${TRIAL_DAYS} jours d’essai gratuit`,
     ],
   },
   groupement: {
-    name: 'Groupement',
+    name: 'CUMA & ETA',
     priceLabel: 'Sur devis',
     period: '',
-    features: ['CUMA, GAEC, coopératives', 'Plusieurs exploitations', 'Accompagnement à la prise en main'],
+    features: ['CUMA, entrepreneurs de travaux, GAEC', 'Matériel partagé entre plusieurs utilisateurs', 'Accompagnement à la prise en main'],
   },
 } as const;
-
-export const FREE_PARCEL_LIMIT = 5;
-export const TRIAL_DAYS = 30;

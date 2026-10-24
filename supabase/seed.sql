@@ -6,8 +6,8 @@ insert into public.blog_posts (slug, title, excerpt, content_md, category, autho
 values (
   'bienvenue-sur-sillon',
   'Bienvenue sur le blog Sillon',
-  'Des conseils pratiques pour votre exploitation : réglementation, matériel, météo et gestion.',
-  E'Ce blog accompagne l''application Sillon.\n\n## Ce que vous trouverez ici\n\n- des guides réglementaires clairs ;\n- des conseils d''entretien du matériel ;\n- des repères météo et cultures ;\n- des méthodes de gestion simples.\n\nBonne lecture !',
+  'Des conseils pratiques pour votre matériel : entretien, réglementation, coûts et occasion.',
+  E'Ce blog accompagne l''application Sillon.\n\n## Ce que vous trouverez ici\n\n- des guides réglementaires clairs ;\n- des conseils d''entretien du matériel ;\n- des repères pour calculer le coût de revient de vos machines ;\n- des méthodes de gestion simples.\n\nBonne lecture !',
   'gestion',
   'L''équipe Sillon',
   'Le blog Sillon : conseils pratiques pour les exploitations agricoles.',

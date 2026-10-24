@@ -1,9 +1,10 @@
 # Sillon
 
-Application web pour les exploitations agricoles : site vitrine, blog, fiches techniques
-du matériel, et un SaaS pour gérer parcelles, registre des interventions, météo et entretien
-du matériel. Un espace administrateur sécurisé permet de gérer membres, abonnements, blog
-et fiches techniques rédigées par Claude (IA) puis validées par un humain.
+Le carnet de santé numérique du matériel agricole. Site vitrine, blog et base de fiches techniques
+(caractéristiques, entretien, pannes connues et tests), et un SaaS pour suivre son parc : relevés de compteur,
+carnet d’entretien automatique avec rappels, dépenses, coût de revient à l’heure et rapport d’historique pour la
+revente. Un espace administrateur sécurisé gère membres, abonnements, blog et fiches techniques (rédigées par
+Claude puis validées par un humain).
 
 ## Sommaire
 
@@ -26,7 +27,6 @@ et fiches techniques rédigées par Claude (IA) puis validées par un humain.
 | Base de données, comptes, fichiers | Supabase (Postgres + Auth + Storage) |
 | Paiements | Stripe (Checkout, portail client, webhooks) |
 | IA | API Claude d’Anthropic (fiches techniques, aide au diagnostic) |
-| Météo | Open-Meteo |
 
 ## Structure du projet
 
@@ -42,13 +42,16 @@ src/
     ai.ts                 Appels à Claude (fiches, corrections, diagnostic)
     sheets/schema.ts      Format d’une fiche technique (partagé IA / base / affichage)
     supabase/             Clients Supabase (navigateur, serveur, clé secrète)
-    stripe.ts, weather.ts, audit.ts, rate-limit.ts, markdown.ts…
+    fleet.ts              Parc matériel de l’exploitant (machines, relevés, entretiens, dépenses)
+    maintenance.ts        Échéances d’entretien (heures ou mois, au premier terme atteint)
+    costs.ts              Coût de revient à l’heure (charges fixes + variables)
+    stripe.ts, audit.ts, rate-limit.ts, markdown.ts…
   app/
     (site)/               Pages publiques : accueil, blog, fiches, tarifs, pages légales
     (auth)/               Connexion, inscription, mot de passe oublié
     securite/2fa/         Double authentification (obligatoire pour l’admin)
-    app/                  Espace exploitant : tableau de bord, parcelles, interventions,
-                          registre imprimable, matériel, diagnostic, abonnement, compte
+    app/                  Espace exploitant : tableau de bord, parc matériel (fiche machine,
+                          rapport pour la revente), diagnostic, abonnement, compte
     admin/                Espace administrateur : vue d’ensemble, membres, paiements,
                           blog, fiches techniques (IA), journal d’activité
     api/                  Webhook Stripe, exports de données, génération des fiches
@@ -107,10 +110,22 @@ Créez une clé sur [console.anthropic.com](https://console.anthropic.com) et me
 L’usage est facturé au nombre de tokens : la consommation de chaque appel est enregistrée dans la table `ai_usage`.
 Fixez une limite de dépense dans la console Anthropic.
 
-### 4. Météo (Open-Meteo)
+## Parc matériel (espace exploitant)
 
-L’API gratuite d’Open-Meteo est réservée aux usages **non commerciaux**. Sillon étant payant, souscrivez
-une offre commerciale Open-Meteo et renseignez `OPEN_METEO_API_KEY` avant l’ouverture au public.
+- **Machines** : type, marque, modèle, année, n° de série, immatriculation, fiche technique liée.
+  Formule gratuite : 3 machines (limite appliquée dans la base) ; Complet : illimité.
+- **Relevés de compteur** (`hour_readings`) : le compteur ne recule jamais ; chaque relevé sert au calcul des heures annuelles.
+- **Carnet d’entretien** : plan repris de la fiche technique (opérations avec intervalle) + plan personnalisé
+  (`machine_tasks`, qui remplace l’opération de même nom). Échéance au premier terme atteint (heures ou mois),
+  statuts « en retard », « bientôt » (25 h / 10 % de l’intervalle ou 30 jours), « à jour ».
+- **Dépenses** (`machine_costs`, € HT) : carburant (avec litres → L/h), entretien, réparations, pneumatiques,
+  assurance, autres. Un entretien noté avec un coût crée la dépense correspondante.
+- **Coût de revient à l’heure** (`src/lib/costs.ts`, formule Complet) : charges fixes annuelles (amortissement
+  (prix − revente) / durée, frais financiers sur le capital moyen, assurance) ÷ heures annuelles, plus charges
+  variables des 12 derniers mois ÷ heures travaillées sur la période. Heures annuelles : relevés sur au moins
+  2 mois, sinon estimation saisie. Marge affichée si un tarif facturé à l’heure est renseigné (CUMA, ETA).
+- **Rapport pour la revente** (`/app/materiel/[id]/rapport`, formule Complet) : identité, entretiens, relevés,
+  dépenses par année en option ; imprimable en PDF.
 
 ## Sécurité
 
@@ -118,7 +133,7 @@ Plusieurs couches indépendantes protègent les données :
 
 - **Base de données (RLS)** : chaque table a des règles d’accès. Un exploitant ne voit que ses données ;
   les droits admin exigent le rôle `admin` **et** une session validée par double authentification (`aal2`).
-  Même un administrateur ne lit pas les parcelles et interventions des exploitants.
+  Même un administrateur ne lit pas le parc matériel ni les dépenses des exploitants.
 - **Champs protégés** : un membre ne peut pas modifier son rôle, sa formule ou sa suspension (droits SQL par colonne).
 - **Serveur** : chaque page et chaque action vérifient à nouveau les droits (`src/lib/auth.ts`).
   Le proxy ne fait qu’un premier filtrage.
@@ -203,11 +218,11 @@ utilisés pour l’estimation sont dans `src/lib/ai.ts` (`PRICES`).
 npm run lint        # qualité du code
 npm run typecheck   # typage TypeScript
 npm run build       # build de production
-npm run test:db     # lance un vrai Postgres local et vérifie les règles de sécurité (25 tests)
+npm run test:db     # lance un vrai Postgres local et vérifie les règles de sécurité (une cinquantaine de tests)
 ```
 
 `test:db` vérifie notamment qu’un exploitant ne voit pas les données d’un autre, ne peut pas se donner
-les droits admin, que la formule gratuite est limitée à 5 parcelles, qu’un admin sans double authentification
+les droits admin, que la formule gratuite est limitée à 3 machines, qu’un admin sans double authentification
 n’a aucun droit étendu, et qu’un compte suspendu ne peut plus écrire. (À lancer hors compte root.)
 
 ## Mise en ligne
@@ -222,8 +237,7 @@ Le plus simple : [Vercel](https://vercel.com).
 
 - [ ] Rédiger les pages légales (`src/app/(site)/[legal]/page.tsx`) avec un professionnel (mentions, RGPD, CGU).
 - [ ] Remplacer les emplacements photo par de vraies photos.
-- [ ] Faire valider la réponse de la FAQ sur le registre et les mentions du registre imprimé par un conseiller.
-- [ ] Prendre l’offre commerciale Open-Meteo.
+- [ ] Faire relire la méthode du coût de revient par un conseiller machinisme (chambre d’agriculture, FDCUMA).
 - [ ] Remplacer la limitation de débit en mémoire par un stockage partagé (ex. Upstash Redis) si le site
       tourne sur plusieurs serveurs (cas de Vercel).
 - [ ] Durcir la CSP avec des nonces (guide Next.js « Content Security Policy »).

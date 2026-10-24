@@ -13,12 +13,13 @@ export async function GET() {
 
   const supabase = await createClient();
   // Chaque requête est filtrée par les règles RLS : uniquement les données de l'utilisateur.
-  const [profile, parcels, interventions, machines, maintenance, subscriptions, payments] = await Promise.all([
-    supabase.from('profiles').select('email, full_name, farm_name, plan, latitude, longitude, created_at').eq('id', session.userId).single(),
-    supabase.from('parcels').select('*'),
-    supabase.from('interventions').select('*'),
+  const [profile, machines, readings, maintenance, tasks, costs, subscriptions, payments] = await Promise.all([
+    supabase.from('profiles').select('email, full_name, farm_name, plan, created_at').eq('id', session.userId).single(),
     supabase.from('machines').select('*'),
+    supabase.from('hour_readings').select('*'),
     supabase.from('maintenance_logs').select('*'),
+    supabase.from('machine_tasks').select('*'),
+    supabase.from('machine_costs').select('*'),
     supabase.from('subscriptions').select('status, plan, current_period_end, created_at'),
     supabase.from('payments').select('amount_cents, currency, status, created_at'),
   ]);
@@ -27,10 +28,11 @@ export async function GET() {
     {
       exported_at: new Date().toISOString(),
       profile: profile.data,
-      parcels: parcels.data,
-      interventions: interventions.data,
       machines: machines.data,
+      hour_readings: readings.data,
       maintenance_logs: maintenance.data,
+      maintenance_plan: tasks.data,
+      costs: costs.data,
       subscriptions: subscriptions.data,
       payments: payments.data,
     },

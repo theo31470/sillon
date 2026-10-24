@@ -11,45 +11,20 @@ export type Profile = {
   plan: Plan;
   stripe_customer_id: string | null;
   suspended: boolean;
-  latitude: number | null;
-  longitude: number | null;
   created_at: string;
   updated_at: string;
 };
 
-export type Parcel = {
-  id: string;
-  user_id: string;
-  name: string;
-  crop: string;
-  area_ha: number;
-  created_at: string;
-};
-
-export const INTERVENTION_KINDS = {
-  semis: 'Semis',
-  traitement: 'Traitement',
-  fertilisation: 'Fertilisation',
-  travail_sol: 'Travail du sol',
-  recolte: 'Récolte',
+export const MACHINE_KINDS = {
+  tracteur: 'Tracteur',
+  moissonneuse: 'Moissonneuse-batteuse',
+  telescopique: 'Chargeur télescopique',
+  pulverisateur: 'Pulvérisateur',
+  automoteur: 'Automoteur (ensileuse, vendangeuse…)',
+  outil: 'Outil attelé',
   autre: 'Autre',
 } as const;
-export type InterventionKind = keyof typeof INTERVENTION_KINDS;
-
-export type Intervention = {
-  id: string;
-  user_id: string;
-  parcel_id: string;
-  done_on: string;
-  kind: InterventionKind;
-  product: string;
-  dose: number | null;
-  dose_unit: string;
-  target: string;
-  operator: string;
-  notes: string;
-  created_at: string;
-};
+export type MachineKindDb = keyof typeof MACHINE_KINDS;
 
 export type Machine = {
   id: string;
@@ -57,7 +32,22 @@ export type Machine = {
   name: string;
   sheet_id: string | null;
   hours: number;
+  kind: MachineKindDb;
+  brand: string;
+  model: string;
+  year: number | null;
+  serial_number: string;
+  registration: string;
+  purchase_date: string | null;
+  purchase_price: number | null;
+  resale_value: number | null;
+  depreciation_years: number;
+  interest_rate: number;
+  annual_hours_estimate: number | null;
+  billing_rate: number | null;
+  notes: string;
   created_at: string;
+  updated_at: string;
 };
 
 export type MaintenanceLog = {
@@ -67,6 +57,45 @@ export type MaintenanceLog = {
   done_at_hours: number;
   done_on: string;
   notes: string;
+  cost_id: string | null;
+};
+
+export type HourReading = {
+  id: string;
+  machine_id: string;
+  hours: number;
+  read_on: string;
+  created_at: string;
+};
+
+export const COST_KINDS = {
+  carburant: 'Carburant',
+  entretien: 'Entretien',
+  reparation: 'Réparation',
+  pneumatiques: 'Pneumatiques',
+  assurance: 'Assurance',
+  autre: 'Autre',
+} as const;
+export type CostKind = keyof typeof COST_KINDS;
+
+export type MachineCost = {
+  id: string;
+  machine_id: string;
+  kind: CostKind;
+  label: string;
+  amount: number;
+  liters: number | null;
+  hours_at: number | null;
+  spent_on: string;
+  created_at: string;
+};
+
+export type MachineTask = {
+  id: string;
+  machine_id: string;
+  operation: string;
+  interval_hours: number | null;
+  interval_months: number | null;
 };
 
 export const SHEET_CATEGORIES = {
@@ -123,8 +152,9 @@ export type TechSheet = {
 export const BLOG_CATEGORIES = {
   reglementation: 'Réglementation',
   materiel: 'Matériel',
-  'meteo-cultures': 'Météo & cultures',
-  gestion: 'Gestion',
+  entretien: 'Entretien & réparation',
+  gestion: 'Coûts & gestion',
+  occasion: 'Achat & revente',
 } as const;
 export type BlogCategory = keyof typeof BLOG_CATEGORIES;
 

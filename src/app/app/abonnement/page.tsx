@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate, formatEuros } from '@/lib/format';
-import { PLANS } from '@/lib/plans';
+import { FREE_MACHINE_LIMIT, PLANS } from '@/lib/plans';
 import type { Payment, Subscription } from '@/lib/types';
 import { Badge, Card, CheckIcon, Notice, btn } from '@/components/ui';
 import { openBillingPortal, startCheckout } from './actions';
@@ -35,7 +35,8 @@ export default async function SubscriptionPage(props: PageProps<'/app/abonnement
       {statut === 'merci' ? (
         <Notice tone="green">Merci ! Votre abonnement est en cours d’activation : il apparaîtra ici dans quelques secondes.</Notice>
       ) : null}
-      {raison === 'materiel' ? <Notice>Le suivi du matériel est inclus dans la formule Complet.</Notice> : null}
+      {raison === 'limite' ? <Notice>La formule gratuite est limitée à {FREE_MACHINE_LIMIT} machines : passez à la formule Complet pour un parc illimité.</Notice> : null}
+      {raison === 'rapport' ? <Notice>Le rapport d’historique pour la revente est inclus dans la formule Complet.</Notice> : null}
 
       <div className="flex flex-wrap items-start gap-6">
         <Card className="min-w-0 flex-[1_1_420px]">

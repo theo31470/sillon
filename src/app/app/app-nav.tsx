@@ -4,10 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const links = [
-  { href: '/app', label: 'Accueil' },
-  { href: '/app/parcelles', label: 'Parcelles' },
-  { href: '/app/interventions', label: 'Interventions' },
-  { href: '/app/materiel', label: 'Matériel' },
+  { href: '/app', label: 'Tableau de bord' },
+  { href: '/app/materiel', label: 'Mon parc' },
   { href: '/app/diagnostic', label: 'Diagnostic' },
   { href: '/fiches', label: 'Fiches techniques' },
 ];

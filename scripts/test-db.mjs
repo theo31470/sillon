@@ -62,22 +62,28 @@ const ok = (cond, msg) => { console.log(`${cond ? '✓' : '✗'} ${msg}`); if (!
 const throws = async (fn, msg) => { try { await fn(); ok(false, msg); } catch (e) { ok(true, `${msg} (${e.message.slice(0, 70)})`); } };
 
 ok((await c.query('select count(*)::int n from public.profiles')).rows[0].n === 3, 'profils créés automatiquement à l’inscription');
-const pA = await as(A, 'aal1', `insert into public.parcels (name, crop, area_ha) values ('Les Grès','Blé',4.2) returning id`);
-const parcelA = pA.rows[0].id;
-ok(true, 'A crée une parcelle');
-ok((await as(B, 'aal1', 'select * from public.parcels')).rowCount === 0, 'B ne voit pas les parcelles de A');
-await throws(() => as(B, 'aal1', `insert into public.interventions (parcel_id, kind) values ($1,'semis')`, [parcelA]), 'B ne peut pas noter une intervention sur la parcelle de A');
-await as(A, 'aal1', `insert into public.interventions (parcel_id, kind, product) values ($1,'semis','Blé')`, [parcelA]);
-ok((await as(A, 'aal1', 'select * from public.interventions')).rowCount === 1, 'A note une intervention sur sa parcelle');
-ok((await as(B, 'aal1', `update public.interventions set notes='x'`)).rowCount === 0, 'B ne peut pas modifier les interventions de A');
+const mA = await as(A, 'aal1', `insert into public.machines (name, kind, brand, model, hours) values ('Le gros vert','tracteur','Fendt','724 Vario',1200) returning id`);
+const machineA = mA.rows[0].id;
+ok(true, 'A ajoute une machine');
+ok((await as(B, 'aal1', 'select * from public.machines')).rowCount === 0, 'B ne voit pas les machines de A');
+await throws(() => as(B, 'aal1', `insert into public.machine_costs (machine_id, kind, amount) values ($1,'carburant',100)`, [machineA]), 'B ne peut pas ajouter une dépense sur la machine de A');
+await throws(() => as(B, 'aal1', `insert into public.hour_readings (machine_id, hours) values ($1, 1300)`, [machineA]), 'B ne peut pas relever le compteur de la machine de A');
+await throws(() => as(B, 'aal1', `insert into public.maintenance_logs (machine_id, operation, done_at_hours) values ($1,'Vidange',1200)`, [machineA]), 'B ne peut pas noter un entretien sur la machine de A');
+await as(A, 'aal1', `insert into public.machine_costs (machine_id, kind, amount, liters) values ($1,'carburant',180.5,120)`, [machineA]);
+await as(A, 'aal1', `insert into public.hour_readings (machine_id, hours) values ($1, 1210)`, [machineA]);
+await as(A, 'aal1', `insert into public.machine_tasks (machine_id, operation, interval_hours) values ($1,'Graissage',50)`, [machineA]);
+ok((await as(A, 'aal1', 'select * from public.machine_costs')).rowCount === 1, 'A note une dépense sur sa machine');
+ok((await as(B, 'aal1', `update public.machine_costs set amount = 0`)).rowCount === 0, 'B ne peut pas modifier les dépenses de A');
+ok((await as(B, 'aal1', 'select * from public.machine_tasks')).rowCount === 0, 'B ne voit pas le plan d’entretien de A');
+await throws(() => as(A, 'aal1', `insert into public.machine_tasks (machine_id, operation) values ($1,'Sans intervalle')`, [machineA]), 'plan d’entretien : un intervalle est obligatoire');
 await throws(() => as(A, 'aal1', `update public.profiles set role='admin' where id=$1`, [A]), 'A ne peut pas se donner le rôle admin');
 await throws(() => as(A, 'aal1', `update public.profiles set plan='complet' where id=$1`, [A]), 'A ne peut pas changer sa formule lui-même');
 ok((await as(A, 'aal1', `update public.profiles set farm_name='EARL A' where id=$1`, [A])).rowCount === 1, 'A peut modifier le nom de son exploitation');
-for (let i = 0; i < 4; i++) await as(A, 'aal1', `insert into public.parcels (name) values ('P${i}')`);
-await throws(() => as(A, 'aal1', `insert into public.parcels (name) values ('P6')`), 'formule gratuite : 6e parcelle refusée');
+for (let i = 0; i < 2; i++) await as(A, 'aal1', `insert into public.machines (name) values ('M${i}')`);
+await throws(() => as(A, 'aal1', `insert into public.machines (name) values ('M4')`), 'formule gratuite : 4e machine refusée');
 ok((await as(ADM, 'aal1', 'select * from public.profiles')).rowCount === 1, 'admin SANS double authentification : ne voit que son profil');
 ok((await as(ADM, 'aal2', 'select * from public.profiles')).rowCount === 3, 'admin AVEC double authentification : voit tous les membres');
-ok((await as(ADM, 'aal2', 'select * from public.parcels')).rowCount === 0, 'même l’admin ne lit pas les parcelles des exploitants');
+ok((await as(ADM, 'aal2', 'select * from public.machine_costs')).rowCount === 0, 'même l’admin ne lit pas les dépenses des exploitants');
 ok((await as(null, null, 'select * from public.tech_sheets')).rowCount === 0, 'visiteur : fiche « à relire » invisible');
 ok((await as(null, null, 'select * from public.blog_posts')).rowCount === 1, 'visiteur : article publié visible');
 await throws(() => as(A, 'aal1', `insert into public.audit_log (action) values ('faux')`), 'un membre ne peut pas écrire dans le journal');
@@ -85,7 +91,7 @@ await throws(() => as(ADM, 'aal2', `insert into public.payments (id, amount_cent
 ok((await as(ADM, 'aal1', `update public.tech_sheets set status='published'`)).rowCount === 0, 'admin sans 2FA : ne peut pas publier une fiche');
 ok((await as(ADM, 'aal2', `update public.tech_sheets set status='published'`)).rowCount === 1, 'admin avec 2FA : peut publier une fiche');
 await c.query(`update public.profiles set suspended=true where id='${B}'`);
-await throws(() => as(B, 'aal1', `insert into public.parcels (name) values ('X')`), 'compte suspendu : écriture refusée');
+await throws(() => as(B, 'aal1', `insert into public.machines (name) values ('X')`), 'compte suspendu : écriture refusée');
 
 await throws(() => as(A, 'aal1', 'select private.handle_new_user()'), 'les fonctions internes ne sont pas appelables par un membre');
 await throws(() => as(null, null, 'select private.is_admin()'), 'un visiteur ne peut pas appeler les fonctions de sécurité');

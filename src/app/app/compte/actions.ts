@@ -12,25 +12,14 @@ import type { FormState } from '@/components/form-bits';
 
 export async function updateProfile(_prev: FormState, formData: FormData): Promise<FormState> {
   const { session } = await requireUser('/app/compte');
-  const coord = (min: number, max: number) =>
-    z
-      .string()
-      .trim()
-      .transform((v) => (v === '' ? null : Number(v.replace(',', '.'))))
-      .refine((v) => v === null || (Number.isFinite(v) && v >= min && v <= max), 'Coordonnée invalide');
-
   const parsed = z
     .object({
       full_name: z.string().trim().min(2, 'Nom trop court').max(120),
       farm_name: z.string().trim().max(120),
-      latitude: coord(-90, 90),
-      longitude: coord(-180, 180),
     })
     .safeParse({
       full_name: formData.get('full_name'),
       farm_name: formData.get('farm_name') ?? '',
-      latitude: formData.get('latitude') ?? '',
-      longitude: formData.get('longitude') ?? '',
     });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 

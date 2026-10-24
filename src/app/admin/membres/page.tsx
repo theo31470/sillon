@@ -37,7 +37,7 @@ export default async function MembersPage(props: PageProps<'/admin/membres'>) {
   let selected: Profile | null = null;
   let subs: Subscription[] = [];
   let payments: Payment[] = [];
-  let usage = { parcels: 0, machines: 0 };
+  let usage = { machines: 0, logs: 0 };
   if (selectedId && /^[0-9a-f-]{36}$/.test(selectedId)) {
     const [{ data: p }, { data: s }, { data: pay }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', selectedId).maybeSingle(),
@@ -50,11 +50,11 @@ export default async function MembersPage(props: PageProps<'/admin/membres'>) {
     if (selected) {
       // Comptage seulement : l'admin ne lit pas le contenu des exploitations.
       const service = createServiceClient();
-      const [parcels, machines] = await Promise.all([
-        service.from('parcels').select('id', { count: 'exact', head: true }).eq('user_id', selected.id),
+      const [machines, logs] = await Promise.all([
         service.from('machines').select('id', { count: 'exact', head: true }).eq('user_id', selected.id),
+        service.from('maintenance_logs').select('id', { count: 'exact', head: true }).eq('user_id', selected.id),
       ]);
-      usage = { parcels: parcels.count ?? 0, machines: machines.count ?? 0 };
+      usage = { machines: machines.count ?? 0, logs: logs.count ?? 0 };
     }
   }
 
@@ -133,7 +133,7 @@ export default async function MembersPage(props: PageProps<'/admin/membres'>) {
                 <dt className="text-muted">E-mail</dt><dd className="break-all">{selected.email}</dd>
                 <dt className="text-muted">Formule</dt><dd>{PLANS[selected.plan].name}{subs[0] ? ` · ${subs[0].status}` : ''}</dd>
                 {subs[0]?.current_period_end ? (<><dt className="text-muted">Échéance</dt><dd>{formatDate(subs[0].current_period_end)}</dd></>) : null}
-                <dt className="text-muted">Utilisation</dt><dd>{usage.parcels} parcelles · {usage.machines} machines</dd>
+                <dt className="text-muted">Utilisation</dt><dd>{usage.machines} machines · {usage.logs} entretiens notés</dd>
                 <dt className="text-muted">Rôle</dt><dd>{selected.role === 'admin' ? 'Administrateur' : 'Membre'}</dd>
               </dl>
               {payments.length ? (

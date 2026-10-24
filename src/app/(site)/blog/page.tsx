@@ -7,7 +7,7 @@ import { BLOG_CATEGORIES } from '@/lib/types';
 
 export const metadata: Metadata = {
   title: 'Blog',
-  description: 'Conseils pratiques pour votre exploitation : réglementation, matériel, météo et gestion.',
+  description: 'Conseils pratiques pour votre exploitation : matériel, entretien, réglementation, coûts et occasion.',
 };
 
 export default async function BlogPage(props: PageProps<'/blog'>) {
@@ -24,7 +24,7 @@ export default async function BlogPage(props: PageProps<'/blog'>) {
       <section className="border-b border-line bg-ground">
         <div className="mx-auto max-w-6xl px-6 pb-10 pt-14">
           <h1 className="mb-3 text-[clamp(34px,4.2vw,48px)] font-bold tracking-tight">Le blog Sillon</h1>
-          <p className="mb-7 max-w-2xl text-lg text-muted">Des conseils pratiques pour votre exploitation : réglementation, matériel, météo et gestion.</p>
+          <p className="mb-7 max-w-2xl text-lg text-muted">Des conseils pratiques pour votre exploitation : matériel, entretien, réglementation, coûts et occasion.</p>
           <div className="flex flex-wrap items-center gap-2.5">
             <form role="search" className="w-full max-w-sm">
               <label htmlFor="q" className="sr-only">Rechercher un article</label>

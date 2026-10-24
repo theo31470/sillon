@@ -41,8 +41,7 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
     loggedIn ? (
       <form action={addMachineFromSheet}>
         <input type="hidden" name="sheet_id" value={sheet.id} />
-        <input type="hidden" name="name" value={sheet.title} />
-        <SubmitButton pendingLabel="Ajout…">Ajouter à mon matériel</SubmitButton>
+        <SubmitButton pendingLabel="Ajout…">Ajouter à mon parc</SubmitButton>
       </form>
     ) : (
       <Link href="/inscription" className={btn.primary}>Suivre l’entretien de cette machine</Link>

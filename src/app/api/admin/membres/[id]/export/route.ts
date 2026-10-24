@@ -14,12 +14,13 @@ export async function GET(_request: NextRequest, ctx: RouteContext<'/api/admin/m
   if (!/^[0-9a-f-]{36}$/.test(id)) return NextResponse.json({ error: 'Identifiant invalide' }, { status: 400 });
 
   const db = createServiceClient();
-  const [profile, parcels, interventions, machines, maintenance, subscriptions, payments] = await Promise.all([
+  const [profile, machines, readings, maintenance, tasks, costs, subscriptions, payments] = await Promise.all([
     db.from('profiles').select('email, full_name, farm_name, plan, created_at').eq('id', id).single(),
-    db.from('parcels').select('*').eq('user_id', id),
-    db.from('interventions').select('*').eq('user_id', id),
     db.from('machines').select('*').eq('user_id', id),
+    db.from('hour_readings').select('*').eq('user_id', id),
     db.from('maintenance_logs').select('*').eq('user_id', id),
+    db.from('machine_tasks').select('*').eq('user_id', id),
+    db.from('machine_costs').select('*').eq('user_id', id),
     db.from('subscriptions').select('status, plan, current_period_end, created_at').eq('user_id', id),
     db.from('payments').select('amount_cents, currency, status, created_at').eq('user_id', id),
   ]);
@@ -31,10 +32,11 @@ export async function GET(_request: NextRequest, ctx: RouteContext<'/api/admin/m
       {
         exported_at: new Date().toISOString(),
         profile: profile.data,
-        parcels: parcels.data,
-        interventions: interventions.data,
         machines: machines.data,
+        hour_readings: readings.data,
         maintenance_logs: maintenance.data,
+        maintenance_plan: tasks.data,
+        costs: costs.data,
         subscriptions: subscriptions.data,
         payments: payments.data,
       },

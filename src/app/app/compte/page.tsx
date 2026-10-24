@@ -6,7 +6,6 @@ import { SubmitButton } from '@/components/form-bits';
 import { Card, Field, Input, btn } from '@/components/ui';
 import { NewPasswordForm } from '@/app/(auth)/forms';
 import { deleteOwnAccount, updateProfile } from './actions';
-import { LocateButton } from './locate-button';
 
 export const metadata: Metadata = { title: 'Mon compte' };
 
@@ -27,18 +26,6 @@ export default async function AccountPage() {
               <Input id="farm_name" name="farm_name" defaultValue={profile.farm_name} maxLength={120} />
             </Field>
             <p className="text-sm text-muted">E-mail : {profile.email}</p>
-            <fieldset id="position" className="flex flex-col gap-3 rounded-xl bg-ground p-4">
-              <legend className="mb-1 font-semibold">Position de l’exploitation (pour la météo)</legend>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Latitude" htmlFor="latitude">
-                  <Input id="latitude" name="latitude" inputMode="decimal" defaultValue={profile.latitude ?? ''} placeholder="43,61" />
-                </Field>
-                <Field label="Longitude" htmlFor="longitude">
-                  <Input id="longitude" name="longitude" inputMode="decimal" defaultValue={profile.longitude ?? ''} placeholder="3,88" />
-                </Field>
-              </div>
-              <LocateButton />
-            </fieldset>
             <SubmitButton>Enregistrer</SubmitButton>
           </ActionForm>
         </Card>
@@ -59,7 +46,7 @@ export default async function AccountPage() {
           </Card>
           <Card>
             <h2 className="mb-2 text-xl font-semibold">Mes données</h2>
-            <p className="mb-4 text-muted">Téléchargez toutes vos données (parcelles, interventions, matériel) au format JSON.</p>
+            <p className="mb-4 text-muted">Téléchargez toutes vos données (machines, relevés, entretiens, dépenses) au format JSON.</p>
             <a href="/api/compte/export" className={btn.secondary} download>Télécharger mes données</a>
             <details className="mt-6 rounded-xl border border-[#e3b7b0] p-4">
               <summary className="cursor-pointer font-semibold text-danger">Supprimer mon compte</summary>
