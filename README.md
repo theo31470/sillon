@@ -159,9 +159,19 @@ Plusieurs couches indépendantes protègent les données :
    Les sources apparaissent en bas de la fiche publique.
 
 La file tourne **sur le serveur, même page fermée** : chaque minute, la base (extensions `pg_cron` + `pg_net`)
-appelle `/api/catalogue/tick`, qui traite une étape. Au plus 3 étapes en parallèle, et `CATALOG_DAILY_LIMIT`
-recherches par jour (150 par défaut). Mise en place : exécuter **`supabase/cron.sql`** une fois dans le SQL Editor
-(en remplaçant l’adresse du site).
+appelle `/api/catalogue/tick`, qui traite une étape. Au plus 3 étapes en parallèle. Mise en place : exécuter
+**`supabase/cron.sql`** une fois dans le SQL Editor (en remplaçant l’adresse du site).
+
+**Maîtrise des coûts** (leçon du premier essai : ~1,30 $ par fiche avec Sonnet et des brochures lues en entier) :
+- l’import utilise **Haiku 5.5** (`ANTHROPIC_IMPORT_MODEL`), 20 fois moins cher que Sonnet tant qu’une requête
+  reste sous 100 000 tokens ;
+- **une seule recherche web par série** (ex. Fendt 700 Vario), réutilisée pour chaque modèle de la série ;
+- 4 recherches et 1 page lue (12 000 tokens maximum) par série ;
+- chaque appel enregistre son coût estimé dans `ai_usage.cost_usd` ; l’écran d’import affiche la dépense du jour et
+  une estimation avant de lancer ;
+- **pause automatique** de la file quand `CATALOG_DAILY_BUDGET_USD` (1 $ par défaut) est atteint, ou quand les
+  crédits Anthropic sont épuisés.
+Fixez aussi une limite de dépense mensuelle dans la console Anthropic.
 
 **Photos** : après la rédaction, Sillon cherche une photo du modèle sur **Wikimedia Commons** (licences libres
 uniquement : CC BY, CC BY-SA, CC0, domaine public). Claude regarde les candidates et ne retient qu’une photo qui montre
@@ -175,8 +185,9 @@ par le droit d’auteur : citer la source ne suffit pas, il faut l’accord du d
 petites annonces. En droit européen, reprendre systématiquement le contenu d’une base de données tierce est interdit,
 même valeur par valeur (droit *sui generis* des bases de données). Les sites des constructeurs restent la source principale.
 
-**Coût** : recherche web facturée par Anthropic (10 $ les 1 000 recherches) + tokens. La consommation de chaque
-étape est enregistrée dans `ai_usage` (tokens, recherches, pages lues). Fixez une limite de dépense dans la console Anthropic.
+**Tarifs de référence** (à vérifier sur la page tarifs d’Anthropic) : recherche web 10 $ les 1 000 ; Haiku 5.5 0,10 $ /
+0,50 $ par million de tokens (entrée / sortie, sous 100 000 tokens par requête) ; Sonnet 5.5 2 $ / 10 $. Les prix
+utilisés pour l’estimation sont dans `src/lib/ai.ts` (`PRICES`).
 
 ## Tests et vérifications
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ESTIMATED_COST_USD } from '@/lib/catalog-shared';
 import { useRouter } from 'next/navigation';
 
 /** Coche / décoche tous les modèles affichés. */
@@ -11,9 +12,13 @@ export function SelectAll({ formId }: { formId: string }) {
       aria-label="Tout sélectionner"
       className="size-4 accent-brand"
       onChange={(e) => {
-        document.querySelectorAll<HTMLInputElement>(`#${formId} input[name="ids"]:not(:disabled)`).forEach((box) => {
-          box.checked = e.currentTarget.checked;
+        const checked = e.currentTarget.checked;
+        const form = document.getElementById(formId);
+        form?.querySelectorAll<HTMLInputElement>('input[name="ids"]:not(:disabled)').forEach((box) => {
+          box.checked = checked;
         });
+        // Met à jour l'estimation de coût.
+        form?.dispatchEvent(new Event('change'));
       }}
     />
   );
@@ -48,5 +53,33 @@ export function KickButton() {
     >
       {sent ? 'Relancée' : 'Relancer maintenant'}
     </button>
+  );
+}
+
+/** Estimation du coût de la sélection : une recherche par série + une rédaction par modèle. */
+export function CostEstimate({ formId }: { formId: string }) {
+  const [sel, setSel] = useState({ models: 0, series: 0 });
+  useEffect(() => {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    const update = () => {
+      const boxes = [...form.querySelectorAll<HTMLInputElement>('input[name="ids"]:checked')];
+      setSel({ models: boxes.length, series: new Set(boxes.map((b) => b.dataset.series)).size });
+    };
+    form.addEventListener('change', update);
+    return () => form.removeEventListener('change', update);
+  }, [formId]);
+  const cost = sel.series * ESTIMATED_COST_USD.perSeries + sel.models * ESTIMATED_COST_USD.perModel;
+  return (
+    <p className="text-sm text-muted">
+      {sel.models === 0 ? (
+        'Cochez les modèles, puis lancez la génération. Une fiche déjà créée peut être régénérée.'
+      ) : (
+        <>
+          <strong className="text-ink">{sel.models} modèle(s)</strong>, {sel.series} série(s) à rechercher · coût estimé{' '}
+          <strong className="text-ink">≈ {cost.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $</strong>
+        </>
+      )}
+    </p>
   );
 }

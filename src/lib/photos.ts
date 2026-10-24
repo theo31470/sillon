@@ -137,12 +137,12 @@ Si aucune ne convient, réponds index = null.`,
   });
 
   const response = await client().messages.parse({
-    model: env.anthropicModel(),
+    model: env.anthropicImportModel(),
     max_tokens: 400,
     output_config: { format: zodOutputFormat(choiceSchema) },
     messages: [{ role: 'user', content }],
   });
-  await recordUsage(params.userId, 'photo_selection', response.usage);
+  await recordUsage(params.userId, 'photo_selection', response.usage, env.anthropicImportModel());
   const choice = response.parsed_output;
   if (!choice || choice.index === null || choice.confidence === 'faible') return null;
   return usable[choice.index - 1]?.c ?? null;

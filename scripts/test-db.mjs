@@ -112,6 +112,15 @@ await c.query(`update public.catalog_models set locked_at = now() - interval '9 
 const resumed = (await c.query('select * from public.claim_catalog_job()')).rows[0];
 ok(resumed?.model === '1050 Vario' && resumed.attempts === 2, 'file : une tâche bloquée est reprise');
 
+// Une seule recherche à la fois par série
+await c.query(`delete from public.catalog_models`);
+await c.query(`insert into public.catalog_models (brand, series, model, status, queued_at, locked_at) values
+  ('Fendt', '700 Vario', '720 Vario', 'researching', now(), now()),
+  ('Fendt', '700 Vario', '722 Vario', 'queued', now() - interval '3 minutes', null),
+  ('Fendt', '900 Vario', '930 Vario', 'queued', now() - interval '1 minute', null)`);
+const nextSeries = (await c.query('select * from public.claim_catalog_job()')).rows[0];
+ok(nextSeries?.model === '930 Vario', 'file : pas deux recherches en parallèle sur la même série');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

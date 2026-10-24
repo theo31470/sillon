@@ -21,4 +21,6 @@ export const env = {
   stripePriceComplet: () => required('STRIPE_PRICE_COMPLET'),
   anthropicApiKey: () => required('ANTHROPIC_API_KEY'),
   anthropicModel: () => process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5-5',
+  /** Modèle des tâches en série (import par marque, photos) : beaucoup moins cher. */
+  anthropicImportModel: () => process.env.ANTHROPIC_IMPORT_MODEL ?? 'claude-haiku-5-5',
 };

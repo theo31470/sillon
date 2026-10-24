@@ -33,8 +33,14 @@ export type CatalogModel = {
   updated_at: string;
 };
 
-/** Plafond de recherches web par jour (garde-fou de dépense), modifiable par variable d'environnement. */
-export const CATALOG_DAILY_LIMIT = Number(process.env.CATALOG_DAILY_LIMIT) || 150;
+/**
+ * Budget IA par jour en dollars (toutes fonctions confondues) au-delà duquel la file
+ * d'import se met en pause. Modifiable par la variable CATALOG_DAILY_BUDGET_USD.
+ */
+export const CATALOG_DAILY_BUDGET_USD = Number(process.env.CATALOG_DAILY_BUDGET_USD) || 1;
+
+/** Coûts moyens constatés (USD), pour l'estimation affichée avant de lancer. */
+export const ESTIMATED_COST_USD = { perSeries: 0.12, perModel: 0.01 };
 
 /** Nombre d'étapes traitées en parallèle par la file. */
 export const CATALOG_PARALLEL = 3;

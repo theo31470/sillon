@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { CATALOG_DAILY_LIMIT, CATALOG_PARALLEL, CATALOG_STATUSES, TRACTOR_BRANDS, type CatalogModel, type CatalogStatus } from '@/lib/catalog-shared';
-import { researchesToday } from '@/lib/catalog';
+import { CATALOG_DAILY_BUDGET_USD, CATALOG_PARALLEL, CATALOG_STATUSES, TRACTOR_BRANDS, type CatalogModel, type CatalogStatus } from '@/lib/catalog-shared';
+import { spentTodayUsd } from '@/lib/catalog';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
 import { Badge, Card, Field, Input } from '@/components/ui';
 import { listModels, updateSelection } from './actions';
-import { AutoRefresh, KickButton, SelectAll } from './catalog-client';
+import { AutoRefresh, CostEstimate, KickButton, SelectAll } from './catalog-client';
 
 export const metadata = { title: 'Import par marque' };
 // La recherche des modèles d'une marque peut prendre 2 à 3 minutes.
@@ -39,7 +39,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
     .limit(500);
   if (brandFilter) query = query.ilike('brand', brandFilter);
   if (statusFilter) query = query.eq('status', statusFilter);
-  const [{ data }, { data: all }, used] = await Promise.all([query, supabase.from('catalog_models').select('brand, status'), researchesToday()]);
+  const [{ data }, { data: all }, used] = await Promise.all([query, supabase.from('catalog_models').select('brand, status'), spentTodayUsd()]);
   const models = (data ?? []) as Pick<CatalogModel, 'id' | 'brand' | 'series' | 'model' | 'years' | 'power_hp' | 'source_url' | 'status' | 'error' | 'sheet_id' | 'photo_status' | 'updated_at'>[];
 
   const counts = (all ?? []).reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
@@ -117,7 +117,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
         <Card className="min-w-0 flex-[1_1_320px]">
           <h2 className="mb-1 text-lg font-semibold">3. Génération automatique</h2>
           <p className="mb-4 text-sm text-muted">
-            La file tourne sur le serveur, même page fermée : {CATALOG_PARALLEL} fiches en parallèle, 2 à 4 minutes chacune.
+            La file tourne sur le serveur, même page fermée ({CATALOG_PARALLEL} étapes en parallèle). Une seule recherche web par série, réutilisée pour chaque modèle. Pause automatique quand le budget du jour est atteint.
           </p>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-lg bg-ground p-3">
@@ -125,8 +125,10 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
               <dd className="text-xl font-bold tabular-nums">{working} / {inProgress}</dd>
             </div>
             <div className="rounded-lg bg-ground p-3">
-              <dt className="text-muted">Recherches aujourd’hui</dt>
-              <dd className="text-xl font-bold tabular-nums">{used} / {CATALOG_DAILY_LIMIT}</dd>
+              <dt className="text-muted">Dépense IA aujourd’hui</dt>
+              <dd className={`text-xl font-bold tabular-nums ${used >= CATALOG_DAILY_BUDGET_USD ? 'text-danger' : ''}`}>
+                {used.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} $ <span className="text-sm font-medium text-muted">/ {CATALOG_DAILY_BUDGET_USD} $</span>
+              </dd>
             </div>
           </dl>
           {inProgress > 0 ? (
@@ -169,7 +171,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
                       return (
                         <tr key={m.id} className="transition-colors hover:bg-brand-tint/50">
                           <td className="border-b border-[#eef0eb] px-4 py-2.5">
-                            <input type="checkbox" name="ids" value={m.id} disabled={busy} aria-label={`Sélectionner ${m.brand} ${m.model}`} className="size-4 accent-brand" />
+                            <input type="checkbox" name="ids" value={m.id} data-series={`${m.brand}|${m.series || m.model}`} disabled={busy} aria-label={`Sélectionner ${m.brand} ${m.model}`} className="size-4 accent-brand" />
                           </td>
                           <td className="border-b border-[#eef0eb] px-3 py-2.5 font-semibold">
                             {m.model}
@@ -193,7 +195,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
               </table>
             </div>
             <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-line bg-white/95 px-5 py-4 backdrop-blur">
-              <p className="text-sm text-muted">Cochez les modèles, puis lancez la génération. Une fiche déjà créée peut être régénérée.</p>
+              <CostEstimate formId="catalog" />
               <div className="flex flex-wrap gap-2.5">
                 <SubmitButton name="intent" value="remove" variant="secondary" pendingLabel="…">Retirer de la liste</SubmitButton>
                 <SubmitButton name="intent" value="queue" pendingLabel="Mise en file…">✦ Générer les fiches sélectionnées</SubmitButton>

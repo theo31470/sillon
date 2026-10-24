@@ -8,6 +8,8 @@ import { logAudit } from '@/lib/audit';
 import { rateLimit } from '@/lib/rate-limit';
 import { listBrandModels } from '@/lib/ai-web';
 import { env } from '@/lib/env';
+import { spentTodayUsd } from '@/lib/catalog';
+import { CATALOG_DAILY_BUDGET_USD } from '@/lib/catalog-shared';
 import type { FormState } from '@/components/form-bits';
 
 const listSchema = z.object({
@@ -22,6 +24,8 @@ export async function listModels(_prev: FormState, formData: FormData): Promise<
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (!process.env.ANTHROPIC_API_KEY) return { error: 'Claude n’est pas configuré (ANTHROPIC_API_KEY manquante).' };
   if (!rateLimit(`catalog-list:${session.userId}`, 15, 60 * 60_000).ok) return { error: 'Limite de 15 recherches de gamme par heure atteinte.' };
+
+  if ((await spentTodayUsd()) >= CATALOG_DAILY_BUDGET_USD) return { error: `Budget IA du jour atteint (${CATALOG_DAILY_BUDGET_USD} $).` };
 
   const { brand, scope } = parsed.data;
   let list;

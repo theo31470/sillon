@@ -61,11 +61,20 @@ export const BRAND_SITES: Record<string, string> = {
 
 const USER_LOCATION = { type: 'approximate' as const, country: 'FR', timezone: 'Europe/Paris' };
 
+/**
+ * Coûts : chaque recherche ajoute des pages entières au contexte, et Claude relit
+ * tout le contexte à chaque nouvelle recherche. On limite donc fortement le nombre
+ * de recherches et la taille des pages lues, et on utilise Haiku (20 fois moins
+ * cher que Sonnet tant que chaque requête reste sous 100 000 tokens).
+ */
 function webTools(searches: number, fetches: number): Anthropic.ToolUnion[] {
-  return [
+  const tools: Anthropic.ToolUnion[] = [
     { type: 'web_search_20250305', name: 'web_search', max_uses: searches, blocked_domains: BLOCKED_DOMAINS, user_location: USER_LOCATION },
-    { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: fetches, blocked_domains: BLOCKED_DOMAINS, max_content_tokens: 40000 },
   ];
+  if (fetches > 0) {
+    tools.push({ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: fetches, blocked_domains: BLOCKED_DOMAINS, max_content_tokens: 12000 });
+  }
+  return tools;
 }
 
 export type WebSource = { name: string; url: string };
@@ -79,24 +88,25 @@ async function runWithWebTools(params: {
   maxTokens: number;
   deadlineMs: number;
 }) {
+  const model = env.anthropicImportModel();
   const started = Date.now();
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: params.prompt }];
-  const usage = { input_tokens: 0, output_tokens: 0, server_tool_use: { web_search_requests: 0, web_fetch_requests: 0 } as Anthropic.ServerToolUsage };
+  const usage = {
+    input_tokens: 0,
+    output_tokens: 0,
+    max_prompt_tokens: 0,
+    server_tool_use: { web_search_requests: 0, web_fetch_requests: 0 } as Anthropic.ServerToolUsage,
+  };
   const blocks: Anthropic.ContentBlock[] = [];
 
-  for (let turn = 0; turn < 5; turn++) {
+  for (let turn = 0; turn < 3; turn++) {
     const response = await client().messages.create(
-      {
-        model: env.anthropicModel(),
-        max_tokens: params.maxTokens,
-        system: params.system,
-        tools: webTools(params.searches, params.fetches),
-        messages,
-      },
+      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), messages },
       { timeout: Math.max(30_000, params.deadlineMs - (Date.now() - started)) },
     );
     usage.input_tokens += response.usage.input_tokens;
     usage.output_tokens += response.usage.output_tokens;
+    usage.max_prompt_tokens = Math.max(usage.max_prompt_tokens, response.usage.input_tokens);
     usage.server_tool_use.web_search_requests += response.usage.server_tool_use?.web_search_requests ?? 0;
     usage.server_tool_use.web_fetch_requests += response.usage.server_tool_use?.web_fetch_requests ?? 0;
     blocks.push(...response.content);
@@ -120,7 +130,7 @@ async function runWithWebTools(params: {
       sources.set(b.content.url, b.content.content.title ?? b.content.url);
     }
   }
-  return { text, usage, sources: [...sources].map(([url, name]) => ({ url, name })) as WebSource[] };
+  return { text, usage, model, sources: [...sources].map(([url, name]) => ({ url, name })) as WebSource[] };
 }
 
 // ---------------------------------------------------------------------
@@ -143,8 +153,9 @@ export type CatalogList = z.infer<typeof catalogListSchema>;
 
 const LIST_SYSTEM = `Tu es documentaliste pour Sillon, un site technique destiné aux agriculteurs français.
 On te demande la liste des modèles de tracteurs d'une marque, pour préparer des fiches techniques.
-- Cherche d'abord sur le site officiel du constructeur (gamme actuelle) ; pour les modèles anciens, sur des sources sérieuses (constructeur, presse agricole, musées, clubs de marque).
+- Cherche d'abord sur le site officiel du constructeur (gamme actuelle) ; pour les modèles anciens, sur des sources sérieuses (constructeur, presse agricole, clubs de marque). Fais peu de recherches, bien ciblées.
 - Ne liste que des tracteurs agricoles (pas de moissonneuses, chargeurs, engins de chantier), et seulement des modèles dont tu as trouvé une trace dans les pages consultées. N'invente aucun modèle.
+- Ne liste pas séparément les simples variantes de carrosserie ou de finition d'un même modèle (V/F/P, Power/Profi…) : un modèle par puissance.
 - Un modèle par ligne, avec sa série, ses années de production si trouvées, sa puissance nominale en ch si trouvée, et l'adresse de la page.
 - Signale les rachats et changements de nom (par exemple Renault Agriculture repris par Claas, Fiat devenu New Holland).
 - Réponds en français.`;
@@ -156,61 +167,64 @@ export async function listBrandModels(params: { userId: string; brand: string; s
     prompt: `Marque : ${params.brand}${site ? ` (site officiel : ${site})` : ''}
 Périmètre demandé : ${params.scope || 'gamme actuelle de tracteurs'}
 Dresse la liste des modèles (60 au maximum), regroupés par série.`,
-    searches: 8,
-    fetches: 5,
-    maxTokens: 8000,
+    searches: 4,
+    fetches: 1,
+    maxTokens: 6000,
     deadlineMs: 200_000,
   });
-  await recordUsage(params.userId, 'catalog_listing', research.usage);
+  await recordUsage(params.userId, 'catalog_listing', research.usage, research.model);
   if (!research.text) throw new Error('Claude n’a rien trouvé pour cette marque.');
 
+  const model = env.anthropicImportModel();
   const response = await client().messages.parse({
-    model: env.anthropicModel(),
+    model,
     max_tokens: 8000,
     system: 'Tu convertis une liste de modèles de tracteurs en données structurées, sans rien ajouter ni deviner.',
     output_config: { format: zodOutputFormat(catalogListSchema) },
     messages: [{ role: 'user', content: `Marque : ${params.brand}\n\n<liste>\n${research.text}\n</liste>` }],
   });
-  await recordUsage(params.userId, 'catalog_listing', response.usage);
+  await recordUsage(params.userId, 'catalog_listing', response.usage, model);
   if (!response.parsed_output) throw new Error('Réponse de Claude inexploitable');
   return catalogListSchema.parse(response.parsed_output);
 }
 
 // ---------------------------------------------------------------------
-// 2. Dossier de recherche d'un modèle
+// 2. Dossier de recherche : une fois par SÉRIE (réutilisé pour chaque modèle)
 // ---------------------------------------------------------------------
 
 const RESEARCH_SYSTEM = `Tu es documentaliste technique pour Sillon, un site destiné aux agriculteurs français.
-Tu prépares le dossier d'un tracteur, qui servira ensuite à rédiger sa fiche technique.
+Tu prépares le dossier technique d'une série de tracteurs (ou d'un modèle), qui servira ensuite à rédiger une fiche par modèle.
 
-Méthode :
-1. Cherche d'abord sur le site officiel du constructeur : page produit, caractéristiques techniques, brochure PDF (lis-la avec web_fetch si elle existe).
-2. Complète avec la presse agricole spécialisée (essais, présentations de gamme) et, pour l'entretien, les manuels d'utilisation officiels publiés.
-3. Les forums et petites annonces ne suffisent jamais seuls : ne les cite que pour signaler un doute.
+Méthode (4 recherches au maximum, 1 seule page lue en entier) :
+1. Cherche d'abord sur le site officiel du constructeur : page de la série, tableau des caractéristiques, brochure.
+2. Complète si besoin avec la presse agricole spécialisée. Forums et petites annonces : jamais seuls.
 
 Règles impératives :
 - N'écris QUE des informations lues dans les pages consultées. Jamais de valeur de mémoire.
-- Une information par ligne, sous la forme : « Libellé : valeur — source : URL ».
-- Précise la version concernée quand elle varie (finition, option, années, norme moteur).
-- Signale clairement les contradictions entre sources (« CONTRADICTION : … »).
-- Si le modèle est introuvable ou si son nom est ambigu, dis-le dès la première ligne.
-- Réponds en français, unités métriques.
+- Une information par ligne : « Libellé : valeur — source : URL ».
+- Valeurs communes à toute la série d'abord, puis un tableau des valeurs propres à chaque modèle (puissance, couple, cylindrée, poids, réservoir, pneus…).
+- Précise la version concernée quand elle varie (finition, option, années). Signale les contradictions (« CONTRADICTION : … »).
+- Si la série ou le modèle est introuvable, dis-le dès la première ligne.
+- Réponds en français, unités métriques. Sois concis : pas de phrases, des lignes de données.
 
-Plan du dossier : Identification (série, années, usine) ; Moteur ; Transmission ; Prise de force ; Hydraulique et relevage ; Pneumatiques ; Dimensions et masses ; Capacités (carburant, AdBlue, huiles) ; Entretien (intervalles en heures) ; Incidents connus (uniquement s'ils viennent du constructeur : rappel, notice) ; Pièces d'entretien (références d'origine si publiées).`;
+Rubriques : Identification (années, usine) ; Moteur ; Transmission ; Prise de force ; Hydraulique et relevage ; Pneumatiques ; Dimensions et masses ; Capacités (carburant, AdBlue, huiles) ; Entretien (intervalles) ; Pièces d'entretien (références d'origine si publiées).`;
 
-export async function researchModel(params: { userId: string; brand: string; series: string; model: string; years: string }) {
+export async function researchSeries(params: { userId: string; brand: string; series: string; models: string[]; years: string }) {
   const site = BRAND_SITES[params.brand];
+  const target = params.series
+    ? `Série : ${params.brand} ${params.series}. Modèles à couvrir : ${params.models.join(', ')}.`
+    : `Tracteur : ${params.brand} ${params.models[0]}.`;
   const result = await runWithWebTools({
     system: RESEARCH_SYSTEM,
-    prompt: `Tracteur : ${params.brand} ${params.model}${params.series ? ` (série ${params.series})` : ''}${params.years ? `, produit ${params.years}` : ''}.
+    prompt: `${target}${params.years ? ` Années : ${params.years}.` : ''}
 ${site ? `Site officiel du constructeur : ${site}.` : ''}
-Prépare le dossier complet.`,
-    searches: 7,
-    fetches: 4,
-    maxTokens: 10000,
+Prépare le dossier.`,
+    searches: 4,
+    fetches: 1,
+    maxTokens: 8000,
     deadlineMs: 230_000,
   });
-  await recordUsage(params.userId, 'sheet_research', result.usage);
+  await recordUsage(params.userId, 'sheet_research', result.usage, result.model);
   if (result.text.length < 200) throw new Error('Dossier de recherche trop maigre : modèle introuvable ?');
   return { notes: result.text, sources: result.sources };
 }
@@ -219,10 +233,11 @@ Prépare le dossier complet.`,
 // 3. Fiche structurée à partir du dossier
 // ---------------------------------------------------------------------
 
-const WRITE_SYSTEM = `Tu es rédacteur technique pour Sillon. Tu remplis une fiche technique de tracteur en français, uniquement à partir du dossier de recherche fourni.
+const WRITE_SYSTEM = `Tu es rédacteur technique pour Sillon. Tu remplis la fiche technique d'UN tracteur en français, uniquement à partir du dossier de recherche fourni.
 
 Règles impératives :
 - N'utilise QUE le dossier. N'ajoute rien de tes connaissances générales.
+- Le dossier peut couvrir toute une série : garde les valeurs communes à la série et les valeurs propres à CE modèle ; jamais celles d'un autre modèle.
 - Chaque valeur porte sa source : document = titre de la page ou nom du site, url = adresse exacte indiquée dans le dossier pour cette valeur, page = null (ou le numéro de page s'il s'agit d'une brochure PDF et qu'il est indiqué).
 - needs_review = false seulement si la valeur vient du site ou d'une brochure du constructeur, ou de deux sources concordantes. Sinon (source unique non officielle, contradiction, version incertaine) : needs_review = true.
 - Valeur absente : ne crée pas la ligne, sauf si elle est indispensable (puissance, poids) : alors value = null, source = null, needs_review = true.
@@ -232,20 +247,20 @@ Règles impératives :
 - Format français : virgule décimale, espace pour les milliers, unités métriques.`;
 
 export async function sheetFromResearch(params: { userId: string; brand: string; model: string; notes: string }): Promise<{ content: SheetContent; model: string }> {
-  const model = env.anthropicModel();
+  const model = env.anthropicImportModel();
   const response = await client().messages.parse({
     model,
-    max_tokens: 12000,
+    max_tokens: 10000,
     system: WRITE_SYSTEM,
     output_config: { format: zodOutputFormat(sheetContentSchema) },
     messages: [
       {
         role: 'user',
-        content: `Tracteur : ${params.brand} ${params.model}\n\n<dossier>\n${params.notes}\n</dossier>\n\nRemplis la fiche (caractéristiques, entretien, pannes, pièces).`,
+        content: `Tracteur : ${params.brand} ${params.model}\n\n<dossier>\n${params.notes}\n</dossier>\n\nRemplis la fiche de ce modèle (caractéristiques, entretien, pannes, pièces).`,
       },
     ],
   });
-  await recordUsage(params.userId, 'sheet_generation', response.usage);
+  await recordUsage(params.userId, 'sheet_generation', response.usage, model);
   if (!response.parsed_output) throw new Error('Réponse de Claude inexploitable');
   return { content: sheetContentSchema.parse(response.parsed_output), model };
 }

@@ -35,18 +35,43 @@ Règles impératives :
 
 export type AiFeature = 'diagnostic' | 'sheet_generation' | 'sheet_revision' | 'sheet_research' | 'catalog_listing' | 'photo_selection';
 
-export async function recordUsage(
-  userId: string,
-  feature: AiFeature,
-  usage: Pick<Anthropic.Usage, 'input_tokens' | 'output_tokens'> & { server_tool_use?: Anthropic.Usage['server_tool_use'] },
-) {
+/**
+ * Tarifs Anthropic en USD par million de tokens (entrée, sortie), à tenir à jour :
+ * https://platform.claude.com/docs/en/about-claude/pricing
+ * Haiku 5.5 coûte 5 fois plus cher quand une requête dépasse 100 000 tokens.
+ */
+const PRICES: Record<string, { input: number; output: number; bigInput?: number; bigOutput?: number }> = {
+  'claude-haiku-5-5': { input: 0.1, output: 0.5, bigInput: 0.5, bigOutput: 2.5 },
+  'claude-sonnet-5-5': { input: 2, output: 10 },
+  'claude-opus-5-5': { input: 4, output: 20 },
+};
+const WEB_SEARCH_USD = 0.01;
+
+type UsageLike = Pick<Anthropic.Usage, 'input_tokens' | 'output_tokens'> & {
+  server_tool_use?: Anthropic.Usage['server_tool_use'];
+  /** Plus gros prompt d'une seule requête (pour le palier de prix Haiku). */
+  max_prompt_tokens?: number;
+};
+
+export function estimateCostUsd(model: string, usage: UsageLike) {
+  const p = PRICES[model] ?? PRICES['claude-sonnet-5-5'];
+  const big = (usage.max_prompt_tokens ?? usage.input_tokens) > 100_000 && p.bigInput;
+  const input = big ? p.bigInput! : p.input;
+  const output = big ? p.bigOutput! : p.output;
+  const searches = usage.server_tool_use?.web_search_requests ?? 0;
+  return (usage.input_tokens * input + usage.output_tokens * output) / 1_000_000 + searches * WEB_SEARCH_USD;
+}
+
+export async function recordUsage(userId: string, feature: AiFeature, usage: UsageLike, model: string) {
   await createServiceClient().from('ai_usage').insert({
     user_id: userId,
     feature,
+    model,
     input_tokens: usage.input_tokens,
     output_tokens: usage.output_tokens,
     web_searches: usage.server_tool_use?.web_search_requests ?? 0,
     web_fetches: usage.server_tool_use?.web_fetch_requests ?? 0,
+    cost_usd: Number(estimateCostUsd(model, usage).toFixed(5)),
   });
 }
 
@@ -90,7 +115,7 @@ Sections à remplir : ${params.sections.join(', ')}. Laisse les autres sections 
       },
     ],
   });
-  await recordUsage(params.userId, 'sheet_generation', response.usage);
+  await recordUsage(params.userId, 'sheet_generation', response.usage, model);
   if (!response.parsed_output) throw new Error('Réponse de Claude inexploitable');
   return { content: sheetContentSchema.parse(response.parsed_output), model };
 }
@@ -103,8 +128,9 @@ export async function reviseSheet(params: {
   /** Dossier de recherche web (fiches importées par marque). */
   researchNotes?: string | null;
 }): Promise<SheetContent> {
+  const model = env.anthropicModel();
   const response = await client().messages.parse({
-    model: env.anthropicModel(),
+    model,
     max_tokens: 12000,
     system: SHEET_SYSTEM,
     output_config: { format: zodOutputFormat(sheetContentSchema) },
@@ -131,7 +157,7 @@ Renvoie la fiche complète corrigée. Ne modifie que ce que la consigne demande,
       },
     ],
   });
-  await recordUsage(params.userId, 'sheet_revision', response.usage);
+  await recordUsage(params.userId, 'sheet_revision', response.usage, model);
   if (!response.parsed_output) throw new Error('Réponse de Claude inexploitable');
   return sheetContentSchema.parse(response.parsed_output);
 }
@@ -173,8 +199,9 @@ export async function diagnose(params: {
   const context = params.sheetContent
     ? `Fiche technique de la machine (JSON) :\n<fiche>\n${JSON.stringify({ specs: params.sheetContent.specs, faults: params.sheetContent.faults })}\n</fiche>\n\n`
     : '';
+  const model = env.anthropicModel();
   const response = await client().messages.parse({
-    model: env.anthropicModel(),
+    model,
     max_tokens: 3000,
     system: DIAGNOSIS_SYSTEM,
     output_config: { format: zodOutputFormat(diagnosisSchema) },
@@ -185,7 +212,7 @@ export async function diagnose(params: {
       },
     ],
   });
-  await recordUsage(params.userId, 'diagnostic', response.usage);
+  await recordUsage(params.userId, 'diagnostic', response.usage, model);
   if (!response.parsed_output) throw new Error('Réponse inexploitable');
   return diagnosisSchema.parse(response.parsed_output);
 }

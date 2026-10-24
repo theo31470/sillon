@@ -1,24 +1,30 @@
 import 'server-only';
 import { createServiceClient } from '@/lib/supabase/admin';
-import { researchModel, sheetFromResearch } from '@/lib/ai-web';
+import { researchSeries, sheetFromResearch } from '@/lib/ai-web';
 import { countPendingReview } from '@/lib/sheets/schema';
 import { uniqueSheetSlug } from '@/lib/sheets/slug';
 import { logAudit } from '@/lib/audit';
 import { attachCommonsPhoto } from '@/lib/photos';
 import type { Session } from '@/lib/auth';
-import { CATALOG_DAILY_LIMIT, CATALOG_PARALLEL, type CatalogModel } from '@/lib/catalog-shared';
+import { CATALOG_DAILY_BUDGET_USD, CATALOG_PARALLEL, type CatalogModel } from '@/lib/catalog-shared';
 
-/** Nombre de recherches lancées depuis minuit (UTC) : garde-fou de dépense. */
-export async function researchesToday() {
+/** Dépense IA estimée (USD) depuis minuit UTC, toutes fonctions confondues. */
+export async function spentTodayUsd() {
   const since = new Date();
   since.setUTCHours(0, 0, 0, 0);
-  const { count } = await createServiceClient()
-    .from('ai_usage')
-    .select('id', { count: 'exact', head: true })
-    .eq('feature', 'sheet_research')
-    .gte('created_at', since.toISOString());
-  return count ?? 0;
+  const { data } = await createServiceClient().from('ai_usage').select('cost_usd').gte('created_at', since.toISOString()).limit(5000);
+  return (data ?? []).reduce((sum, r) => sum + Number(r.cost_usd ?? 0), 0);
 }
+
+/** Met toute la file en pause (les modèles repassent « À générer »). */
+async function pauseQueue(reason: string) {
+  await createServiceClient()
+    .from('catalog_models')
+    .update({ status: 'todo', queued_at: null, locked_at: null, attempts: 0, error: reason })
+    .in('status', ['queued', 'researching', 'researched', 'writing']);
+}
+
+class BudgetError extends Error {}
 
 export type ProcessResult =
   | { idle: true }
@@ -47,11 +53,36 @@ export async function processNextJob(): Promise<ProcessResult> {
 
   try {
     if (phase === 'research') {
-      if ((await researchesToday()) >= CATALOG_DAILY_LIMIT) {
-        await db.from('catalog_models').update({ status: 'queued', locked_at: null, attempts: Math.max(0, job.attempts - 1) }).eq('id', job.id);
-        throw new Error(`Limite de ${CATALOG_DAILY_LIMIT} recherches par jour atteinte. La file reprendra demain.`);
+      // Recherche déjà faite pour un autre modèle de la même série : on la réutilise (aucun coût).
+      if (job.series) {
+        const { data: sibling } = await db
+          .from('catalog_models')
+          .select('research_notes, research_sources')
+          .ilike('brand', job.brand)
+          .eq('series', job.series)
+          .not('research_notes', 'is', null)
+          .neq('id', job.id)
+          .gte('updated_at', new Date(Date.now() - 60 * 86_400_000).toISOString())
+          .limit(1)
+          .maybeSingle();
+        if (sibling?.research_notes) {
+          await db
+            .from('catalog_models')
+            .update({ status: 'researched', research_notes: sibling.research_notes, research_sources: sibling.research_sources, locked_at: null })
+            .eq('id', job.id);
+          return { idle: false, id: job.id, label, phase, ok: true };
+        }
       }
-      const { notes, sources } = await researchModel({ userId, brand: job.brand, series: job.series, model: job.model, years: job.years });
+      if ((await spentTodayUsd()) >= CATALOG_DAILY_BUDGET_USD) {
+        throw new BudgetError(`Budget du jour atteint (${CATALOG_DAILY_BUDGET_USD} $). Relancez la sélection demain ou augmentez CATALOG_DAILY_BUDGET_USD.`);
+      }
+      // Une seule recherche couvre tous les modèles de la série présents dans la liste.
+      let models = [job.model];
+      if (job.series) {
+        const { data: siblings } = await db.from('catalog_models').select('model').ilike('brand', job.brand).eq('series', job.series).limit(20);
+        models = [...new Set([job.model, ...(siblings ?? []).map((r) => r.model as string)])];
+      }
+      const { notes, sources } = await researchSeries({ userId, brand: job.brand, series: job.series, models, years: job.years });
       await db
         .from('catalog_models')
         .update({ status: 'researched', research_notes: notes, research_sources: sources, locked_at: null })
@@ -95,12 +126,18 @@ export async function processNextJob(): Promise<ProcessResult> {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'erreur inconnue';
     console.error('[catalogue]', label, phase, message);
+    // Budget du jour atteint ou crédits Anthropic épuisés : on arrête toute la file.
+    if (err instanceof BudgetError || /credit balance|billing|insufficient|quota/i.test(message)) {
+      const reason = err instanceof BudgetError ? message : 'Crédits Anthropic épuisés : file mise en pause. Rechargez puis relancez la sélection.';
+      await pauseQueue(reason.slice(0, 300));
+      return { idle: false, id: job.id, label, phase, ok: false, error: reason };
+    }
     // Deux nouvelles tentatives automatiques, puis l'erreur reste affichée.
-    const giveUp = job.attempts >= 3 || /Limite de/.test(message);
+    const giveUp = job.attempts >= 3;
     await db
       .from('catalog_models')
       .update({
-        status: /Limite de/.test(message) ? 'queued' : giveUp ? 'error' : phase === 'research' ? 'queued' : 'researched',
+        status: giveUp ? 'error' : phase === 'research' ? 'queued' : 'researched',
         error: message.slice(0, 300),
         locked_at: null,
       })
