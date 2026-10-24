@@ -1,26 +1,48 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Palette Sillon : simple, lumineuse, naturelle (voir maquettes). */
+@theme {
+  --color-brand: #2f6d3a;
+  --color-brand-dark: #21512a;
+  --color-brand-soft: #e4efe3;
+  --color-brand-tint: #eef5ed;
+  --color-ink: #1d2420;
+  --color-muted: #5b6660;
+  --color-line: #e6e9e3;
+  --color-field: #c9cfc6;
+  --color-ground: #f6f7f4;
+  --color-photo: #e9ece6;
+  --color-warn: #7a4e0b;
+  --color-warn-soft: #fdf5e6;
+  --color-warn-line: #f0d9a8;
+  --color-danger: #8a2a1c;
+  --color-danger-soft: #f6e1de;
+  --color-info: #234866;
+  --color-info-soft: #e4ecf4;
+  --color-admin: #1d2420;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Contenu des articles (rendu Markdown sécurisé, voir src/lib/markdown.ts) */
+.prose-sillon h2 { font-size: 1.5rem; font-weight: 700; margin: 2rem 0 0.75rem; letter-spacing: -0.01em; }
+.prose-sillon h3 { font-size: 1.2rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+.prose-sillon p { margin: 0 0 1rem; line-height: 1.75; }
+.prose-sillon ul, .prose-sillon ol { margin: 0 0 1rem 1.25rem; line-height: 1.75; }
+.prose-sillon ul { list-style: disc; }
+.prose-sillon ol { list-style: decimal; }
+.prose-sillon a { color: var(--color-brand); text-decoration: underline; }
+.prose-sillon strong { font-weight: 600; }
+
+/* Impression du registre */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
 }
