@@ -7,10 +7,10 @@ export type TocItem = { id: string; label: string; count: number };
 
 /** Sommaire de la fiche : suit la section affichée à l'écran. */
 export function SheetToc({ items, printable = true }: { items: TocItem[]; printable?: boolean }) {
-  const [active, setActive] = useState(items[0]?.id);
+  const [active, setActive] = useState(items.find((i) => i.count > 0)?.id);
 
   useEffect(() => {
-    const sections = items.map((i) => document.getElementById(i.id)).filter((el): el is HTMLElement => Boolean(el));
+    const sections = items.filter((i) => i.count > 0).map((i) => document.getElementById(i.id)).filter((el): el is HTMLElement => Boolean(el));
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
@@ -28,19 +28,30 @@ export function SheetToc({ items, printable = true }: { items: TocItem[]; printa
       className="no-print -mx-6 flex gap-2 overflow-x-auto border-b border-line bg-ground/90 px-6 py-3 backdrop-blur lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:rounded-2xl lg:border lg:bg-white lg:p-3"
     >
       <p className="hidden px-3 pb-2 pt-1 text-xs font-semibold uppercase tracking-wider text-muted lg:block">Sur cette fiche</p>
-      {items.map((item) => (
-        <a
-          key={item.id}
-          href={`#${item.id}`}
-          aria-current={active === item.id ? 'true' : undefined}
-          className={`toc-link flex flex-none items-center justify-between gap-3 whitespace-nowrap rounded-full px-4 py-2 text-[15px] font-medium transition-colors lg:rounded-lg lg:px-3 ${
-            active === item.id ? 'bg-brand text-white' : 'bg-white text-ink hover:bg-brand-tint hover:text-brand-dark lg:bg-transparent'
-          }`}
-        >
-          {item.label}
-          <span className={`rounded-full px-2 text-xs font-semibold ${active === item.id ? 'bg-white/20' : 'bg-ground text-muted'}`}>{item.count}</span>
-        </a>
-      ))}
+      {items.map((item) =>
+        item.count === 0 ? (
+          <span
+            key={item.id}
+            title="Pas encore renseigné"
+            className="flex flex-none items-center justify-between gap-3 whitespace-nowrap rounded-full px-4 py-2 text-[15px] font-medium text-muted/60 lg:rounded-lg lg:px-3"
+          >
+            {item.label}
+            <span className="rounded-full px-2 text-xs">—</span>
+          </span>
+        ) : (
+          <a
+            key={item.id}
+            href={`#${item.id}`}
+            aria-current={active === item.id ? 'true' : undefined}
+            className={`toc-link flex flex-none items-center justify-between gap-3 whitespace-nowrap rounded-full px-4 py-2 text-[15px] font-medium transition-colors lg:rounded-lg lg:px-3 ${
+              active === item.id ? 'bg-brand text-white' : 'bg-white text-ink hover:bg-brand-tint hover:text-brand-dark lg:bg-transparent'
+            }`}
+          >
+            {item.label}
+            <span className={`rounded-full px-2 text-xs font-semibold ${active === item.id ? 'bg-white/20' : 'bg-ground text-muted'}`}>{item.count}</span>
+          </a>
+        ),
+      )}
       {printable ? (
         <button
           type="button"

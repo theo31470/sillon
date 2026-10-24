@@ -42,6 +42,12 @@ function splitValue(value: string): { main: string; sub: string | null } {
   let sub = m ? m[2].trim() : null;
   // Les agriculteurs parlent en chevaux : on met « ch » en avant si présent.
   if (sub && /\bch\b/.test(sub) && /kW/i.test(main)) [main, sub] = [sub, main];
+  // Autres écritures : « 53 kW / 72 ch », « 53 kW - 72 ch »…
+  const hp = value.match(/\d[\d\s\u202f.,]*\s*ch\b/);
+  if (hp && (!/\bch\b/.test(main) || /kW/i.test(main))) {
+    main = hp[0].trim();
+    sub = value.replace(hp[0], '').replace(/^[\s/–-]+|[\s/–-]+$/g, '').replace(/\(\s*\)/, '').trim() || null;
+  }
   return { main, sub };
 }
 

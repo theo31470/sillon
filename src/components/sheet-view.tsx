@@ -55,7 +55,8 @@ export function SheetView({
     { id: 'entretien', label: 'Entretien', count: content.maintenance.length },
     { id: 'pannes', label: 'Pannes', count: content.faults.length },
     { id: 'pieces', label: 'Pièces', count: content.parts.length },
-  ].filter((t) => t.count > 0);
+  ];
+  const missing = toc.filter((t) => t.count === 0 && t.id !== 'caracteristiques').map((t) => t.label.toLowerCase());
 
   const dims = dimensions(content);
   const showDiagram = kind === 'tracteur' && ['length', 'height', 'wheelbase'].filter((k) => k in dims).length >= 2;
@@ -217,6 +218,15 @@ export function SheetView({
         </section>
       ) : null}
 
+      {withToc && missing.length > 0 ? (
+        <section className="reveal flex flex-wrap items-center gap-4 rounded-2xl border border-dashed border-field bg-white/60 p-5 text-sm text-muted">
+          <Icon name="book" size={20} className="flex-none text-wheat" />
+          <p className="min-w-0 flex-1">
+            <strong className="text-ink">Pas encore renseigné pour ce modèle :</strong> {missing.join(', ')}. Ces informations seront ajoutées dès qu’une source fiable (manuel du constructeur) sera disponible.
+          </p>
+        </section>
+      ) : null}
+
       {content.parts.length > 0 ? (
         <section id="pieces" className="reveal scroll-mt-24 rounded-2xl border border-line bg-white p-4 sm:p-7">
           <SectionTitle icon="tag" title="Pièces d’entretien" subtitle="À commander chez votre concessionnaire avec la référence d’origine" />
@@ -247,7 +257,7 @@ export function SheetView({
     </div>
   );
 
-  if (!withToc || toc.length < 2) return body;
+  if (!withToc) return body;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
       <div className="no-print sticky top-0 z-10 min-w-0 lg:top-6">

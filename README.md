@@ -222,6 +222,15 @@ Le plus simple : [Vercel](https://vercel.com).
 - [ ] Activer les sauvegardes quotidiennes Supabase (offre payante) et la limite de dépense Anthropic.
 - [ ] Traduire les e-mails Supabase et configurer un service d’envoi (SMTP) à votre nom de domaine.
 
+## À reprendre (notes d’équipe)
+
+- **Import des tracteurs — budget** (24/10/2026) : premier essai à ~1,30 $ par fiche (Sonnet, brochures lues en
+  entier) ; version corrigée (Haiku, une recherche par série) estimée à ~3,5 centimes par fiche, soit ~250 fiches
+  pour 10 €. **À valider** : lancer une seule série (Fendt 700 Vario, 5 modèles, estimation ≈ 0,17 $), comparer avec
+  la dépense affichée dans l’écran d’import, puis recalculer. Les 57 Fendt sont déjà listés (« À générer »).
+  Penser à fixer une limite de dépense mensuelle dans la console Anthropic.
+- Si la qualité des fiches rédigées par Haiku déçoit : repasser Sonnet pour la seule étape de rédaction (peu coûteuse).
+
 ## Choix techniques
 
 - **Cache Components** (nouveauté Next.js 16) est désactivé : presque toutes les pages dépendent de la session,
