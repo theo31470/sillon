@@ -9,7 +9,7 @@ import { MfaFlow } from './mfa-flow';
 export const metadata: Metadata = { title: 'Double authentification' };
 
 export default async function MfaPage(props: PageProps<'/securite/2fa'>) {
-  const { suite } = await props.searchParams;
+  const { suite, forcer } = await props.searchParams;
   const next = safeNext(typeof suite === 'string' ? suite : null, '/admin');
   const session = await getSession();
   if (!session) redirect(`/connexion?suite=${encodeURIComponent(`/securite/2fa?suite=${next}`)}`);
@@ -22,7 +22,7 @@ export default async function MfaPage(props: PageProps<'/securite/2fa'>) {
       </Link>
       <main className="w-full max-w-md rounded-2xl bg-white p-8">
         <h1 className="mb-4 text-2xl font-bold tracking-tight">Double authentification</h1>
-        <MfaFlow next={next} />
+        <MfaFlow next={next} force={forcer === '1'} />
       </main>
       <ul className="mt-6 flex max-w-md flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[#dde6de]">
         <li>Obligatoire pour l’espace administrateur</li>

@@ -72,6 +72,15 @@ export async function requireAdmin(next = '/admin') {
   return { session, profile };
 }
 
+/** Variante sans redirection, pour les routes API : null si l'appelant n'est pas admin en 2FA. */
+export async function getAdminOrNull() {
+  const session = await getSession();
+  if (!session || session.aal !== 'aal2') return null;
+  const profile = await getProfile();
+  if (!profile || profile.role !== 'admin' || profile.suspended) return null;
+  return { session, profile };
+}
+
 /**
  * Pour les actions sensibles (suspension, suppression, export de données) :
  * le code de double authentification doit avoir été saisi récemment.

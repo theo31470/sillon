@@ -16,7 +16,7 @@ type Step =
  * Double authentification par application (Google Authenticator, Authy, 1Password…).
  * Première visite : on affiche un QR code à scanner. Ensuite : on demande le code à 6 chiffres.
  */
-export function MfaFlow({ next }: { next: string }) {
+export function MfaFlow({ next, force = false }: { next: string; force?: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>({ kind: 'loading' });
   const [code, setCode] = useState('');
@@ -27,7 +27,8 @@ export function MfaFlow({ next }: { next: string }) {
     const supabase = createClient();
     (async () => {
       const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal.data?.currentLevel === 'aal2') {
+      // « force » : nouvelle saisie du code pour une action sensible, même déjà en 2FA.
+      if (aal.data?.currentLevel === 'aal2' && !force) {
         router.replace(next);
         return;
       }
@@ -52,7 +53,7 @@ export function MfaFlow({ next }: { next: string }) {
       }
       setStep({ kind: 'enroll', factorId: enrolled.data.id, qr: enrolled.data.totp.qr_code, secret: enrolled.data.totp.secret });
     })();
-  }, [next, router]);
+  }, [next, router, force]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

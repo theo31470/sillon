@@ -32,3 +32,30 @@ export function maskEmail(email: string) {
   const [host, ...tld] = domain.split('.');
   return `${user.slice(0, 2)}•••@${host.slice(0, 2)}•••.${tld.join('.') || '?'}`;
 }
+
+/**
+ * Convertit une date « 2026-10-27T07:00 » saisie dans un champ datetime-local
+ * (heure de Paris) en instant UTC, quel que soit le fuseau du serveur.
+ */
+export function parisLocalToDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return null;
+  const asUtc = new Date(`${value.slice(0, 16)}:00Z`);
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Paris', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).formatToParts(asUtc);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  const parisAsUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'));
+  const offset = parisAsUtc - asUtc.getTime();
+  return new Date(asUtc.getTime() - offset);
+}
+
+/** Date ISO d'il y a `days` jours (pour les filtres « 30 derniers jours »). */
+export function daysAgoIso(days: number) {
+  return new Date(Date.now() - days * 86_400_000).toISOString();
+}
+
+/** Nombre de semaines écoulées depuis une date (0 = cette semaine). */
+export function weeksAgo(date: string) {
+  return Math.floor((Date.now() - new Date(date).getTime()) / (7 * 86_400_000));
+}

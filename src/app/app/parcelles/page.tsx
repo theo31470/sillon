@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { getParcels } from '@/lib/farm-data';
@@ -63,7 +64,7 @@ export default async function ParcelsPage() {
         <Card className="min-w-0 flex-[1_1_320px]">
           <h2 className="mb-4 text-xl font-semibold">Ajouter une parcelle</h2>
           {atLimit ? (
-            <Notice>La formule gratuite permet {FREE_PARCEL_LIMIT} parcelles. <a href="/app/abonnement" className="font-semibold underline">Passer à la formule Complet</a></Notice>
+            <Notice>La formule gratuite permet {FREE_PARCEL_LIMIT} parcelles. <Link href="/app/abonnement" className="font-semibold underline">Passer à la formule Complet</Link></Notice>
           ) : (
             <ActionForm action={createParcel}>
               <Field label="Nom" htmlFor="name">

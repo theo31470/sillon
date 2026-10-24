@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState } from 'react';
 import { FormMessage, SubmitButton } from '@/components/form-bits';
 import { Field, Input } from '@/components/ui';
@@ -42,8 +43,8 @@ export function SignUpForm() {
       <label className="flex items-start gap-3 text-sm text-muted">
         <input type="checkbox" name="consent" required className="mt-1 size-4 accent-brand" />
         <span>
-          J’accepte les <a href="/conditions" className="text-brand underline">conditions d’utilisation</a> et la{' '}
-          <a href="/confidentialite" className="text-brand underline">politique de confidentialité</a>.
+          J’accepte les <Link href="/conditions" className="text-brand underline">conditions d’utilisation</Link> et la{' '}
+          <Link href="/confidentialite" className="text-brand underline">politique de confidentialité</Link>.
         </span>
       </label>
       <FormMessage state={state} />
