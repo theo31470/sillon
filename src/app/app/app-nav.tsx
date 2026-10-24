@@ -23,14 +23,14 @@ export function AppNav({ isAdmin }: { isAdmin: boolean }) {
             key={l.href}
             href={l.href}
             aria-current={active ? 'page' : undefined}
-            className={`px-3 py-5 ${active ? 'border-b-[3px] border-brand pb-[17px] text-brand-dark' : 'text-muted hover:text-ink'}`}
+            className={`px-3 py-5 transition-colors duration-200 ${active ? 'border-b-[3px] border-brand pb-[17px] text-brand-dark' : 'text-muted hover:text-ink'}`}
           >
             {l.label}
           </Link>
         );
       })}
       {isAdmin ? (
-        <Link href="/admin" className="px-3 py-5 text-muted hover:text-ink">Admin</Link>
+        <Link href="/admin" className="px-3 py-5 text-muted transition-colors duration-200 hover:text-ink">Admin</Link>
       ) : null}
     </nav>
   );

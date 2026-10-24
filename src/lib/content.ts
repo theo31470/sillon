@@ -44,13 +44,13 @@ export async function listPublishedSheets(opts: { category?: string; search?: st
     const supabase = await createClient();
     let query = supabase
       .from('tech_sheets')
-      .select('id, slug, title, category, brand, model, summary, cover_url, published_at, updated_at')
+      .select('id, slug, title, category, brand, model, summary, cover_url, content, published_at, updated_at')
       .eq('status', 'published')
       .order('title');
     if (opts.category) query = query.eq('category', opts.category);
     if (opts.search) query = query.ilike('title', `%${opts.search.replace(/[%_]/g, '')}%`);
     const { data } = await query;
-    return (data ?? []) as Pick<TechSheet, 'id' | 'slug' | 'title' | 'category' | 'brand' | 'model' | 'summary' | 'cover_url' | 'published_at' | 'updated_at'>[];
+    return (data ?? []) as Pick<TechSheet, 'id' | 'slug' | 'title' | 'category' | 'brand' | 'model' | 'summary' | 'cover_url' | 'content' | 'published_at' | 'updated_at'>[];
   } catch {
     return [];
   }

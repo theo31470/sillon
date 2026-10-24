@@ -20,8 +20,14 @@
   --color-info: #234866;
   --color-info-soft: #e4ecf4;
   --color-admin: #1d2420;
+  /* Tons de la terre et des blés (fiches techniques). */
+  --color-wheat: #c9972f;
+  --color-wheat-soft: #f8f0dc;
+  --color-soil: #6e5124;
 
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {
@@ -31,6 +37,348 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+  background: var(--color-brand-soft);
+  color: var(--color-brand-dark);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ───────────── Curseur et focus ───────────── */
+
+button:not(:disabled),
+[role="button"],
+summary,
+select,
+label[for],
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"] {
+  cursor: pointer;
+}
+
+:where(a, button, summary, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* ───────────── Boutons ───────────── */
+
+.btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 180ms var(--ease-out-soft),
+    box-shadow 220ms var(--ease-out-soft),
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+.btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -10px rgb(29 36 32 / 0.45);
+}
+.btn:not(:disabled):active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: none;
+  transition-duration: 80ms;
+}
+/* Reflet qui balaie le bouton principal au survol. */
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.22) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 600ms var(--ease-out-soft);
+}
+.btn-primary:not(:disabled):hover {
+  box-shadow: 0 10px 22px -10px rgb(47 109 58 / 0.85);
+}
+.btn-primary:not(:disabled):hover::after {
+  transform: translateX(120%);
+}
+.btn-light {
+  transition: transform 180ms var(--ease-out-soft), background-color 180ms ease, box-shadow 220ms ease;
+}
+.btn-light:hover {
+  transform: translateY(-1px);
+  background-color: var(--color-brand-tint);
+  box-shadow: 0 10px 22px -12px rgb(0 0 0 / 0.6);
+}
+.btn-light:active {
+  transform: scale(0.97);
+}
+
+/* Petit indicateur de chargement dans les boutons. */
+.spinner {
+  width: 1.05em;
+  height: 1.05em;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 700ms linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ───────────── Liens et survols ───────────── */
+
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1.5px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 260ms var(--ease-out-soft), color 180ms ease;
+}
+.link-underline:hover,
+.link-underline[aria-current="page"] {
+  background-size: 100% 1.5px;
+}
+
+.lift-card,
+.sheet-card,
+.spec-card {
+  transition:
+    transform 260ms var(--ease-out-soft),
+    box-shadow 260ms var(--ease-out-soft),
+    border-color 200ms ease;
+}
+.lift-card:hover,
+.sheet-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px -20px rgb(29 36 32 / 0.35);
+}
+.lift-card:not(.border-brand):hover,
+.sheet-card:hover {
+  border-color: #cfdccb;
+}
+.spec-card:hover {
+  border-color: #cfdccb;
+  box-shadow: 0 12px 28px -22px rgb(29 36 32 / 0.4);
+}
+
+/* Le tracteur avance un peu quand on survole la carte. */
+.machine-drive {
+  transition: transform 700ms var(--ease-out-soft);
+}
+.sheet-card:hover .machine-drive {
+  transform: translateX(10px);
+}
+.hero-scene .machine-drive {
+  animation: drive-in 1100ms var(--ease-out-soft) both;
+}
+@keyframes drive-in {
+  from {
+    transform: translateX(-70px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Chiffres clés et compteur d'heures. */
+.figure {
+  animation: rise 600ms var(--ease-out-soft) both;
+}
+.hour-fill {
+  width: 100%;
+  animation: grow-x 1400ms var(--ease-out-soft) 200ms both;
+  transform-origin: left;
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Ouverture des blocs dépliables. */
+details[open] > :not(summary) {
+  animation: rise 320ms var(--ease-out-soft);
+}
+
+/* Apparition au défilement (navigateurs compatibles uniquement). */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+/* ───────────── Barre de chargement entre les pages ───────────── */
+
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-brand), #6fb36f 60%, var(--color-wheat));
+  box-shadow: 0 0 10px rgb(47 109 58 / 0.5);
+  pointer-events: none;
+}
+.nav-progress.is-loading {
+  animation: progress-trickle 8s cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
+}
+.nav-progress.is-done {
+  width: 100%;
+  opacity: 0;
+  transition: width 200ms ease, opacity 400ms ease 200ms;
+}
+@keyframes progress-trickle {
+  from {
+    width: 0;
+  }
+  10% {
+    width: 35%;
+  }
+  to {
+    width: 88%;
+  }
+}
+
+/* ───────────── Chargement des pages (loading.tsx) ───────────── */
+
+.loader-track {
+  position: relative;
+  width: 168px;
+  height: 56px;
+  overflow: hidden;
+}
+.loader-furrows {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 14px;
+  background: repeating-linear-gradient(90deg, #d8c9ad 0 10px, transparent 10px 18px);
+  border-radius: 4px;
+  animation: furrows 600ms linear infinite;
+}
+.loader-tractor {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  translate: -50% 0;
+  animation: bump 600ms ease-in-out infinite;
+}
+@keyframes furrows {
+  to {
+    background-position: -18px 0;
+  }
+}
+@keyframes bump {
+  50% {
+    transform: translateY(-2px) rotate(-1.5deg);
+  }
+}
+.loader-skeleton {
+  background: linear-gradient(90deg, #eceee9 0%, #f6f7f4 50%, #eceee9 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ───────────── Transitions entre les pages (View Transitions) ───────────── */
+
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(.page-exit) {
+  animation: 140ms ease-in both vt-fade-out;
+}
+::view-transition-new(.page-enter) {
+  animation: 320ms var(--ease-out-soft) 60ms both vt-rise-in;
+}
+::view-transition-old(.nav-forward) {
+  --slide: -48px;
+  animation: 160ms ease-in both vt-fade-out, 360ms ease-in-out both vt-slide-out;
+}
+::view-transition-new(.nav-forward) {
+  --slide: 48px;
+  animation: 260ms ease-out 100ms both vt-fade-in, 380ms var(--ease-out-soft) both vt-slide-in;
+}
+::view-transition-old(.nav-back) {
+  --slide: 48px;
+  animation: 160ms ease-in both vt-fade-out, 360ms ease-in-out both vt-slide-out;
+}
+::view-transition-new(.nav-back) {
+  --slide: -48px;
+  animation: 260ms ease-out 100ms both vt-fade-in, 380ms var(--ease-out-soft) both vt-slide-in;
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes vt-slide-out {
+  to {
+    translate: var(--slide) 0;
+  }
+}
+@keyframes vt-slide-in {
+  from {
+    translate: var(--slide) 0;
+  }
+}
+
+/* ───────────── Mouvement réduit ───────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+
 /* Contenu des articles (rendu Markdown sécurisé, voir src/lib/markdown.ts) */
 .prose-sillon h2 { font-size: 1.5rem; font-weight: 700; margin: 2rem 0 0.75rem; letter-spacing: -0.01em; }
 .prose-sillon h3 { font-size: 1.2rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
@@ -38,11 +386,13 @@ body {
 .prose-sillon ul, .prose-sillon ol { margin: 0 0 1rem 1.25rem; line-height: 1.75; }
 .prose-sillon ul { list-style: disc; }
 .prose-sillon ol { list-style: decimal; }
-.prose-sillon a { color: var(--color-brand); text-decoration: underline; }
+.prose-sillon a { color: var(--color-brand); text-decoration: underline; text-underline-offset: 3px; transition: color 160ms ease; }
+.prose-sillon a:hover { color: var(--color-brand-dark); }
 .prose-sillon strong { font-weight: 600; }
 
-/* Impression du registre */
+/* Impression (registre, fiches techniques) */
 @media print {
   .no-print { display: none !important; }
   body { background: #fff; }
+  .reveal, .figure, .hero-scene .machine-drive { animation: none !important; opacity: 1 !important; transform: none !important; }
 }

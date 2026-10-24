@@ -4,13 +4,13 @@ import type { ComponentProps, ReactNode } from 'react';
 
 export const btn = {
   primary:
-    'inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-brand px-5 py-3 font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50',
+    'btn btn-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-brand px-5 py-3 font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50',
   secondary:
-    'inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-field bg-white px-5 py-3 font-semibold text-ink transition hover:bg-ground disabled:cursor-not-allowed disabled:opacity-50',
+    'btn inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-field bg-white px-5 py-3 font-semibold text-ink hover:border-brand hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-50',
   danger:
-    'inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[#e3b7b0] bg-white px-4 py-2.5 font-semibold text-danger transition hover:bg-danger-soft',
+    'btn inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[#e3b7b0] bg-white px-4 py-2.5 font-semibold text-danger hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50',
   small:
-    'inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-field bg-white px-3.5 py-2 text-sm font-semibold text-ink transition hover:bg-ground',
+    'btn inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-field bg-white px-3.5 py-2 text-sm font-semibold text-ink hover:border-brand hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-50',
 };
 
 export const inputClass =
@@ -84,7 +84,7 @@ export function Notice({ tone = 'amber', children }: { tone?: 'amber' | 'green' 
 export function PhotoSlot({ label, className = '' }: { label: string; className?: string }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-2 rounded-2xl bg-photo p-4 text-center text-sm text-muted ${className}`}
+      className={`flex flex-col items-center justify-center gap-2 rounded-2xl bg-photo p-4 text-center text-sm text-muted transition-transform duration-500 ${className}`}
       role="img"
       aria-label={label}
     >

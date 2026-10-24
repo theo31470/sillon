@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth';
 import { Logo } from '@/components/ui';
 import { AdminNav } from './admin-nav';
 import { IdleLogout } from './idle-logout';
+import { PageTransition } from '@/components/motion';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: { default: 'Administration', template: '%s · Admin Sillon' }, robots: { index: false } };
@@ -27,7 +28,11 @@ export default async function AdminLayout({ children }: LayoutProps<'/admin'>) {
           <p className="text-[#8fa195]">Déconnexion après 30 min d’inactivité</p>
         </div>
       </aside>
-      <main className="flex min-w-0 flex-[999_1_640px] flex-col gap-5 px-8 py-7">{children}</main>
+      <main className="min-w-0 flex-[999_1_640px] px-8 py-7">
+        <PageTransition>
+          <div className="flex flex-col gap-5">{children}</div>
+        </PageTransition>
+      </main>
       <IdleLogout minutes={30} />
     </div>
   );

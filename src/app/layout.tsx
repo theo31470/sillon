@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { NavigationProgress } from '@/components/motion';
 import '@fontsource-variable/inter';
 import './globals.css';
 
@@ -14,8 +16,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="fr" className="h-full">
-      <body className="flex min-h-full flex-col">{children}</body>
+    <html lang="fr" className="h-full" data-scroll-behavior="smooth">
+      <body className="flex min-h-full flex-col">
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }

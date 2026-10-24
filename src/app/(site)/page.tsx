@@ -40,7 +40,7 @@ export default function HomePage() {
         </div>
         <div className="relative min-w-0 flex-[1_1_480px]">
           <PhotoSlot label="Photo : un agriculteur dans son champ, téléphone en main, lumière naturelle" className="h-[460px]" />
-          <div className="absolute bottom-8 left-0 w-64 max-w-[80%] rounded-xl bg-white p-4 shadow-[0_12px_32px_rgba(29,36,32,0.16)] sm:-left-5">
+          <div className="figure absolute bottom-8 left-0 w-64 max-w-[80%] rounded-xl bg-white p-4 shadow-[0_12px_32px_rgba(29,36,32,0.16)] sm:-left-5" style={{ animationDelay: '400ms' }}>
             <p className="text-sm text-muted">Intervention enregistrée</p>
             <p className="mb-2 font-semibold">Semis de blé · Les Grès</p>
             <p className="flex items-center gap-1.5 text-sm text-brand"><CheckIcon />Ajoutée au registre</p>
@@ -54,8 +54,8 @@ export default function HomePage() {
           <p className="mx-auto mb-12 max-w-xl text-center text-muted">Quatre outils simples qui vous font gagner du temps chaque semaine.</p>
           <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(250px,1fr))]">
             {features.map((f) => (
-              <article key={f.title} className="overflow-hidden rounded-2xl border border-line bg-white">
-                <PhotoSlot label={f.photo} className="h-44 rounded-none" />
+              <article key={f.title} className="lift-card reveal group overflow-hidden rounded-2xl border border-line bg-white">
+                <div className="overflow-hidden"><PhotoSlot label={f.photo} className="h-44 rounded-none group-hover:scale-105" /></div>
                 <div className="p-6">
                   <h3 className="mb-2 text-lg font-semibold">{f.title}</h3>
                   <p className="text-[15px] text-muted">{f.text}</p>
@@ -76,8 +76,8 @@ export default function HomePage() {
               ['Notez depuis le champ', 'Parcelle, produit, dose : trois champs à remplir, pas plus.'],
               ['Imprimez votre registre', 'Un document prêt pour les contrôles, quand vous voulez.'],
             ].map(([title, text], i) => (
-              <li key={title} className="flex gap-4">
-                <span className="flex size-10 flex-none items-center justify-center rounded-full bg-brand-soft font-bold text-brand-dark">{i + 1}</span>
+              <li key={title} className="reveal group flex gap-4">
+                <span className="flex size-10 flex-none items-center justify-center rounded-full bg-brand-soft font-bold text-brand-dark transition-colors duration-300 group-hover:bg-brand group-hover:text-white">{i + 1}</span>
                 <div>
                   <h3 className="mb-1 text-lg font-semibold">{title}</h3>
                   <p className="text-muted">{text}</p>
@@ -120,7 +120,7 @@ export default function HomePage() {
         <div className="border-t border-line">
           {faq.map((item) => (
             <details key={item.q} className="border-b border-line py-5">
-              <summary className="cursor-pointer text-lg font-semibold">{item.q}</summary>
+              <summary className="cursor-pointer text-lg font-semibold transition-colors hover:text-brand">{item.q}</summary>
               <p className="mt-3 text-muted">{item.a}</p>
             </details>
           ))}
@@ -133,7 +133,7 @@ export default function HomePage() {
             <h2 className="mb-1.5 text-[clamp(26px,3vw,34px)] font-bold tracking-tight">Essayez Sillon sur votre exploitation</h2>
             <p className="text-[#d7e8d5]">Gratuit, sans carte bancaire.</p>
           </div>
-          <Link href="/inscription" className="inline-flex min-h-12 items-center rounded-[10px] bg-white px-7 py-3 font-semibold text-brand-dark hover:bg-brand-tint">
+          <Link href="/inscription" className="btn-light inline-flex min-h-12 items-center rounded-[10px] bg-white px-7 py-3 font-semibold text-brand-dark">
             Créer mon compte
           </Link>
         </div>

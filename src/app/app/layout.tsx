@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { Logo } from '@/components/ui';
 import { AppNav } from './app-nav';
+import { PageTransition } from '@/components/motion';
 import { signOut } from '@/app/(auth)/actions';
 
 export default async function AppLayout({ children }: LayoutProps<'/app'>) {
@@ -15,14 +16,14 @@ export default async function AppLayout({ children }: LayoutProps<'/app'>) {
           <Link href="/app" aria-label="Sillon, tableau de bord"><Logo /></Link>
           <AppNav isAdmin={profile.role === 'admin'} />
           <details className="relative">
-            <summary className="flex size-10 cursor-pointer list-none items-center justify-center rounded-full bg-brand-soft font-semibold text-brand-dark" aria-label="Mon compte">
+            <summary className="flex size-10 cursor-pointer list-none items-center justify-center rounded-full bg-brand-soft font-semibold text-brand-dark transition hover:scale-105 hover:bg-brand hover:text-white" aria-label="Mon compte">
               {initials}
             </summary>
             <div className="absolute right-0 z-10 mt-2 flex w-56 flex-col rounded-xl border border-line bg-white p-2 shadow-lg">
               <p className="truncate px-3 py-2 text-sm text-muted">{profile.farm_name || profile.email}</p>
-              <Link href="/app/compte" className="rounded-lg px-3 py-2 hover:bg-ground">Mon compte</Link>
-              <Link href="/app/abonnement" className="rounded-lg px-3 py-2 hover:bg-ground">Abonnement</Link>
-              {profile.role === 'admin' ? <Link href="/admin" className="rounded-lg px-3 py-2 hover:bg-ground">Administration</Link> : null}
+              <Link href="/app/compte" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Mon compte</Link>
+              <Link href="/app/abonnement" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Abonnement</Link>
+              {profile.role === 'admin' ? <Link href="/admin" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Administration</Link> : null}
               <form action={signOut}>
                 <button type="submit" className="w-full rounded-lg px-3 py-2 text-left text-danger hover:bg-danger-soft">Se déconnecter</button>
               </form>
@@ -30,7 +31,11 @@ export default async function AppLayout({ children }: LayoutProps<'/app'>) {
           </details>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-6xl px-6 py-8">
+        <PageTransition>
+          <div className="flex flex-col gap-6">{children}</div>
+        </PageTransition>
+      </main>
     </div>
   );
 }

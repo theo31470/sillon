@@ -12,7 +12,7 @@ export function PricingCards() {
         return (
           <div
             key={key}
-            className={`flex flex-col gap-5 rounded-2xl bg-white p-8 ${featured ? 'border-2 border-brand' : 'border border-line'}`}
+            className={`lift-card reveal flex flex-col gap-5 rounded-2xl bg-white p-8 ${featured ? 'border-2 border-brand' : 'border border-line'}`}
           >
             <h3 className="flex items-center justify-between text-xl font-semibold">
               {plan.name}
