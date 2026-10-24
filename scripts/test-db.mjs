@@ -31,7 +31,9 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;
 await c.query(stub);
-await c.query(fs.readFileSync(`${root}/migrations/20261024000000_init.sql`, 'utf8'));
+for (const file of fs.readdirSync(`${root}/migrations`).filter((f) => f.endsWith('.sql')).sort()) {
+  await c.query(fs.readFileSync(`${root}/migrations/${file}`, 'utf8'));
+}
 await c.query(fs.readFileSync(`${root}/seed.sql`, 'utf8'));
 console.log('✓ migration + seed appliqués');
 
@@ -84,6 +86,10 @@ ok((await as(ADM, 'aal1', `update public.tech_sheets set status='published'`)).r
 ok((await as(ADM, 'aal2', `update public.tech_sheets set status='published'`)).rowCount === 1, 'admin avec 2FA : peut publier une fiche');
 await c.query(`update public.profiles set suspended=true where id='${B}'`);
 await throws(() => as(B, 'aal1', `insert into public.parcels (name) values ('X')`), 'compte suspendu : écriture refusée');
+
+await throws(() => as(A, 'aal1', 'select private.handle_new_user()'), 'les fonctions internes ne sont pas appelables par un membre');
+await throws(() => as(null, null, 'select private.is_admin()'), 'un visiteur ne peut pas appeler les fonctions de sécurité');
+ok((await c.query("select count(*)::int n from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosecdef")).rows[0].n === 0, 'aucune fonction SECURITY DEFINER exposée dans le schéma public');
 
 await c.end();
 await server.stop();

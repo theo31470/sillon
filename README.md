@@ -148,7 +148,7 @@ Plusieurs couches indépendantes protègent les données :
 npm run lint        # qualité du code
 npm run typecheck   # typage TypeScript
 npm run build       # build de production
-npm run test:db     # lance un vrai Postgres local et vérifie les règles de sécurité (21 tests)
+npm run test:db     # lance un vrai Postgres local et vérifie les règles de sécurité (25 tests)
 ```
 
 `test:db` vérifie notamment qu’un exploitant ne voit pas les données d’un autre, ne peut pas se donner
