@@ -9,13 +9,15 @@ const main = [
   { href: '/admin/paiements', label: 'Abonnements & paiements' },
   { href: '/admin/blog', label: 'Blog' },
   { href: '/admin/fiches', label: 'Fiches techniques' },
+  { href: '/admin/fiches/catalogue', label: '↳ Import par marque' },
 ];
 const security = [{ href: '/admin/journal', label: 'Journal d’activité' }];
 
 export function AdminNav({ pendingSheets }: { pendingSheets: number }) {
   const pathname = usePathname();
   const item = (l: { href: string; label: string }) => {
-    const active = l.href === '/admin' ? pathname === '/admin' : pathname.startsWith(l.href);
+    const active =
+      l.href === '/admin' ? pathname === '/admin' : l.href === '/admin/fiches' ? pathname.startsWith(l.href) && !pathname.startsWith('/admin/fiches/catalogue') : pathname.startsWith(l.href);
     return (
       <Link
         key={l.href}

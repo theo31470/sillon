@@ -91,6 +91,27 @@ await throws(() => as(A, 'aal1', 'select private.handle_new_user()'), 'les fonct
 await throws(() => as(null, null, 'select private.is_admin()'), 'un visiteur ne peut pas appeler les fonctions de sécurité');
 ok((await c.query("select count(*)::int n from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosecdef")).rows[0].n === 0, 'aucune fonction SECURITY DEFINER exposée dans le schéma public');
 
+// Catalogue des modèles et file de génération
+await c.query(`insert into public.catalog_models (brand, model, status, queued_at) values
+  ('Fendt', '1050 Vario', 'queued', now() - interval '2 minutes'),
+  ('Fendt', '942 Vario', 'researched', now() - interval '1 minute'),
+  ('Claas', 'Axion 870', 'todo', null)`);
+ok((await as(A, 'aal1', 'select * from public.catalog_models')).rowCount === 0, 'un membre ne voit pas le catalogue');
+ok((await as(ADM, 'aal1', 'select * from public.catalog_models')).rowCount === 0, 'admin sans 2FA : catalogue invisible');
+ok((await as(ADM, 'aal2', 'select * from public.catalog_models')).rowCount === 3, 'admin avec 2FA : voit le catalogue');
+await throws(() => as(null, null, `insert into public.catalog_models (brand, model) values ('X', 'Y')`), 'un visiteur ne peut pas écrire dans le catalogue');
+await throws(() => as(ADM, 'aal2', `insert into public.catalog_models (brand, model) values ('fendt', '1050 VARIO')`), 'doublon marque/modèle refusé (majuscules ignorées)');
+await throws(() => as(ADM, 'aal2', 'select * from public.claim_catalog_job()'), 'la file n’est pilotable que côté serveur');
+const first = (await c.query('select * from public.claim_catalog_job()')).rows[0];
+ok(first?.model === '942 Vario' && first.status === 'writing', 'file : priorité aux fiches déjà recherchées');
+ok((await c.query('select * from public.claim_catalog_job(1)')).rowCount === 0, 'file : nombre d’étapes en parallèle limité');
+const second = (await c.query('select * from public.claim_catalog_job()')).rows[0];
+ok(second?.model === '1050 Vario' && second.status === 'researching', 'file : puis les modèles en attente');
+ok((await c.query('select * from public.claim_catalog_job()')).rowCount === 0, 'file vide : rien à prendre');
+await c.query(`update public.catalog_models set locked_at = now() - interval '9 minutes' where model = '1050 Vario'`);
+const resumed = (await c.query('select * from public.claim_catalog_job()')).rows[0];
+ok(resumed?.model === '1050 Vario' && resumed.attempts === 2, 'file : une tâche bloquée est reprise');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

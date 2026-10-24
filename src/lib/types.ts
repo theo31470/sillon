@@ -86,7 +86,8 @@ export const SHEET_STATUSES = {
 } as const;
 export type SheetStatus = keyof typeof SHEET_STATUSES;
 
-export type SheetSource = { name: string; path: string };
+/** Document PDF déposé (path) ou page web consultée par Claude (url). */
+export type SheetSource = { name: string; path?: string; url?: string };
 
 export type TechSheet = {
   id: string;

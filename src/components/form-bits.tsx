@@ -10,15 +10,19 @@ export function SubmitButton({
   pendingLabel = 'Envoi…',
   variant = 'primary',
   className = '',
+  name,
+  value,
 }: {
   children: ReactNode;
   pendingLabel?: string;
   variant?: keyof typeof btn;
   className?: string;
+  name?: string;
+  value?: string;
 }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} aria-busy={pending} className={`${btn[variant]} ${className}`}>
+    <button type="submit" name={name} value={value} disabled={pending} aria-busy={pending} className={`${btn[variant]} ${className}`}>
       {pending ? (
         <>
           <span className="spinner" aria-hidden="true" />

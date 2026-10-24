@@ -22,6 +22,13 @@ async function loadSheet(id: unknown) {
   return data as TechSheet | null;
 }
 
+/** Dossier de recherche web d'une fiche importée par marque (null sinon). */
+async function researchNotesFor(sheetId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from('catalog_models').select('research_notes').eq('sheet_id', sheetId).maybeSingle();
+  return (data?.research_notes as string | null) ?? null;
+}
+
 const str = (fd: FormData, k: string) => {
   const v = fd.get(k);
   return typeof v === 'string' ? v.trim() : '';
@@ -122,7 +129,9 @@ export async function askClaude(_prev: FormState, formData: FormData): Promise<F
 
   try {
     const pdfs = await downloadSources(sheet.sources ?? []);
-    const content = await reviseSheet({ userId: session.userId, content: parseSheetContent(sheet.content), instruction: instruction.data, sources: pdfs });
+    const researchNotes = await researchNotesFor(sheet.id);
+    if (!pdfs.length && !researchNotes) return { error: 'Aucune source disponible pour cette fiche.' };
+    const content = await reviseSheet({ userId: session.userId, content: parseSheetContent(sheet.content), instruction: instruction.data, sources: pdfs, researchNotes });
     const supabase = await createClient();
     await supabase.from('tech_sheets').update({ content, summary: content.summary, status: 'review' }).eq('id', sheet.id);
     await logAudit(session, 'fiche.corrigee_par_ia', { type: 'tech_sheet', id: sheet.id }, { consigne: instruction.data.slice(0, 200) });
@@ -182,8 +191,20 @@ export async function regenerateSheet(_prev: FormState, formData: FormData): Pro
   const { session } = await requireAdmin('/admin/fiches');
   const sheet = await loadSheet(formData.get('id'));
   if (!sheet) return { error: 'Fiche introuvable.' };
-  if (!sheet.sources?.length) return { error: 'Aucun document source enregistré pour cette fiche.' };
   if (!process.env.ANTHROPIC_API_KEY) return { error: 'Claude n’est pas encore configuré (ANTHROPIC_API_KEY manquante).' };
+
+  // Fiche importée depuis le web : on la remet dans la file d'import (nouvelle recherche).
+  if (!sheet.sources?.some((s) => s.path)) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('catalog_models')
+      .update({ status: 'queued', queued_at: new Date().toISOString(), attempts: 0, error: null, created_by: session.userId })
+      .eq('sheet_id', sheet.id)
+      .select('id');
+    if (!data?.length) return { error: 'Aucun document source enregistré pour cette fiche.' };
+    await logAudit(session, 'fiche.recherche_relancee', { type: 'tech_sheet', id: sheet.id });
+    return { ok: true, message: 'Nouvelle recherche lancée : la fiche sera mise à jour dans quelques minutes (suivi dans « Import par marque »).' };
+  }
   if (!rateLimit(`sheetgen:${session.userId}`, 20, 60 * 60_000).ok) return { error: 'Limite de 20 générations par heure atteinte.' };
 
   const supabase = await createClient();

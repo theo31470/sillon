@@ -8,23 +8,30 @@ import { SHEET_STATUSES, type TechSheet } from '@/lib/types';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
 import { Badge, Card, Field, Input, Notice, Textarea } from '@/components/ui';
+import { CheckSourced } from './check-sourced';
 import { askClaude, changeStatus, deleteSheet, publishSheet, regenerateSheet, saveReview } from './actions';
 
 export const metadata = { title: 'Relecture de fiche' };
 export const maxDuration = 300; // corrections par Claude
 
-type Src = { document: string; page: number | null } | null;
+type Src = { document: string; page: number | null; url?: string | null } | null;
 
 function SourceChip({ source, needsReview }: { source: Src; needsReview: boolean }) {
   if (needsReview && !source) return <Badge tone="amber">Non trouvé dans les sources</Badge>;
-  if (needsReview) return <Badge tone="amber">À vérifier · {source?.document}{source?.page ? ` p. ${source.page}` : ''}</Badge>;
-  return source ? <Badge tone="green">{source.document}{source.page ? ` p. ${source.page}` : ''}</Badge> : <Badge>Vérifié</Badge>;
+  if (!source) return <Badge>Vérifié</Badge>;
+  const text = `${needsReview ? 'À vérifier · ' : ''}${source.document}${source.page ? ` p. ${source.page}` : ''}`;
+  const badge = <Badge tone={needsReview ? 'amber' : 'green'}>{text.length > 60 ? `${text.slice(0, 58)}…` : text}</Badge>;
+  return source.url && /^https?:\/\//.test(source.url) ? (
+    <a href={source.url} target="_blank" rel="noopener noreferrer" title={source.url} className="transition-opacity hover:opacity-75">{badge}<span className="sr-only"> (ouvrir la source)</span> ↗</a>
+  ) : (
+    badge
+  );
 }
 
-function Verified({ name, needsReview }: { name: string; needsReview: boolean }) {
+function Verified({ name, needsReview, sourced }: { name: string; needsReview: boolean; sourced: boolean }) {
   return (
     <label className="flex items-center gap-1.5 whitespace-nowrap text-sm">
-      <input type="checkbox" name={name} defaultChecked={!needsReview} className="size-4 accent-brand" />
+      <input type="checkbox" name={name} defaultChecked={!needsReview} data-sourced={sourced ? 'true' : undefined} className="size-4 accent-brand" />
       Vérifié
     </label>
   );
@@ -58,7 +65,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
       {sheet.status === 'rejected' ? <Notice tone="red">{sheet.summary || 'Fiche rejetée.'}</Notice> : null}
       {(sheet.status === 'rejected' || sheet.status === 'generating') && (sheet.sources ?? []).length > 0 ? (
         <Card className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-muted">Les documents sources sont conservés : vous pouvez relancer la rédaction sans les renvoyer.</p>
+          <p className="text-muted">Les sources sont conservées : vous pouvez relancer la rédaction sans rien renvoyer.</p>
           <ActionForm action={regenerateSheet} resetOnSuccess={false} className="flex flex-col gap-2">
             <input type="hidden" name="id" value={sheet.id} />
             <SubmitButton pendingLabel="Claude lit les documents (1 à 3 min)…">✦ Relancer avec Claude</SubmitButton>
@@ -87,7 +94,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
                   <span className="text-muted">{it.label}</span>
                   <input aria-label={it.label} name={`specs.${gi}.${ii}.value`} defaultValue={it.value ?? ''} placeholder="Non trouvé dans les sources" className={field} />
                   <SourceChip source={it.source} needsReview={it.needs_review} />
-                  <Verified name={`specs.${gi}.${ii}.ok`} needsReview={it.needs_review} />
+                  <Verified name={`specs.${gi}.${ii}.ok`} needsReview={it.needs_review} sourced={Boolean(it.source && it.value)} />
                 </div>
               ))}
             </section>
@@ -100,7 +107,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
                 <div key={m.operation} className={`flex flex-col gap-2 border-b border-[#eef0eb] px-4 py-3 text-sm last:border-0 ${m.needs_review ? 'bg-warn-soft' : ''}`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <strong>{m.operation}</strong>
-                    <span className="flex items-center gap-3"><SourceChip source={m.source} needsReview={m.needs_review} /><Verified name={`maintenance.${i}.ok`} needsReview={m.needs_review} /></span>
+                    <span className="flex items-center gap-3"><SourceChip source={m.source} needsReview={m.needs_review} /><Verified name={`maintenance.${i}.ok`} needsReview={m.needs_review} sourced={Boolean(m.source)} /></span>
                   </div>
                   <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(130px,1fr))]">
                     <input aria-label="Intervalle en heures" name={`maintenance.${i}.interval_hours`} defaultValue={m.interval_hours ?? ''} placeholder="Toutes les … h" className={field} />
@@ -126,7 +133,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
                         <option value="atelier">Atelier conseillé</option>
                       </select>
                       <SourceChip source={f.source} needsReview={f.needs_review} />
-                      <Verified name={`faults.${i}.ok`} needsReview={f.needs_review} />
+                      <Verified name={`faults.${i}.ok`} needsReview={f.needs_review} sourced={Boolean(f.source)} />
                     </span>
                   </div>
                   <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
@@ -149,7 +156,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
                     <input aria-label={`Quantité ${p.name}`} name={`parts.${i}.quantity`} defaultValue={p.quantity ?? ''} placeholder="Qté" className={field} />
                   </span>
                   <SourceChip source={p.source} needsReview={p.needs_review} />
-                  <Verified name={`parts.${i}.ok`} needsReview={p.needs_review} />
+                  <Verified name={`parts.${i}.ok`} needsReview={p.needs_review} sourced={Boolean(p.source)} />
                 </div>
               ))}
             </section>
@@ -157,6 +164,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
 
           <div className="sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-lg">
             <p className="text-sm text-muted">Cochez « Vérifié » après avoir contrôlé chaque valeur dans la source.</p>
+            <CheckSourced formId="review" />
             <SubmitButton pendingLabel="Enregistrement…">Enregistrer la relecture</SubmitButton>
           </div>
         </ActionForm>
@@ -184,7 +192,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
             <h2 className="mb-2 text-lg font-semibold">✦ Demander une correction à Claude</h2>
             <ActionForm action={askClaude}>
               <input type="hidden" name="id" value={sheet.id} />
-              <Field label="Consigne" htmlFor="instruction" hint="Claude relit les mêmes documents sources.">
+              <Field label="Consigne" htmlFor="instruction" hint="Claude relit les mêmes sources (documents ou dossier de recherche web).">
                 <Textarea id="instruction" name="instruction" rows={3} maxLength={1000} placeholder="Ex. : vérifie le poids dans le catalogue de pièces, page 2" />
               </Field>
               <SubmitButton variant="secondary" pendingLabel="Claude relit les documents…">Envoyer</SubmitButton>
@@ -193,7 +201,15 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
           <Card>
             <h2 className="mb-2 text-lg font-semibold">Sources</h2>
             <ul className="text-sm">
-              {(sheet.sources ?? []).map((s) => <li key={s.path} className="border-b border-[#eef0eb] py-2 last:border-0">{s.name}</li>)}
+              {(sheet.sources ?? []).map((s) => (
+                <li key={s.path ?? s.url ?? s.name} className="border-b border-[#eef0eb] py-2 last:border-0">
+                  {s.url && /^https?:\/\//.test(s.url) ? (
+                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="break-words text-brand hover:text-brand-dark">{s.name} ↗</a>
+                  ) : (
+                    s.name
+                  )}
+                </li>
+              ))}
             </ul>
           </Card>
           <form action={deleteSheet} className="text-right">

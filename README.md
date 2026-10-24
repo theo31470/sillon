@@ -142,6 +142,34 @@ Plusieurs couches indépendantes protègent les données :
 4. L’admin relit : chaque champ affiche sa source et une case « Vérifié ». Il peut demander une correction à Claude.
 5. **La publication est bloquée côté serveur tant qu’un seul champ reste à vérifier.**
 
+### Import des tracteurs par marque (sans PDF)
+
+**Admin → Fiches techniques → Importer les tracteurs d’une marque** (`/admin/fiches/catalogue`) :
+
+1. **Lister** : on choisit une marque (et éventuellement une série ou une période). Claude parcourt le site du
+   constructeur avec la recherche web et propose la liste des modèles (série, années, puissance, page source).
+2. **Choisir** : on coche les modèles voulus, puis « Générer les fiches sélectionnées ».
+3. **Génération automatique** : une file d’attente traite chaque modèle en deux étapes, chacune dans une fonction
+   serveur de 5 minutes maximum :
+   - *recherche* : Claude lit le site du constructeur (pages produit, brochures PDF) puis la presse spécialisée,
+     et rédige un dossier où chaque valeur est suivie de son adresse ;
+   - *rédaction* : Claude remplit la fiche à partir de ce seul dossier, chaque valeur avec sa source (lien cliquable).
+   Une valeur n’est marquée « vérifiée » que si elle vient du constructeur ou de deux sources concordantes.
+4. Les fiches arrivent dans **À relire**. Le bouton « Cocher les valeurs sourcées » accélère la relecture.
+   Les sources apparaissent en bas de la fiche publique.
+
+La file tourne **sur le serveur, même page fermée** : chaque minute, la base (extensions `pg_cron` + `pg_net`)
+appelle `/api/catalogue/tick`, qui traite une étape. Au plus 3 étapes en parallèle, et `CATALOG_DAILY_LIMIT`
+recherches par jour (150 par défaut). Mise en place : exécuter **`supabase/cron.sql`** une fois dans le SQL Editor
+(en remplaçant l’adresse du site).
+
+**Sources exclues** (`BLOCKED_DOMAINS` dans `src/lib/ai-web.ts`) : bases de caractéristiques d’autres éditeurs et
+petites annonces. En droit européen, reprendre systématiquement le contenu d’une base de données tierce est interdit,
+même valeur par valeur (droit *sui generis* des bases de données). Les sites des constructeurs restent la source principale.
+
+**Coût** : recherche web facturée par Anthropic (10 $ les 1 000 recherches) + tokens. La consommation de chaque
+étape est enregistrée dans `ai_usage` (tokens, recherches, pages lues). Fixez une limite de dépense dans la console Anthropic.
+
 ## Tests et vérifications
 
 ```bash

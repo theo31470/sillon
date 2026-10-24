@@ -31,6 +31,8 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
   const kind = machineKind(sheet);
   const figures = keyFigures(content);
   const isMachine = sheet.category === 'machine';
+  // Pages web consultées (fiches importées par marque), dédoublonnées.
+  const webSources = [...new Map((sheet.sources ?? []).filter((s) => s.url && /^https?:\/\//.test(s.url)).map((s) => [s.url!, s])).values()].slice(0, 12);
   let loggedIn = false;
   try { loggedIn = Boolean(await getSession()); } catch { /* base non configurée */ }
 
@@ -81,7 +83,7 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
                   <Icon name="check" size={14} /> Relue avant publication
                 </li>
                 <li className="inline-flex items-center gap-1.5 rounded-full bg-ground px-3 py-1 text-muted">
-                  <Icon name="book" size={14} /> D’après la documentation constructeur
+                  <Icon name="book" size={14} /> {webSources.length ? 'Sources citées en bas de page' : 'D’après la documentation constructeur'}
                 </li>
                 <li className="inline-flex items-center gap-1.5 rounded-full bg-ground px-3 py-1 text-muted">
                   <Icon name="calendar" size={14} /> Mise à jour le {formatDate(sheet.updated_at)}
@@ -123,6 +125,22 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
             </Link>
           ) : null}
         />
+
+        {webSources.length ? (
+          <section className="rounded-2xl border border-line bg-white p-6">
+            <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold"><Icon name="book" size={18} className="text-brand" /> Sources consultées</h2>
+            <p className="mb-3 text-sm text-muted">Fiche établie à partir des pages ci-dessous, puis relue par l’équipe Sillon. En cas de doute, le manuel du constructeur fait foi.</p>
+            <ul className="grid gap-x-6 gap-y-1.5 text-sm [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+              {webSources.map((s) => (
+                <li key={s.url} className="min-w-0 truncate">
+                  <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" className="link-underline text-brand-dark">
+                    <span className="font-semibold">{new URL(s.url!).hostname.replace(/^www\./, '')}</span> · {s.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <section className="no-print flex flex-wrap items-center gap-5 rounded-2xl bg-admin p-6 text-white sm:p-8">
           <span className="flex size-12 flex-none items-center justify-center rounded-xl bg-[#26302a] text-[#d9b45a]">

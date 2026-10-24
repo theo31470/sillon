@@ -15,8 +15,8 @@ export async function downloadSources(sources: SheetSource[]): Promise<PdfSource
   const storage = createServiceClient().storage.from('sources');
   let total = 0;
   const out: PdfSource[] = [];
-  for (const s of sources.slice(0, MAX_FILES)) {
-    if (!/^[0-9a-f-]{36}\/[\w.\- ]{1,120}\.pdf$/i.test(s.path)) throw new Error(`Chemin de document invalide : ${s.path}`);
+  for (const s of sources.filter((x) => x.path).slice(0, MAX_FILES)) {
+    if (!s.path || !/^[0-9a-f-]{36}\/[\w.\- ]{1,120}\.pdf$/i.test(s.path)) throw new Error(`Chemin de document invalide : ${s.path}`);
     const { data, error } = await storage.download(s.path);
     if (error || !data) throw new Error(`Document introuvable : ${s.name}`);
     const buffer = Buffer.from(await data.arrayBuffer());

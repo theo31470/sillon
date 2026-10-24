@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/format';
 import { countPendingReview, parseSheetContent } from '@/lib/sheets/schema';
 import { SHEET_CATEGORIES, SHEET_STATUSES, type SheetStatus, type TechSheet } from '@/lib/types';
-import { Badge, Card } from '@/components/ui';
+import { Badge, Card, btn } from '@/components/ui';
 import { NewSheetForm } from './new-sheet-form';
 
 export const metadata = { title: 'Fiches techniques' };
@@ -30,9 +30,12 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
 
   return (
     <>
-      <div>
-        <h1 className="text-[28px] font-bold tracking-tight">Fiches techniques</h1>
-        <p className="text-muted">Rédigées par Claude à partir de vos documents, validées par un humain avant publication.</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[28px] font-bold tracking-tight">Fiches techniques</h1>
+          <p className="text-muted">Rédigées par Claude à partir de vos documents ou du web, validées par un humain avant publication.</p>
+        </div>
+        <Link href="/admin/fiches/catalogue" className={btn.primary}>✦ Importer les tracteurs d’une marque</Link>
       </div>
 
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
@@ -46,7 +49,7 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
 
       <div className="flex flex-wrap items-start gap-5">
         <Card className="min-w-0 flex-[1_1_320px]">
-          <h2 className="mb-3.5 text-lg font-semibold">Générer une fiche avec Claude</h2>
+          <h2 className="mb-3.5 text-lg font-semibold">Générer une fiche à partir de PDF</h2>
           <NewSheetForm />
         </Card>
 

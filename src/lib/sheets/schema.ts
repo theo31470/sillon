@@ -15,6 +15,8 @@ export const sourceSchema = z
   .object({
     document: z.string().describe('Nom du document source'),
     page: z.number().int().nullable().describe('Numéro de page dans le document, si connu'),
+    // Absente des anciennes fiches : vaut null par défaut.
+    url: z.string().nullable().default(null).describe('Adresse de la page web source, ou null pour un document PDF'),
   })
   .nullable();
 

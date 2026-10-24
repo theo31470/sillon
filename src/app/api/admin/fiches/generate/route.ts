@@ -6,7 +6,7 @@ import { generateSheet } from '@/lib/ai';
 import { downloadSources, MAX_FILES } from '@/lib/sheets/sources';
 import { logAudit } from '@/lib/audit';
 import { rateLimit } from '@/lib/rate-limit';
-import { slugify } from '@/lib/format';
+import { uniqueSheetSlug } from '@/lib/sheets/slug';
 import { countPendingReview } from '@/lib/sheets/schema';
 
 // La lecture de longs manuels par Claude peut prendre plusieurs minutes.
@@ -31,16 +31,6 @@ const bodySchema = z.object({
     .max(MAX_FILES),
 });
 
-async function uniqueSlug(title: string) {
-  const base = slugify(title) || 'fiche';
-  const { data } = await createServiceClient().from('tech_sheets').select('slug').like('slug', `${base}%`);
-  const taken = new Set((data ?? []).map((r) => r.slug));
-  if (!taken.has(base)) return base;
-  let i = 2;
-  while (taken.has(`${base}-${i}`)) i++;
-  return `${base}-${i}`;
-}
-
 export async function POST(request: NextRequest) {
   const admin = await getAdminOrNull();
   if (!admin) return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
@@ -64,7 +54,7 @@ export async function POST(request: NextRequest) {
   const { data: sheet, error } = await db
     .from('tech_sheets')
     .insert({
-      slug: await uniqueSlug(input.title),
+      slug: await uniqueSheetSlug(input.title),
       title: input.title,
       category: input.category,
       brand: input.brand,

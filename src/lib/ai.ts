@@ -15,7 +15,7 @@ import { createServiceClient } from '@/lib/supabase/admin';
  * précis, validé à la réception.
  */
 
-function client() {
+export function client() {
   return new Anthropic({ apiKey: env.anthropicApiKey() });
 }
 
@@ -26,19 +26,27 @@ Tu rédiges des fiches techniques en français, claires et factuelles.
 
 Règles impératives :
 - Utilise UNIQUEMENT les informations présentes dans les documents fournis. N'utilise pas tes connaissances générales pour compléter une valeur.
-- Pour chaque information, indique la source : le titre exact du document et le numéro de page.
+- Pour chaque information, indique la source : le titre exact du document et le numéro de page. Si le document est un dossier de recherche web, la source est la page web citée dans le dossier : document = titre de la page ou nom du site, url = adresse exacte, page = null.
 - Si une information utile est absente, ambiguë, ou si deux documents se contredisent : mets la valeur à null (ou indique les deux valeurs) et needs_review à true.
 - Une valeur trouvée clairement dans un document a needs_review à false.
 - N'invente jamais de référence de pièce, de dose, de capacité ou de couple de serrage.
 - Pannes : uniquement celles décrites dans les documents (section dépannage, incidents…). Vérifications de la plus simple à la plus complexe. difficulty = "atelier" dès qu'il faut démonter un organe interne ou intervenir sur l'hydraulique haute pression, l'injection ou l'électronique.
 - Unités du système métrique, format français (virgule décimale).`;
 
-async function recordUsage(userId: string, feature: 'diagnostic' | 'sheet_generation' | 'sheet_revision', usage: Anthropic.Usage) {
+export type AiFeature = 'diagnostic' | 'sheet_generation' | 'sheet_revision' | 'sheet_research' | 'catalog_listing';
+
+export async function recordUsage(
+  userId: string,
+  feature: AiFeature,
+  usage: Pick<Anthropic.Usage, 'input_tokens' | 'output_tokens'> & { server_tool_use?: Anthropic.Usage['server_tool_use'] },
+) {
   await createServiceClient().from('ai_usage').insert({
     user_id: userId,
     feature,
     input_tokens: usage.input_tokens,
     output_tokens: usage.output_tokens,
+    web_searches: usage.server_tool_use?.web_search_requests ?? 0,
+    web_fetches: usage.server_tool_use?.web_fetch_requests ?? 0,
   });
 }
 
@@ -92,6 +100,8 @@ export async function reviseSheet(params: {
   content: SheetContent;
   instruction: string;
   sources: PdfSource[];
+  /** Dossier de recherche web (fiches importées par marque). */
+  researchNotes?: string | null;
 }): Promise<SheetContent> {
   const response = await client().messages.parse({
     model: env.anthropicModel(),
@@ -103,6 +113,9 @@ export async function reviseSheet(params: {
         role: 'user',
         content: [
           ...documentBlocks(params.sources),
+          ...(params.researchNotes
+            ? [{ type: 'document' as const, title: 'Dossier de recherche web', source: { type: 'text' as const, media_type: 'text/plain' as const, data: params.researchNotes } }]
+            : []),
           {
             type: 'text',
             text: `Voici la fiche actuelle (JSON) :
