@@ -57,7 +57,7 @@ src/
 
 ## Installation en local
 
-Prérequis : Node.js 20.9 ou plus récent.
+Prérequis : Node.js 22.
 
 ```bash
 git clone https://github.com/theo31470/sillon.git
