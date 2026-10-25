@@ -43,7 +43,8 @@ export function SignUpForm() {
       <label className="flex items-start gap-3 text-sm text-muted">
         <input type="checkbox" name="consent" required className="mt-1 size-4 accent-brand" />
         <span>
-          J’accepte les <Link href="/conditions" className="text-brand underline">conditions d’utilisation</Link> et la{' '}
+          Je m’inscris dans le cadre de mon activité professionnelle et j’accepte les{' '}
+          <Link href="/conditions" className="text-brand underline">conditions générales</Link> et la{' '}
           <Link href="/confidentialite" className="text-brand underline">politique de confidentialité</Link>.
         </span>
       </label>

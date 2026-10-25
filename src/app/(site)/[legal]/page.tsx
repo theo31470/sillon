@@ -118,6 +118,7 @@ const pages: Record<string, LegalPage> = {
         h: '1. Le service',
         p: [
           `Tracteurs & Co, édité par ${E.name} (${E.status.toLowerCase()}), est un outil en ligne de suivi du matériel agricole : carnet d’entretien, rappels, relevés de compteur, dépenses, coût de revient, fiches techniques et aide au diagnostic.`,
+          'Le service est réservé aux professionnels : exploitants agricoles, CUMA, GAEC, entreprises de travaux agricoles et toute personne agissant dans le cadre de son activité professionnelle. En créant un compte, vous déclarez agir à ce titre. Les règles du Code de la consommation propres aux consommateurs (droit de rétractation, médiation de la consommation) ne s’appliquent donc pas.',
         ],
       },
       {
@@ -145,19 +146,13 @@ const pages: Record<string, LegalPage> = {
         ],
       },
       {
-        h: '5. Droit de rétractation',
-        p: [
-          'Si vous souscrivez en tant que consommateur (hors activité professionnelle), vous disposez de 14 jours après la souscription pour vous rétracter, en écrivant à ' + CONTACT + '. Les sommes déjà payées vous sont alors remboursées sous 14 jours.',
-        ],
-      },
-      {
-        h: '6. Vos données',
+        h: '5. Vos données',
         p: [
           'Les données que vous saisissez restent les vôtres. Vous pouvez les exporter à tout moment. Leur traitement est décrit dans la politique de confidentialité.',
         ],
       },
       {
-        h: '7. Responsabilité',
+        h: '6. Responsabilité',
         p: [
           'Les fiches techniques, intervalles d’entretien et aides au diagnostic sont donnés à titre indicatif, à partir de sources citées. Ils ne remplacent ni le manuel du constructeur ni l’avis d’un professionnel. Vérifiez toujours les valeurs avant une intervention.',
           'Le coût de revient est un calcul établi à partir de vos propres saisies : sa justesse dépend de celles-ci.',
@@ -165,10 +160,9 @@ const pages: Record<string, LegalPage> = {
         ],
       },
       {
-        h: '8. Litiges',
+        h: '7. Litiges',
         p: [
-          'Ces conditions sont soumises au droit français. En cas de difficulté, écrivez-nous d’abord à ' + CONTACT + ' : nous chercherons une solution amiable.',
-          'Si vous êtes consommateur, vous pouvez recourir gratuitement à un médiateur de la consommation : [nom et site du médiateur].',
+          'Ces conditions sont soumises au droit français. En cas de difficulté, écrivez-nous d’abord à ' + CONTACT + ' : nous chercherons une solution amiable. À défaut, le litige sera porté devant les tribunaux compétents.',
         ],
       },
     ],
