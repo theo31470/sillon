@@ -23,11 +23,12 @@ export function SignInForm({ next }: { next: string }) {
   );
 }
 
-export function SignUpForm() {
+export function SignUpForm({ next = '/app' }: { next?: string }) {
   const [state, action] = useActionState(signUp, undefined);
   if (state?.ok) return <FormMessage state={state} />;
   return (
     <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="suite" value={next} />
       <Field label="Votre nom" htmlFor="full_name">
         <Input id="full_name" name="full_name" autoComplete="name" required maxLength={120} />
       </Field>

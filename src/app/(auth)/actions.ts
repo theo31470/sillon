@@ -74,7 +74,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     password: parsed.data.password,
     options: {
       data: { full_name: parsed.data.full_name, farm_name: parsed.data.farm_name },
-      emailRedirectTo: `${env.siteUrl()}/auth/confirm?suite=/app`,
+      emailRedirectTo: `${env.siteUrl()}/auth/confirm?suite=${encodeURIComponent(safeNext(formData.get('suite')))}`,
     },
   });
   if (error) {

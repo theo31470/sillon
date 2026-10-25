@@ -102,7 +102,10 @@ Sans clés, les pages publiques s’affichent mais la connexion et l’applicati
    `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`.
    Copiez le secret `whsec_…` dans `STRIPE_WEBHOOK_SECRET`.
    En local : `stripe listen --forward-to localhost:3000/api/stripe/webhook`.
-3. **Settings → Billing → Customer portal** : activez le portail (résiliation, moyens de paiement, factures).
+3. **Settings → Billing → Customer portal** : activez le portail (résiliation, moyens de paiement, factures,
+   passage mensuel ↔ annuel). En mode test, produit, prix, webhook et portail ont été créés par l'API ;
+   à refaire à l'identique en mode réel. Le pied de facture (SIRET, mention de TVA) est posé sur chaque client
+   à sa création (`src/app/app/abonnement/actions.ts`).
 4. **Settings → Billing → Revenue recovery** : réglez les relances automatiques des paiements échoués.
 
 ### 3. E-mails (Resend)
