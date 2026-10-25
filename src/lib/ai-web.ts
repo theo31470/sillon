@@ -151,7 +151,7 @@ export const catalogListSchema = z.object({
 });
 export type CatalogList = z.infer<typeof catalogListSchema>;
 
-const LIST_SYSTEM = `Tu es documentaliste pour Sillon, un site technique destiné aux agriculteurs français.
+const LIST_SYSTEM = `Tu es documentaliste pour Tracteurs & Co, un site technique destiné aux agriculteurs français.
 On te demande la liste des modèles de tracteurs d'une marque, pour préparer des fiches techniques.
 - Cherche d'abord sur le site officiel du constructeur (gamme actuelle) ; pour les modèles anciens, sur des sources sérieuses (constructeur, presse agricole, clubs de marque). Fais peu de recherches, bien ciblées.
 - Ne liste que des tracteurs agricoles (pas de moissonneuses, chargeurs, engins de chantier), et seulement des modèles dont tu as trouvé une trace dans les pages consultées. N'invente aucun modèle.
@@ -192,7 +192,7 @@ Dresse la liste des modèles (60 au maximum), regroupés par série.`,
 // 2. Dossier de recherche : une fois par SÉRIE (réutilisé pour chaque modèle)
 // ---------------------------------------------------------------------
 
-const RESEARCH_SYSTEM = `Tu es documentaliste technique pour Sillon, un site destiné aux agriculteurs français.
+const RESEARCH_SYSTEM = `Tu es documentaliste technique pour Tracteurs & Co, un site destiné aux agriculteurs français.
 Tu prépares le dossier technique d'une série de tracteurs (ou d'un modèle), qui servira ensuite à rédiger une fiche par modèle.
 
 Méthode (4 recherches au maximum, 1 seule page lue en entier) :
@@ -235,7 +235,7 @@ Prépare le dossier.`,
 
 export const UPKEEP_MARKER = '=== ENTRETIEN ET PANNES ===';
 
-const UPKEEP_SYSTEM = `Tu es documentaliste technique pour Sillon, un site destiné aux agriculteurs français.
+const UPKEEP_SYSTEM = `Tu es documentaliste technique pour Tracteurs & Co, un site destiné aux agriculteurs français.
 Tu prépares la partie ENTRETIEN et PANNES du dossier d'une série de tracteurs (ou d'un modèle).
 
 À chercher (4 recherches au maximum, 1 seule page lue en entier) :
@@ -270,7 +270,7 @@ export async function researchUpkeep(params: { userId: string; brand: string; se
 // 3. Fiche structurée à partir du dossier
 // ---------------------------------------------------------------------
 
-const WRITE_SYSTEM = `Tu es rédacteur technique pour Sillon. Tu remplis la fiche technique d'UN tracteur en français, uniquement à partir du dossier de recherche fourni.
+const WRITE_SYSTEM = `Tu es rédacteur technique pour Tracteurs & Co. Tu remplis la fiche technique d'UN tracteur en français, uniquement à partir du dossier de recherche fourni.
 
 Règles impératives :
 - Caractéristiques et pièces : n'utilise QUE le dossier, rien de tes connaissances générales. Seule exception : les repères d'entretien et de pannes d'origine "general" décrits plus bas, toujours à faire vérifier.

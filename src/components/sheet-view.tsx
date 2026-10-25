@@ -37,7 +37,7 @@ function OriginTag({ origin }: { origin?: InfoOrigin }) {
 function SectionTitle({ icon, title, subtitle }: { icon: Parameters<typeof Icon>[0]['name']; title: string; subtitle?: string }) {
   return (
     <header className="mb-5 flex items-start gap-3.5">
-      <span className="flex size-11 flex-none items-center justify-center rounded-xl bg-brand text-white shadow-[0_6px_16px_-6px_rgba(47,109,58,0.6)]">
+      <span className="flex size-11 flex-none items-center justify-center rounded-xl bg-brand text-on-brand shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--color-brand)_60%,transparent)]">
         <Icon name={icon} size={22} />
       </span>
       <div>
@@ -83,11 +83,11 @@ export function SheetView({
   const body = (
     <div className="flex min-w-0 flex-col gap-6">
       {content.specs.length > 0 ? (
-        <section id="caracteristiques" className="reveal scroll-mt-24 rounded-2xl border border-line bg-white p-4 sm:p-7">
+        <section id="caracteristiques" className="reveal scroll-mt-24 rounded-2xl border border-line bg-surface p-4 sm:p-7">
           <SectionTitle icon="gear" title="Caractéristiques techniques" subtitle={`${specCount} valeurs relevées dans la documentation du constructeur`} />
           <div className="gap-5 md:columns-2 [&>*]:mb-5 [&>*]:break-inside-avoid">
             {content.specs.map((group) => (
-              <article key={group.group} className="spec-card rounded-xl border border-line bg-white">
+              <article key={group.group} className="spec-card rounded-xl border border-line bg-surface">
                 <h3 className="flex items-center gap-2.5 border-b border-line px-4 py-3 font-semibold">
                   <span className="flex size-8 items-center justify-center rounded-lg bg-brand-tint text-brand">
                     <Icon name={groupIcon(group.group)} size={18} />
@@ -99,7 +99,7 @@ export function SheetView({
                   {group.items.map((item) => {
                     const short = !item.value || item.value.length <= 18;
                     return (
-                    <div key={item.label} className={`flex justify-between border-b border-[#f0f2ee] px-4 py-2.5 transition-colors last:border-0 hover:bg-brand-tint/60 ${short ? 'items-baseline gap-4' : 'flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4'}`}>
+                    <div key={item.label} className={`flex justify-between border-b border-line-soft px-4 py-2.5 transition-colors last:border-0 hover:bg-brand-tint/60 ${short ? 'items-baseline gap-4' : 'flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4'}`}>
                       <dt className="min-w-0 flex-1 text-muted">{item.label}</dt>
                       <dd className={`font-semibold tabular-nums ${short ? 'whitespace-nowrap text-right' : 'sm:max-w-[55%] sm:text-right'}`}>
                         {item.value ?? <span className="font-normal text-muted">—</span>}
@@ -113,7 +113,7 @@ export function SheetView({
             ))}
           </div>
           {showDiagram ? (
-            <figure className="mt-1 overflow-hidden rounded-xl border border-line bg-[#fbfcf9]">
+            <figure className="mt-1 overflow-hidden rounded-xl border border-line bg-surface-2">
               <figcaption className="flex items-center gap-2 border-b border-line px-4 py-3 font-semibold">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-brand-tint text-brand"><Icon name="ruler" size={18} /></span>
                 Gabarit
@@ -131,20 +131,20 @@ export function SheetView({
       ) : null}
 
       {content.maintenance.length > 0 ? (
-        <section id="entretien" className="reveal scroll-mt-24 rounded-2xl border border-line bg-white p-4 sm:p-7">
+        <section id="entretien" className="reveal scroll-mt-24 rounded-2xl border border-line bg-surface p-4 sm:p-7">
           <SectionTitle icon="wrench" title="Carnet d’entretien" subtitle="Les opérations à prévoir, de la plus fréquente à la plus espacée" />
 
           {hourMarks.length > 0 ? (
             <div className="mb-7 rounded-xl bg-admin px-5 pb-9 pt-4 text-white">
-              <p className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#9fb3a4]">
+              <p className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-panel-muted">
                 <Icon name="clock" size={14} /> Compteur d’heures moteur
               </p>
-              <div className="relative mx-2 h-2 rounded-full bg-[#3a4a3f]">
-                <div className="hour-fill absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#5fae6b] to-[#d9b45a]" />
+              <div className="relative mx-2 h-2 rounded-full bg-admin-2">
+                <div className="hour-fill absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-brand to-wheat" />
                 {hourMarks.map((h) => (
                   <span key={h} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${hourScalePosition(h, maxHours) * 100}%` }}>
-                    <span className="block size-4 rounded-full border-[3px] border-admin bg-[#d9b45a]" />
-                    <span className="absolute left-1/2 top-5 -translate-x-1/2 whitespace-nowrap rounded bg-[#26302a] px-1.5 py-0.5 font-mono text-xs tabular-nums">
+                    <span className="block size-4 rounded-full border-[3px] border-admin bg-wheat" />
+                    <span className="absolute left-1/2 top-5 -translate-x-1/2 whitespace-nowrap rounded bg-admin-2 px-1.5 py-0.5 font-mono text-xs tabular-nums">
                       {h.toLocaleString('fr-FR')} h
                     </span>
                   </span>
@@ -153,10 +153,10 @@ export function SheetView({
             </div>
           ) : null}
 
-          <ol className="relative flex flex-col gap-5 border-l-2 border-dashed border-[#d8dfd3] pl-6">
+          <ol className="relative flex flex-col gap-5 border-l-2 border-dashed border-line pl-6">
             {buckets.map((b) => (
               <li key={b.key} className="relative">
-                <span className={`absolute -left-[33px] top-1 flex size-4 items-center justify-center rounded-full ring-4 ring-white ${b.hours || b.months ? 'bg-brand' : 'bg-field'}`} />
+                <span className={`absolute -left-[33px] top-1 flex size-4 items-center justify-center rounded-full ring-4 ring-surface ${b.hours || b.months ? 'bg-brand' : 'bg-field'}`} />
                 <p className="mb-2.5 flex items-center gap-2 font-semibold">
                   <Icon name={b.hours ? 'clock' : b.months ? 'calendar' : 'book'} size={17} className={b.hours || b.months ? 'text-brand' : 'text-muted'} />
                   {b.label}
@@ -175,7 +175,7 @@ export function SheetView({
                               <Icon name="can" size={13} /> {m.product}
                             </span>
                           ) : null}
-                          {m.capacity ? <span className="rounded-full bg-white px-2.5 py-0.5 font-semibold text-muted ring-1 ring-line">{m.capacity}</span> : null}
+                          {m.capacity ? <span className="rounded-full bg-surface px-2.5 py-0.5 font-semibold text-muted ring-1 ring-line">{m.capacity}</span> : null}
                         </p>
                       ) : null}
                       {showSources ? <p className="mt-1.5"><SourceTag source={m.source} /></p> : null}
@@ -185,7 +185,7 @@ export function SheetView({
               </li>
             ))}
           </ol>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-warn-soft px-4 py-3 text-sm text-[#6b5426]">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-warn-soft px-4 py-3 text-sm text-warn">
             <p className="flex items-center gap-2">
               <Icon name="book" size={16} />
               {content.maintenance.some((m) => m.origin === 'general')
@@ -198,11 +198,11 @@ export function SheetView({
       ) : null}
 
       {content.faults.length > 0 ? (
-        <section id="pannes" className="reveal scroll-mt-24 rounded-2xl border border-line bg-white p-4 sm:p-7">
+        <section id="pannes" className="reveal scroll-mt-24 rounded-2xl border border-line bg-surface p-4 sm:p-7">
           <SectionTitle icon="warning" title="Pannes connues et tests" subtitle="Causes possibles et tests à faire, du plus simple au plus poussé" />
           <div className="flex flex-col gap-3">
             {content.faults.map((f, i) => (
-              <details key={f.symptom} open={i === 0} className="fault group rounded-xl border border-line transition-colors open:border-[#d5dccf] open:bg-[#fcfdfb]">
+              <details key={f.symptom} open={i === 0} className="fault group rounded-xl border border-line transition-colors open:border-line open:bg-surface-2">
                 <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
                   <span className={`flex size-9 flex-none items-center justify-center rounded-full ${f.difficulty === 'facile' ? 'bg-brand-soft text-brand-dark' : 'bg-warn-soft text-warn'}`}>
                     <Icon name={f.difficulty === 'facile' ? 'wrench' : 'warning'} size={18} />
@@ -231,7 +231,7 @@ export function SheetView({
                       {f.checks.map((c, n) => (
                         <li key={c} className="relative flex gap-3 pb-3 last:pb-0">
                           {n < f.checks.length - 1 ? <span className="absolute left-[13px] top-7 h-[calc(100%-24px)] w-px bg-line" /> : null}
-                          <span className="flex size-7 flex-none items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{n + 1}</span>
+                          <span className="flex size-7 flex-none items-center justify-center rounded-full bg-brand text-sm font-bold text-on-brand">{n + 1}</span>
                           <span className="pt-0.5">{c}</span>
                         </li>
                       ))}
@@ -246,7 +246,7 @@ export function SheetView({
       ) : null}
 
       {withToc && missing.length > 0 ? (
-        <section className="reveal flex flex-wrap items-center gap-4 rounded-2xl border border-dashed border-field bg-white/60 p-5 text-sm text-muted">
+        <section className="reveal flex flex-wrap items-center gap-4 rounded-2xl border border-dashed border-field bg-surface/60 p-5 text-sm text-muted">
           <Icon name="book" size={20} className="flex-none text-wheat" />
           <p className="min-w-0 flex-1">
             <strong className="text-ink">Pas encore renseigné pour ce modèle :</strong> {missing.join(', ')}. Ces informations seront ajoutées dès qu’une source fiable (manuel du constructeur) sera disponible.
@@ -255,11 +255,11 @@ export function SheetView({
       ) : null}
 
       {content.parts.length > 0 ? (
-        <section id="pieces" className="reveal scroll-mt-24 rounded-2xl border border-line bg-white p-4 sm:p-7">
+        <section id="pieces" className="reveal scroll-mt-24 rounded-2xl border border-line bg-surface p-4 sm:p-7">
           <SectionTitle icon="tag" title="Pièces d’entretien" subtitle="À commander chez votre concessionnaire avec la référence d’origine" />
           <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
             {content.parts.map((p) => (
-              <div key={p.name} className="part-tag lift-card relative rounded-xl border border-line bg-white py-4 pl-9 pr-4">
+              <div key={p.name} className="part-tag lift-card relative rounded-xl border border-line bg-surface py-4 pl-9 pr-4">
                 <span className="absolute left-3.5 top-5 size-2.5 rounded-full border-2 border-field bg-ground" aria-hidden="true" />
                 <p className="font-semibold leading-snug">
                   {p.name}
@@ -287,7 +287,7 @@ export function SheetView({
   if (!withToc) return body;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
-      <div className="no-print sticky top-0 z-10 min-w-0 lg:top-6">
+      <div className="no-print sticky top-0 z-10 min-w-0 lg:top-24">
         <SheetToc items={toc} />
       </div>
       {body}

@@ -76,7 +76,7 @@ export function computeMaintenance(
 ): MaintenanceDue[] {
   const hoursNow = Number(machine.hours);
   // Opération jamais notée : on ne connaît pas l'historique, on compte à partir
-  // de l'ajout de la machine dans Sillon.
+  // de l'ajout de la machine dans Tracteurs & Co.
   const startDate = machine.created_at.slice(0, 10);
 
   return plan

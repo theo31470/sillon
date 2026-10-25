@@ -59,7 +59,7 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
           <span className="text-ink">{sheet.title}</span>
         </nav>
 
-        <section className="overflow-hidden rounded-3xl border border-line bg-white shadow-[0_1px_0_rgba(29,36,32,0.04)]">
+        <section className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_1px_0_rgba(0,0,0,0.08)]">
           <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
             <div className="relative min-h-[260px] overflow-hidden bg-photo sm:min-h-[340px]">
               {sheet.cover_url ? (
@@ -70,7 +70,7 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
               ) : (
                 <MachineScene kind={kind} uid={sheet.id} label={`Illustration : ${MACHINE_KIND_LABELS[kind].toLowerCase()}`} className="hero-scene absolute inset-0 size-full" tall />
               )}
-              <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[13px] font-semibold text-brand-dark shadow-sm backdrop-blur">
+              <span className="absolute left-4 top-4 rounded-full bg-surface/90 px-3 py-1 text-[13px] font-semibold text-brand-dark shadow-sm backdrop-blur">
                 {MACHINE_KIND_LABELS[kind]}
               </span>
             </div>
@@ -130,9 +130,9 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
         />
 
         {webSources.length ? (
-          <section className="rounded-2xl border border-line bg-white p-6">
+          <section className="rounded-2xl border border-line bg-surface p-6">
             <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold"><Icon name="book" size={18} className="text-brand" /> Sources consultées</h2>
-            <p className="mb-3 text-sm text-muted">Fiche établie à partir des pages ci-dessous, puis relue par l’équipe Sillon. En cas de doute, le manuel du constructeur fait foi.</p>
+            <p className="mb-3 text-sm text-muted">Fiche établie à partir des pages ci-dessous, puis relue par l’équipe Tracteurs & Co. En cas de doute, le manuel du constructeur fait foi.</p>
             <ul className="grid gap-x-6 gap-y-1.5 text-sm [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
               {webSources.map((s) => (
                 <li key={s.url} className="min-w-0 truncate">
@@ -146,14 +146,14 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
         ) : null}
 
         <section className="no-print flex flex-wrap items-center gap-5 rounded-2xl bg-admin p-6 text-white sm:p-8">
-          <span className="flex size-12 flex-none items-center justify-center rounded-xl bg-[#26302a] text-[#d9b45a]">
+          <span className="flex size-12 flex-none items-center justify-center rounded-xl bg-admin-2 text-wheat">
             <Icon name="wrench" size={24} />
           </span>
           <div className="min-w-0 flex-[1_1_320px]">
             <h2 className="text-xl font-semibold">Une panne sur cette machine ?</h2>
-            <p className="text-[#b9c7bd]">Décrivez ce qui se passe : l’aide au diagnostic vous indique les causes possibles et quoi vérifier, dans l’ordre.</p>
+            <p className="text-panel-muted">Décrivez ce qui se passe : l’aide au diagnostic vous indique les causes possibles et quoi vérifier, dans l’ordre.</p>
           </div>
-          <Link href="/app/diagnostic" className="btn-light inline-flex min-h-12 items-center rounded-[10px] bg-white px-5 py-3 font-semibold text-brand-dark">
+          <Link href="/app/diagnostic" className={btn.primary}>
             Trouver la cause
           </Link>
         </section>

@@ -19,7 +19,7 @@ export async function pwnedCount(password: string, fetcher: typeof fetch = fetch
   const suffix = hash.slice(5);
   try {
     const res = await fetcher(`https://api.pwnedpasswords.com/range/${prefix}`, {
-      headers: { 'Add-Padding': 'true', 'User-Agent': 'Sillon (verification des mots de passe)' },
+      headers: { 'Add-Padding': 'true', 'User-Agent': 'Tracteurs & Co (verification des mots de passe)' },
       signal: AbortSignal.timeout(3000),
       cache: 'no-store',
     });

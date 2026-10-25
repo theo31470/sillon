@@ -5,12 +5,12 @@
 insert into public.blog_posts (slug, title, excerpt, content_md, category, author_name, seo_description, status, published_at)
 values (
   'bienvenue-sur-sillon',
-  'Bienvenue sur le blog Sillon',
+  'Bienvenue sur le blog Tracteurs & Co',
   'Des conseils pratiques pour votre matériel : entretien, réglementation, coûts et occasion.',
-  E'Ce blog accompagne l''application Sillon.\n\n## Ce que vous trouverez ici\n\n- des guides réglementaires clairs ;\n- des conseils d''entretien du matériel ;\n- des repères pour calculer le coût de revient de vos machines ;\n- des méthodes de gestion simples.\n\nBonne lecture !',
+  E'Ce blog accompagne l''application Tracteurs & Co.\n\n## Ce que vous trouverez ici\n\n- des guides réglementaires clairs ;\n- des conseils d''entretien du matériel ;\n- des repères pour calculer le coût de revient de vos machines ;\n- des méthodes de gestion simples.\n\nBonne lecture !',
   'gestion',
-  'L''équipe Sillon',
-  'Le blog Sillon : conseils pratiques pour les exploitations agricoles.',
+  'L''équipe Tracteurs & Co',
+  'Le blog Tracteurs & Co : conseils pratiques pour les exploitations agricoles.',
   'published',
   now()
 )

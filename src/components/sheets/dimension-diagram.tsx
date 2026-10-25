@@ -12,10 +12,10 @@ export function DimensionDiagram({ dims }: { dims: Dimensions }) {
   const top = oy + 24;
   const rearAxle = ox + 88;
   const frontAxle = ox + 258;
-  const ink = '#5b6660';
+  const ink = 'var(--art-ink)';
 
   const arrow = (x1: number, y1: number, x2: number, y2: number) => (
-    <g stroke={ink} strokeWidth="1.3" fill="none">
+    <g strokeWidth="1.3" fill="none" style={{ stroke: ink }}>
       <path d={`M${x1} ${y1}L${x2} ${y2}`} />
       {x1 === x2 ? (
         <>
@@ -47,15 +47,15 @@ export function DimensionDiagram({ dims }: { dims: Dimensions }) {
     <svg viewBox="0 0 440 280" className="h-auto w-full" role="img" aria-label="Schéma des dimensions de la machine">
       <defs>
         <pattern id="grid-plan" width="20" height="20" patternUnits="userSpaceOnUse">
-          <path d="M20 0H0V20" fill="none" stroke="#e3e8df" strokeWidth="1" />
+          <path d="M20 0H0V20" fill="none" strokeWidth="1" style={{ stroke: 'var(--art-grid)' }} />
         </pattern>
       </defs>
       <rect width="440" height="280" fill="url(#grid-plan)" />
-      <path d={`M20 ${ground}H420`} stroke="#b7a37d" strokeWidth="2" />
+      <path d={`M20 ${ground}H420`} strokeWidth="2" style={{ stroke: 'var(--art-ground-line)' }} />
       <g transform={`translate(${ox} ${oy})`} opacity="0.92">
         <Tracteur />
       </g>
-      <g stroke={ink} strokeWidth="1" strokeDasharray="3 3">
+      <g strokeWidth="1" strokeDasharray="3 3" style={{ stroke: ink }}>
         {dims.length ? <path d={`M${back} ${ground}V${ground + 52}M${front} ${ground}V${ground + 52}`} /> : null}
         {dims.wheelbase ? <path d={`M${rearAxle} ${oy + 124}V${ground + 28}M${frontAxle} ${oy + 142}V${ground + 28}`} /> : null}
         {dims.height ? <path d={`M${ox + 160} ${top}H${front + 40}`} /> : null}

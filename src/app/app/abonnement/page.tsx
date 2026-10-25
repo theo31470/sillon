@@ -63,7 +63,7 @@ export default async function SubscriptionPage(props: PageProps<'/app/abonnement
               <button type="submit" className={btn.secondary}>Gérer mon abonnement et mes factures</button>
             </form>
           ) : null}
-          <p className="mt-4 text-sm text-muted">Paiement sécurisé par Stripe. Vos numéros de carte ne passent jamais par Sillon.</p>
+          <p className="mt-4 text-sm text-muted">Paiement sécurisé par Stripe. Vos numéros de carte ne passent jamais par Tracteurs & Co.</p>
         </Card>
 
         <Card className="min-w-0 flex-[1_1_360px]">
@@ -71,7 +71,7 @@ export default async function SubscriptionPage(props: PageProps<'/app/abonnement
           {(payments ?? []).length === 0 ? (
             <p className="text-muted">Aucun paiement pour le moment.</p>
           ) : (
-            <ul className="divide-y divide-[#eef0eb]">
+            <ul className="divide-y divide-line-soft">
               {(payments as Payment[]).map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-3 py-3">
                   <span>{formatDate(p.created_at)}</span>

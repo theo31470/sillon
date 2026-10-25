@@ -46,7 +46,7 @@ export function MfaFlow({ next, force = false }: { next: string; force?: boolean
       for (const f of factors.data.all.filter((f) => f.status === 'unverified')) {
         await supabase.auth.mfa.unenroll({ factorId: f.id });
       }
-      const enrolled = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Sillon' });
+      const enrolled = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Tracteurs & Co' });
       if (enrolled.error) {
         setStep({ kind: 'error', message: 'Impossible de préparer la double authentification. Réessayez.' });
         return;

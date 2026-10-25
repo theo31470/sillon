@@ -40,7 +40,7 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
 
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
         {(['generating', 'review', 'published', 'rejected'] as const).map((s) => (
-          <Link key={s} href={`/admin/fiches?statut=${s}`} className={`rounded-xl border p-4 text-ink ${s === 'review' && counts[s] ? 'border-warn-line bg-warn-soft' : 'border-line bg-white'} ${filter === s ? 'ring-2 ring-brand' : ''}`}>
+          <Link key={s} href={`/admin/fiches?statut=${s}`} className={`rounded-xl border p-4 text-ink ${s === 'review' && counts[s] ? 'border-warn-line bg-warn-soft' : 'border-line bg-surface'} ${filter === s ? 'ring-2 ring-brand' : ''}`}>
             <p className="text-sm text-muted">{SHEET_STATUSES[s]}</p>
             <p className="text-2xl font-bold">{counts[s] ?? 0}</p>
           </Link>
@@ -53,7 +53,7 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
           <NewSheetForm />
         </Card>
 
-        <section className="min-w-0 flex-[2_1_560px] overflow-x-auto rounded-2xl border border-line bg-white">
+        <section className="min-w-0 flex-[2_1_560px] overflow-x-auto rounded-2xl border border-line bg-surface">
           <div className="flex items-center justify-between px-5 pt-5">
             <h2 className="text-lg font-semibold">{filter ? SHEET_STATUSES[filter] : 'Toutes les fiches'}</h2>
             {filter ? <Link href="/admin/fiches" className="text-sm font-semibold text-brand">Tout afficher</Link> : null}
@@ -69,11 +69,11 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
                 const pending = countPendingReview(parseSheetContent(s.content));
                 return (
                   <tr key={s.id}>
-                    <td className="border-b border-[#eef0eb] px-4 py-3 font-semibold"><Link href={`/admin/fiches/${s.id}`} className="text-ink hover:text-brand">{s.title}</Link></td>
-                    <td className="border-b border-[#eef0eb] px-4 py-3">{SHEET_CATEGORIES[s.category]}</td>
-                    <td className="border-b border-[#eef0eb] px-4 py-3"><Badge tone={tone[s.status]}>{SHEET_STATUSES[s.status]}</Badge></td>
-                    <td className="border-b border-[#eef0eb] px-4 py-3">{pending ? <span className="font-semibold text-warn">{pending}</span> : '—'}</td>
-                    <td className="border-b border-[#eef0eb] px-4 py-3">{formatDate(s.updated_at)}</td>
+                    <td className="border-b border-line-soft px-4 py-3 font-semibold"><Link href={`/admin/fiches/${s.id}`} className="text-ink hover:text-brand">{s.title}</Link></td>
+                    <td className="border-b border-line-soft px-4 py-3">{SHEET_CATEGORIES[s.category]}</td>
+                    <td className="border-b border-line-soft px-4 py-3"><Badge tone={tone[s.status]}>{SHEET_STATUSES[s.status]}</Badge></td>
+                    <td className="border-b border-line-soft px-4 py-3">{pending ? <span className="font-semibold text-warn">{pending}</span> : '—'}</td>
+                    <td className="border-b border-line-soft px-4 py-3">{formatDate(s.updated_at)}</td>
                   </tr>
                 );
               })}

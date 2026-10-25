@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { CheckIcon, btn } from '@/components/ui';
+import { CheckIcon, Logo, btn } from '@/components/ui';
 import { PricingCards } from '@/components/pricing-cards';
 import { LatestPosts } from '@/components/latest-posts';
 import { MachineScene, FurrowBand } from '@/components/sheets/machine-art';
@@ -72,19 +72,19 @@ export default async function HomePage() {
           </div>
 
           <div className="relative min-w-0 flex-[1_1_480px]">
-            <div className="overflow-hidden rounded-3xl border border-line shadow-[0_30px_60px_-40px_rgba(29,36,32,0.5)]">
+            <div className="overflow-hidden rounded-3xl border border-line shadow-[0_30px_60px_-40px_rgba(0,0,0,0.60)]">
               <MachineScene kind="tracteur" uid="accueil" tall label="Illustration : tracteur dans un champ labouré" className="hero-scene block h-[420px] w-full" />
             </div>
-            <div className="figure absolute -left-2 top-8 w-64 max-w-[78%] rounded-2xl bg-white p-4 shadow-[0_16px_36px_rgba(29,36,32,0.18)] sm:-left-6" style={{ animationDelay: '350ms' }}>
+            <div className="figure absolute -left-2 top-8 w-64 max-w-[78%] rounded-2xl bg-surface p-4 shadow-[0_16px_36px_rgba(0,0,0,0.36)] sm:-left-6" style={{ animationDelay: '350ms' }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">Prochain entretien</p>
               <p className="mb-2 font-semibold">Vidange moteur</p>
-              <div className="mb-1.5 h-2 overflow-hidden rounded-full bg-[#eef0eb]"><div className="hour-fill h-full w-[82%] rounded-full bg-[#d99a2b]" /></div>
+              <div className="mb-1.5 h-2 overflow-hidden rounded-full bg-line"><div className="hour-fill h-full w-[82%] rounded-full bg-wheat" /></div>
               <p className="text-sm font-semibold text-warn">dans 42 h ou 3 semaines</p>
             </div>
-            <div className="figure absolute -right-2 bottom-8 w-60 max-w-[75%] rounded-2xl bg-admin p-4 text-white shadow-[0_16px_36px_rgba(29,36,32,0.3)] sm:-right-6" style={{ animationDelay: '550ms' }}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#9fb3a4]">Coût de revient</p>
-              <p className="text-3xl font-bold tabular-nums">{eur(exampleTotal)} €<span className="text-base font-medium text-[#b9c7bd]"> / h</span></p>
-              <p className="text-sm text-[#b9c7bd]">Tracteur 180 ch · exemple</p>
+            <div className="figure absolute -right-2 bottom-8 w-60 max-w-[75%] rounded-2xl bg-admin p-4 text-white shadow-[0_16px_36px_rgba(0,0,0,0.60)] sm:-right-6" style={{ animationDelay: '550ms' }}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-panel-muted">Coût de revient</p>
+              <p className="text-3xl font-bold tabular-nums">{eur(exampleTotal)} €<span className="text-base font-medium text-panel-muted"> / h</span></p>
+              <p className="text-sm text-panel-muted">Tracteur 180 ch · exemple</p>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default async function HomePage() {
         <div className="mx-auto grid max-w-6xl gap-5 px-6 py-12 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
           {audiences.map((a) => (
             <div key={a.title} className="reveal flex items-start gap-3.5">
-              <span className="flex size-11 flex-none items-center justify-center rounded-xl bg-white text-brand shadow-sm"><Icon name={a.icon} size={22} /></span>
+              <span className="flex size-11 flex-none items-center justify-center rounded-xl bg-surface text-brand shadow-sm"><Icon name={a.icon} size={22} /></span>
               <div>
                 <h2 className="font-semibold">{a.title}</h2>
                 <p className="text-[15px] text-muted">{a.text}</p>
@@ -112,8 +112,8 @@ export default async function HomePage() {
         <p className="mx-auto mb-12 max-w-xl text-center text-muted">Moins de pannes, des entretiens faits à temps, et enfin le vrai coût de chaque machine.</p>
         <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
           {features.map((f) => (
-            <article key={f.title} className="lift-card reveal group rounded-2xl border border-line bg-white p-6">
-              <span className="mb-4 flex size-12 items-center justify-center rounded-xl bg-brand-tint text-brand transition-colors duration-300 group-hover:bg-brand group-hover:text-white">
+            <article key={f.title} className="lift-card reveal group rounded-2xl border border-line bg-surface p-6">
+              <span className="mb-4 flex size-12 items-center justify-center rounded-xl bg-brand-tint text-brand transition-colors duration-300 group-hover:bg-brand group-hover:text-on-brand">
                 <Icon name={f.icon} size={24} />
               </span>
               <h3 className="mb-2 text-lg font-semibold">{f.title}</h3>
@@ -127,18 +127,18 @@ export default async function HomePage() {
       <section className="bg-admin text-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-14 px-6 py-20">
           <div className="min-w-0 flex-[1_1_420px]">
-            <p className="mb-2 font-semibold text-[#d9b45a]">Coût de revient</p>
+            <p className="mb-2 font-semibold text-wheat">Coût de revient</p>
             <h2 className="mb-4 text-[clamp(30px,3.4vw,40px)] font-bold tracking-tight">Combien vous coûte vraiment une heure de tracteur ?</h2>
-            <p className="mb-6 text-[#b9c7bd]">
-              Sillon additionne l’amortissement, les frais financiers, l’assurance, le gazole, l’entretien et les réparations, puis les rapporte à vos heures réelles de travail, d’après vos relevés de compteur.
+            <p className="mb-6 text-panel-muted">
+              Tracteurs & Co additionne l’amortissement, les frais financiers, l’assurance, le gazole, l’entretien et les réparations, puis les rapporte à vos heures réelles de travail, d’après vos relevés de compteur.
             </p>
-            <ul className="flex flex-col gap-3 text-[#dde6de]">
+            <ul className="flex flex-col gap-3 text-panel">
               {['Comparez vos machines entre elles', 'Fixez un tarif juste en CUMA ou en prestation', 'Voyez votre marge si vous facturez à l’heure'].map((t) => (
-                <li key={t} className="flex gap-2.5"><CheckIcon className="mt-1 flex-none text-[#9fd3a3]" />{t}</li>
+                <li key={t} className="flex gap-2.5"><CheckIcon className="mt-1 flex-none text-success" />{t}</li>
               ))}
             </ul>
           </div>
-          <div className="reveal min-w-0 flex-[1_1_420px] rounded-3xl bg-white p-6 text-ink shadow-xl">
+          <div className="reveal min-w-0 flex-[1_1_420px] rounded-3xl bg-surface p-6 text-ink shadow-xl">
             <div className="mb-5 flex items-end justify-between gap-3">
               <div>
                 <p className="text-sm text-muted">Exemple · tracteur 180 ch, 700 h / an</p>
@@ -167,11 +167,11 @@ export default async function HomePage() {
         <ol className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
           {[
             ['Ajoutez vos machines', 'Choisissez le modèle dans la base : le plan d’entretien est repris automatiquement.'],
-            ['Relevez les compteurs', 'De temps en temps, en dix secondes. Sillon calcule vos heures de travail.'],
+            ['Relevez les compteurs', 'De temps en temps, en dix secondes. Tracteurs & Co calcule vos heures de travail.'],
             ['Suivez entretiens et coûts', 'Rappels avant chaque échéance, dépenses notées, coût de revient à jour.'],
           ].map(([title, text], i) => (
-            <li key={title} className="reveal group flex gap-4 rounded-2xl border border-line bg-white p-6">
-              <span className="flex size-11 flex-none items-center justify-center rounded-full bg-brand-soft text-lg font-bold text-brand-dark transition-colors duration-300 group-hover:bg-brand group-hover:text-white">{i + 1}</span>
+            <li key={title} className="reveal group flex gap-4 rounded-2xl border border-line bg-surface p-6">
+              <span className="flex size-11 flex-none items-center justify-center rounded-full bg-brand-soft text-lg font-bold text-brand-dark transition-colors duration-300 group-hover:bg-brand group-hover:text-on-brand">{i + 1}</span>
               <div>
                 <h3 className="mb-1 text-lg font-semibold">{title}</h3>
                 <p className="text-muted">{text}</p>
@@ -197,7 +197,7 @@ export default async function HomePage() {
               {sheets.map((s) => {
                 const figures = keyFigures(parseSheetContent(s.content), 2);
                 return (
-                  <Link key={s.id} href={`/fiches/${s.slug}`} transitionTypes={['nav-forward']} className="sheet-card group flex flex-col overflow-hidden rounded-2xl border border-line bg-white text-ink">
+                  <Link key={s.id} href={`/fiches/${s.slug}`} transitionTypes={['nav-forward']} className="sheet-card group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-ink">
                     <div className="relative h-40 overflow-hidden bg-photo">
                       {s.cover_url ? (
                         <Image src={s.cover_url} alt="" fill sizes="320px" className="object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -242,13 +242,16 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="bg-brand text-white">
+      <section className="relative overflow-hidden bg-admin text-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-6 py-16">
-          <div>
-            <h2 className="mb-1.5 text-[clamp(26px,3vw,34px)] font-bold tracking-tight">Mettez votre parc matériel au propre</h2>
-            <p className="text-[#d7e8d5]">Gratuit jusqu’à {FREE_MACHINE_LIMIT} machines, sans carte bancaire.</p>
+          <div className="flex items-center gap-6">
+            <Logo variant="embleme" tone="dark" height={96} className="hidden flex-none sm:inline-flex" />
+            <div>
+              <h2 className="mb-1.5 text-[clamp(26px,3vw,34px)] font-bold tracking-tight">Mettez votre parc matériel au propre</h2>
+              <p className="text-panel-muted">Gratuit jusqu’à {FREE_MACHINE_LIMIT} machines, sans carte bancaire.</p>
+            </div>
           </div>
-          <Link href="/inscription" className="btn-light inline-flex min-h-12 items-center rounded-[10px] bg-white px-7 py-3 font-semibold text-brand-dark">
+          <Link href="/inscription" className={btn.primary}>
             Créer mon compte
           </Link>
         </div>

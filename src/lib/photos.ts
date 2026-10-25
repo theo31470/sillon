@@ -20,7 +20,7 @@ import type { PhotoCredit } from '@/lib/types';
 
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 // Wikimedia demande un User-Agent qui identifie l'application.
-const UA = `SillonBot/1.0 (${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://sillon-five.vercel.app'}; fiches techniques agricoles)`;
+const UA = `TracteursEtCoBot/1.0 (${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://sillon-five.vercel.app'}; fiches techniques agricoles)`;
 
 /** Licences acceptées (Commons n'héberge pas de licences « NC » ou « ND », on vérifie quand même). */
 function acceptableLicense(name: string) {

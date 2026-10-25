@@ -16,15 +16,15 @@ export default async function MfaPage(props: PageProps<'/securite/2fa'>) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col items-center bg-admin px-6 py-12">
-      <Link href="/" className="mb-8 flex items-center gap-3" aria-label="Sillon, accueil">
-        <Logo light />
-        <span className="rounded-full bg-[#3a4a3f] px-2.5 py-1 text-xs font-semibold text-[#dde6de]">Sécurité</span>
+      <Link href="/" className="mb-8 flex flex-col items-center gap-3" aria-label="Tracteurs & Co, accueil">
+        <Logo variant="vertical" tone="dark" height={110} />
+        <span className="rounded-full bg-admin-2 px-2.5 py-1 text-xs font-semibold text-panel">Sécurité</span>
       </Link>
-      <main className="w-full max-w-md rounded-2xl bg-white p-8">
+      <main className="w-full max-w-md rounded-2xl bg-surface p-8">
         <h1 className="mb-4 text-2xl font-bold tracking-tight">Double authentification</h1>
         <MfaFlow next={next} force={forcer === '1'} />
       </main>
-      <ul className="mt-6 flex max-w-md flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[#dde6de]">
+      <ul className="mt-6 flex max-w-md flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-panel">
         <li>Obligatoire pour l’espace administrateur</li>
         <li>Chaque validation est enregistrée</li>
       </ul>

@@ -21,7 +21,7 @@ export function client() {
 
 export type PdfSource = { name: string; base64: string };
 
-const SHEET_SYSTEM = `Tu es rédacteur technique pour Sillon, un service destiné aux agriculteurs français.
+const SHEET_SYSTEM = `Tu es rédacteur technique pour Tracteurs & Co, un service destiné aux agriculteurs français.
 Tu rédiges des fiches techniques en français, claires et factuelles.
 
 Règles impératives :

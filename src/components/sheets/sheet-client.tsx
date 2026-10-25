@@ -25,7 +25,7 @@ export function SheetToc({ items, printable = true }: { items: TocItem[]; printa
   return (
     <nav
       aria-label="Sommaire de la fiche"
-      className="no-print -mx-6 flex gap-2 overflow-x-auto border-b border-line bg-ground/90 px-6 py-3 backdrop-blur lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:rounded-2xl lg:border lg:bg-white lg:p-3"
+      className="no-print -mx-6 flex gap-2 overflow-x-auto border-b border-line bg-ground/90 px-6 py-3 backdrop-blur lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:rounded-2xl lg:border lg:bg-surface lg:p-3"
     >
       <p className="hidden px-3 pb-2 pt-1 text-xs font-semibold uppercase tracking-wider text-muted lg:block">Sur cette fiche</p>
       {items.map((item) =>
@@ -44,11 +44,11 @@ export function SheetToc({ items, printable = true }: { items: TocItem[]; printa
             href={`#${item.id}`}
             aria-current={active === item.id ? 'true' : undefined}
             className={`toc-link flex flex-none items-center justify-between gap-3 whitespace-nowrap rounded-full px-4 py-2 text-[15px] font-medium transition-colors lg:rounded-lg lg:px-3 ${
-              active === item.id ? 'bg-brand text-white' : 'bg-white text-ink hover:bg-brand-tint hover:text-brand-dark lg:bg-transparent'
+              active === item.id ? 'bg-brand text-on-brand' : 'bg-surface text-ink hover:bg-brand-tint hover:text-brand-dark lg:bg-transparent'
             }`}
           >
             {item.label}
-            <span className={`rounded-full px-2 text-xs font-semibold ${active === item.id ? 'bg-white/20' : 'bg-ground text-muted'}`}>{item.count}</span>
+            <span className={`rounded-full px-2 text-xs font-semibold ${active === item.id ? 'bg-surface/20' : 'bg-ground text-muted'}`}>{item.count}</span>
           </a>
         ),
       )}

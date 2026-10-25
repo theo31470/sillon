@@ -59,7 +59,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
   if (!sheet) notFound();
   const content = parseSheetContent(sheet.content);
   const pending = countPendingReview(content);
-  const row = 'grid items-center gap-3 border-b border-[#eef0eb] px-4 py-2.5 text-sm [grid-template-columns:minmax(120px,180px)_1fr_auto_auto] last:border-0';
+  const row = 'grid items-center gap-3 border-b border-line-soft px-4 py-2.5 text-sm [grid-template-columns:minmax(120px,180px)_1fr_auto_auto] last:border-0';
   const field = 'min-w-0 rounded-md border border-line px-2 py-1.5';
 
   return (
@@ -99,8 +99,8 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
           </Card>
 
           {content.specs.map((g, gi) => (
-            <section key={g.group} className="overflow-hidden rounded-2xl border border-line bg-white">
-              <h2 className="border-b border-line bg-[#fafbf9] px-4 py-2.5 text-sm font-semibold">Caractéristiques · {g.group}</h2>
+            <section key={g.group} className="overflow-hidden rounded-2xl border border-line bg-surface">
+              <h2 className="border-b border-line bg-surface-2 px-4 py-2.5 text-sm font-semibold">Caractéristiques · {g.group}</h2>
               {g.items.map((it, ii) => (
                 <div key={it.label} className={`${row} ${it.needs_review ? 'bg-warn-soft' : ''}`}>
                   <span className="text-muted">{it.label}</span>
@@ -113,10 +113,10 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
           ))}
 
           {content.maintenance.length ? (
-            <section className="overflow-hidden rounded-2xl border border-line bg-white">
-              <h2 className="border-b border-line bg-[#fafbf9] px-4 py-2.5 text-sm font-semibold">Plan d’entretien</h2>
+            <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+              <h2 className="border-b border-line bg-surface-2 px-4 py-2.5 text-sm font-semibold">Plan d’entretien</h2>
               {content.maintenance.map((m, i) => (
-                <div key={m.operation} className={`flex flex-col gap-2 border-b border-[#eef0eb] px-4 py-3 text-sm last:border-0 ${m.needs_review ? 'bg-warn-soft' : ''}`}>
+                <div key={m.operation} className={`flex flex-col gap-2 border-b border-line-soft px-4 py-3 text-sm last:border-0 ${m.needs_review ? 'bg-warn-soft' : ''}`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <strong>{m.operation} <OriginSelect name={`maintenance.${i}.origin`} value={m.origin} /></strong>
                     <span className="flex items-center gap-3"><SourceChip source={m.source} needsReview={m.needs_review} /><Verified name={`maintenance.${i}.ok`} needsReview={m.needs_review} sourced={Boolean(m.source)} /></span>
@@ -133,10 +133,10 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
           ) : null}
 
           {content.faults.length ? (
-            <section className="overflow-hidden rounded-2xl border border-line bg-white">
-              <h2 className="border-b border-line bg-[#fafbf9] px-4 py-2.5 text-sm font-semibold">Pannes fréquentes</h2>
+            <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+              <h2 className="border-b border-line bg-surface-2 px-4 py-2.5 text-sm font-semibold">Pannes fréquentes</h2>
               {content.faults.map((f, i) => (
-                <div key={f.symptom} className={`flex flex-col gap-2 border-b border-[#eef0eb] px-4 py-3 text-sm last:border-0 ${f.needs_review ? 'bg-warn-soft' : ''}`}>
+                <div key={f.symptom} className={`flex flex-col gap-2 border-b border-line-soft px-4 py-3 text-sm last:border-0 ${f.needs_review ? 'bg-warn-soft' : ''}`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <strong>{f.symptom} <OriginSelect name={`faults.${i}.origin`} value={f.origin} /></strong>
                     <span className="flex items-center gap-3">
@@ -158,8 +158,8 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
           ) : null}
 
           {content.parts.length ? (
-            <section className="overflow-hidden rounded-2xl border border-line bg-white">
-              <h2 className="border-b border-line bg-[#fafbf9] px-4 py-2.5 text-sm font-semibold">Pièces et références</h2>
+            <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+              <h2 className="border-b border-line bg-surface-2 px-4 py-2.5 text-sm font-semibold">Pièces et références</h2>
               {content.parts.map((p, i) => (
                 <div key={p.name} className={`${row} ${p.needs_review ? 'bg-warn-soft' : ''}`}>
                   <span className="text-muted">{p.name}</span>
@@ -174,7 +174,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
             </section>
           ) : null}
 
-          <div className="sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-lg">
+          <div className="sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 shadow-lg">
             <p className="text-sm text-muted">Cochez « Vérifié » après avoir contrôlé chaque valeur dans la source.</p>
             <CheckSourced formId="review" />
             <SubmitButton pendingLabel="Enregistrement…">Enregistrer la relecture</SubmitButton>
@@ -225,7 +225,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
                 <Field label="Lien vers la source (facultatif)" htmlFor="source_url"><Input id="source_url" name="source_url" type="url" maxLength={500} /></Field>
                 <label className="flex gap-2 text-sm">
                   <input type="checkbox" name="rights" required className="mt-0.5 size-4 flex-none accent-brand" />
-                  J’ai l’autorisation de publier cette photo sur Sillon (citer la source ne suffit pas).
+                  J’ai l’autorisation de publier cette photo sur Tracteurs & Co (citer la source ne suffit pas).
                 </label>
                 <SubmitButton variant="secondary" pendingLabel="Envoi…">Enregistrer la photo</SubmitButton>
               </ActionForm>
@@ -251,7 +251,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
             <h2 className="mb-2 text-lg font-semibold">Sources</h2>
             <ul className="text-sm">
               {(sheet.sources ?? []).map((s) => (
-                <li key={s.path ?? s.url ?? s.name} className="border-b border-[#eef0eb] py-2 last:border-0">
+                <li key={s.path ?? s.url ?? s.name} className="border-b border-line-soft py-2 last:border-0">
                   {s.url && /^https?:\/\//.test(s.url) ? (
                     <a href={s.url} target="_blank" rel="noopener noreferrer" className="break-words text-brand hover:text-brand-dark">{s.name} ↗</a>
                   ) : (

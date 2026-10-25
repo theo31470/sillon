@@ -22,12 +22,12 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
   const sheets = await listPublishedSheets({ category, search });
 
   const pill = (active: boolean) =>
-    `rounded-full px-4 py-2 font-medium transition-all duration-200 ${active ? 'bg-brand text-white shadow-[0_6px_16px_-8px_rgba(47,109,58,0.8)]' : 'border border-field bg-white text-ink hover:-translate-y-0.5 hover:border-brand hover:text-brand-dark'}`;
+    `rounded-full px-4 py-2 font-medium transition-all duration-200 ${active ? 'bg-brand text-on-brand shadow-[0_6px_16px_-8px_color-mix(in_srgb,var(--color-brand)_80%,transparent)]' : 'border border-field bg-surface text-ink hover:-translate-y-0.5 hover:border-brand hover:text-brand-dark'}`;
 
   return (
     <div className="bg-ground">
       <div className="mx-auto flex max-w-6xl flex-col gap-7 px-6 py-10">
-        <section className="relative overflow-hidden rounded-3xl border border-line bg-white">
+        <section className="relative overflow-hidden rounded-3xl border border-line bg-surface">
           <div className="flex flex-wrap items-center gap-8 p-8 pb-10">
             <div className="min-w-0 flex-[1_1_460px]">
               <p className="mb-2 text-sm font-bold uppercase tracking-[0.18em] text-brand">Base technique</p>
@@ -65,7 +65,7 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
               </p>
             ) : null}
             {sheets.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-field bg-white p-10 text-center text-muted">
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-field bg-surface p-10 text-center text-muted">
                 <Icon name="blade" size={32} className="text-wheat" />
                 Aucune fiche publiée pour le moment dans cette catégorie.
               </div>
@@ -79,7 +79,7 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
                       key={s.id}
                       href={`/fiches/${s.slug}`}
                       transitionTypes={['nav-forward']}
-                      className="sheet-card reveal group flex flex-col overflow-hidden rounded-2xl border border-line bg-white text-ink"
+                      className="sheet-card reveal group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-ink"
                       style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}
                     >
                       <div className="relative h-44 overflow-hidden bg-photo">
@@ -91,7 +91,7 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
                         ) : (
                           <MachineScene kind={kind} uid={s.id} label="" className="size-full" />
                         )}
-                        <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-brand-dark backdrop-blur">
+                        <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-semibold text-brand-dark backdrop-blur">
                           {MACHINE_KIND_LABELS[kind]}
                         </span>
                       </div>
@@ -121,14 +121,14 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
           </section>
           <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
             <section className="rounded-2xl bg-admin p-6 text-white">
-              <span className="mb-3 flex size-11 items-center justify-center rounded-xl bg-[#26302a] text-[#d9b45a]">
+              <span className="mb-3 flex size-11 items-center justify-center rounded-xl bg-admin-2 text-wheat">
                 <Icon name="wrench" size={22} />
               </span>
               <h2 className="mb-2 text-lg font-semibold">Une machine en panne ?</h2>
-              <p className="mb-4 text-[15px] text-[#b9c7bd]">Décrivez ce qui se passe : l’aide au diagnostic vous indique les causes possibles et quoi vérifier.</p>
-              <Link href="/app/diagnostic" className="btn-light inline-flex min-h-12 items-center rounded-[10px] bg-white px-5 py-3 font-semibold text-brand-dark">Trouver la cause</Link>
+              <p className="mb-4 text-[15px] text-panel-muted">Décrivez ce qui se passe : l’aide au diagnostic vous indique les causes possibles et quoi vérifier.</p>
+              <Link href="/app/diagnostic" className={btn.primary}>Trouver la cause</Link>
             </section>
-            <section className="rounded-2xl border border-line bg-white p-6">
+            <section className="rounded-2xl border border-line bg-surface p-6">
               <h2 className="mb-3 text-lg font-semibold">Ce que contient une fiche</h2>
               <ul className="flex flex-col gap-2.5 text-[15px]">
                 {[

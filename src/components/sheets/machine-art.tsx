@@ -5,17 +5,18 @@ import type { MachineKind } from '@/lib/sheets/insights';
  * un champ labouré avec la silhouette du type de machine.
  */
 
+// Couleurs de la charte Tracteurs & Co : carrosserie terre cuite, jantes beige.
 const C = {
-  body: '#2f6d3a',
-  bodyDark: '#21512a',
-  rim: '#d9b45a',
-  rimDark: '#b38a2c',
-  tire: '#26302a',
-  tread: '#161c18',
-  steel: '#1d2420',
-  glass: '#d4e6ec',
-  glassHi: '#eef6f8',
-  light: '#e8a33a',
+  body: '#e0875a',
+  bodyDark: '#b9653c',
+  rim: '#d9cfc0',
+  rimDark: '#a99d8c',
+  tire: '#1f1c19',
+  tread: '#0f0e0c',
+  steel: '#2a2622',
+  glass: '#b9d0d8',
+  glassHi: '#e6f0f3',
+  light: '#f0b860',
 };
 
 function Wheel({ cx, cy, r, rim }: { cx: number; cy: number; r: number; rim: number }) {
@@ -37,9 +38,9 @@ export function Tracteur() {
       <path d="M22 142 30 128" stroke={C.steel} strokeWidth="5" strokeLinecap="round" />
       <path d="M118 120h150v12H118z" fill={C.steel} />
       <path d="M128 84h142c10 0 18 7 18 17v21H128z" fill={C.body} />
-      <path d="M136 92h128" stroke="#3f8a4b" strokeWidth="3" strokeLinecap="round" />
+      <path d="M136 92h128" stroke="#f0a57e" strokeWidth="3" strokeLinecap="round" />
       <path d="M280 92h7v26h-7z" fill={C.bodyDark} />
-      <path d="M282 97h4M282 103h4M282 109h4" stroke="#163a1d" strokeWidth="1.5" />
+      <path d="M282 97h4M282 103h4M282 109h4" stroke="#8a4a2b" strokeWidth="1.5" />
       <rect x="288" y="104" width="14" height="18" rx="2" fill={C.steel} />
       <path d="M196 54h6v32h-6z" fill={C.steel} />
       <path d="M194 52h10v4h-10z" fill={C.steel} />
@@ -68,7 +69,7 @@ function Moissonneuse() {
       <path d="M290 92v40M270 112h40M276 98l28 28M304 98l-28 28" stroke={C.bodyDark} strokeWidth="2" />
       <path d="M248 112h22" stroke={C.steel} strokeWidth="3" />
       <path d="M40 70h192v58H40z" fill={C.body} />
-      <path d="M48 82h120" stroke="#3f8a4b" strokeWidth="3" strokeLinecap="round" />
+      <path d="M48 82h120" stroke="#f0a57e" strokeWidth="3" strokeLinecap="round" />
       <path d="M68 46h122l12 24H56z" fill={C.bodyDark} />
       <path d="M26 58h140v7H26z" fill={C.steel} />
       <path d="M26 58v22" stroke={C.steel} strokeWidth="7" strokeLinecap="round" />
@@ -88,7 +89,7 @@ function Motoculteur() {
   return (
     <g>
       <path d="M176 100 84 52" stroke={C.steel} strokeWidth="8" strokeLinecap="round" />
-      <path d="M86 53 62 44" stroke="#3a463e" strokeWidth="11" strokeLinecap="round" />
+      <path d="M86 53 62 44" stroke="#3a3530" strokeWidth="11" strokeLinecap="round" />
       <path d="M120 72l-10 14" stroke={C.steel} strokeWidth="4" strokeLinecap="round" />
       <path d="M180 104h22v36h-22z" fill={C.steel} />
       <path d="M166 70h60c4 0 6 2 6 6v34h-72V76c0-4 2-6 6-6z" fill={C.body} />
@@ -106,8 +107,8 @@ function Pulverisateur() {
     <g>
       <path d="M62 128 12 142" stroke={C.body} strokeWidth="8" strokeLinecap="round" />
       <path d="M58 122h200v12H58z" fill={C.body} />
-      <rect x="70" y="56" width="170" height="70" rx="32" fill="#f4f2ea" stroke="#c9cfc6" strokeWidth="2" />
-      <path d="M96 70v44M96 80h6M96 92h6M96 104h6" stroke="#b9c1b5" strokeWidth="2" />
+      <rect x="70" y="56" width="170" height="70" rx="32" fill="#efe9df" stroke="#c9c1b5" strokeWidth="2" />
+      <path d="M96 70v44M96 80h6M96 92h6M96 104h6" stroke="#c9c1b5" strokeWidth="2" />
       <path d="M140 50h22v8h-22z" fill={C.bodyDark} />
       <path d="M244 46h14v90h-14z" fill={C.bodyDark} />
       <path d="M244 140h16M248 140v6M256 140v6" stroke={C.steel} strokeWidth="2" />
@@ -128,7 +129,7 @@ function Outil() {
           <g key={x}>
             <path d={`M${x} ${y}l8 46`} stroke={C.steel} strokeWidth="7" strokeLinecap="round" />
             <path d={`M${x - 4} ${y + 30}c18 0 34 8 40 26l-32 6c-6-10-8-20-8-32z`} fill={C.bodyDark} />
-            <path d={`M${x + 4} ${y + 56}l34 6`} stroke="#9aa39c" strokeWidth="4" strokeLinecap="round" />
+            <path d={`M${x + 4} ${y + 56}l34 6`} stroke="#a99d8c" strokeWidth="4" strokeLinecap="round" />
           </g>
         );
       })}
@@ -170,27 +171,27 @@ export function MachineScene({
     <svg viewBox={tall ? '0 -90 480 390' : '0 0 480 300'} preserveAspectRatio="xMidYMax slice" role="img" aria-label={label} className={className}>
       <defs>
         <linearGradient id={sky} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#e6f0f2" />
-          <stop offset="1" stopColor="#f7f4ea" />
+          <stop offset="0" style={{ stopColor: 'var(--art-sky-top)' }} />
+          <stop offset="1" style={{ stopColor: 'var(--art-sky-bottom)' }} />
         </linearGradient>
         <linearGradient id={field} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ece2ca" />
-          <stop offset="1" stopColor="#d9c6a0" />
+          <stop offset="0" style={{ stopColor: 'var(--art-field-top)' }} />
+          <stop offset="1" style={{ stopColor: 'var(--art-field-bottom)' }} />
         </linearGradient>
       </defs>
       <rect y="-120" width="480" height="420" fill={`url(#${sky})`} />
-      <circle cx="392" cy="62" r="26" fill="#f5e3ad" opacity="0.8" />
-      <path d="M0 160c70-30 140-32 220-14s170 2 260-20v54H0z" fill="#d6e5cd" />
-      <path d="M0 172c90-20 170-8 250 0s160-8 230-14v20H0z" fill="#bfd6b4" />
+      <circle cx="392" cy="62" r="26" style={{ fill: 'var(--art-sun)', opacity: 'var(--art-sun-opacity)' }} />
+      <path d="M0 160c70-30 140-32 220-14s170 2 260-20v54H0z" style={{ fill: 'var(--art-hill-far)' }} />
+      <path d="M0 172c90-20 170-8 250 0s160-8 230-14v20H0z" style={{ fill: 'var(--art-hill-near)' }} />
       <path d="M0 178h480v122H0z" fill={`url(#${field})`} />
-      <g stroke="#c8b289" strokeWidth="1.6" opacity="0.9">
+      <g strokeWidth="1.6" opacity="0.9" style={{ stroke: 'var(--art-furrow)' }}>
         {furrows.map((x) => (
           <path key={x} d={`M${vx + (x - vx) * 0.04} 178 L${x} 300`} />
         ))}
       </g>
-      <path d="M0 178h480" stroke="#b9cfae" strokeWidth="2" />
+      <path d="M0 178h480" strokeWidth="2" style={{ stroke: 'var(--art-horizon)' }} />
       <g className="machine-drive">
-        <ellipse cx="240" cy="268" rx="150" ry="7" fill="#5b4a2e" opacity="0.18" />
+        <ellipse cx="240" cy="268" rx="150" ry="7" opacity="0.22" style={{ fill: 'var(--art-shadow)' }} />
         <g transform="translate(80 98)">
           <Machine />
         </g>

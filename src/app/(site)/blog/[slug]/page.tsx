@@ -37,9 +37,9 @@ export default async function PostPage(props: PageProps<'/blog/[slug]'>) {
         <Image src={post.cover_url} alt="" width={1200} height={630} className="mb-10 h-auto w-full rounded-2xl object-cover" priority />
       ) : null}
       {/* Rendu sûr : le HTML saisi est échappé (voir src/lib/markdown.ts). */}
-      <div className="prose-sillon text-[17px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content_md) }} />
+      <div className="prose-content text-[17px]" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content_md) }} />
       <aside className="mt-14 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-ground p-7">
-        <p className="font-semibold">Gérez votre exploitation simplement avec Sillon.</p>
+        <p className="font-semibold">Suivez tout votre matériel avec Tracteurs & Co.</p>
         <Link href="/inscription" className={btn.primary}>Essayer gratuitement</Link>
       </aside>
     </article>

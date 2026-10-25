@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Logo, btn } from '@/components/ui';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { getSession } from '@/lib/auth';
 
 async function isLoggedIn() {
@@ -13,10 +14,10 @@ async function isLoggedIn() {
 export async function SiteHeader() {
   const loggedIn = await isLoggedIn();
   return (
-    <header className="no-print border-b border-line bg-white">
-      <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4" aria-label="Navigation du site">
-        <Link href="/" aria-label="Sillon, accueil" className="transition-opacity hover:opacity-80">
-          <Logo />
+    <header className="no-print z-30 border-b border-line bg-page/85 backdrop-blur-md lg:sticky lg:top-0">
+      <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-3.5" aria-label="Navigation du site">
+        <Link href="/" aria-label="Tracteurs & Co, accueil" className="transition-opacity hover:opacity-80">
+          <Logo height={50} />
         </Link>
         <div className="flex flex-wrap items-center gap-x-7 gap-y-2 font-medium">
           <Link href="/#fonctions" className="link-underline text-ink hover:text-brand">Fonctionnalités</Link>
@@ -31,6 +32,7 @@ export async function SiteHeader() {
               <Link href="/inscription" className={btn.primary}>Essai gratuit</Link>
             </>
           )}
+          <ThemeToggle />
         </div>
       </nav>
     </header>
@@ -39,9 +41,12 @@ export async function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="no-print mt-auto border-t border-line">
-      <div className="mx-auto flex max-w-6xl flex-wrap justify-between gap-5 px-6 py-9 text-[15px] text-muted">
-        <span>© {new Date().getFullYear()} Sillon</span>
+    <footer className="no-print mt-auto border-t border-line bg-ground">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-6 py-10 text-[15px] text-muted">
+        <div className="flex items-center gap-4">
+          <Logo variant="embleme" height={64} />
+          <span>© {new Date().getFullYear()} Tracteurs & Co<br />Machinisme agricole</span>
+        </div>
         <div className="flex flex-wrap gap-6">
           <Link href="/blog" className="link-underline transition-colors hover:text-ink">Blog</Link>
           <Link href="/fiches" className="link-underline transition-colors hover:text-ink">Fiches techniques</Link>

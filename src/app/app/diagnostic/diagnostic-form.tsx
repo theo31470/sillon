@@ -11,7 +11,7 @@ export function DiagnosticForm({ machines, disabled }: { machines: { id: string;
 
   return (
     <div className="flex flex-wrap items-start gap-6">
-      <form action={action} className="flex min-w-0 flex-[1_1_340px] flex-col gap-4 rounded-2xl border border-line bg-white p-6">
+      <form action={action} className="flex min-w-0 flex-[1_1_340px] flex-col gap-4 rounded-2xl border border-line bg-surface p-6">
         <Field label="Machine concernée" htmlFor="machine_id">
           <Select id="machine_id" name="machine_id" defaultValue="" disabled={disabled}>
             <option value="">Autre / non listée</option>
@@ -32,7 +32,7 @@ export function DiagnosticForm({ machines, disabled }: { machines: { id: string;
             {r.safety_warning ? (
               <p className="rounded-2xl border border-warn-line bg-warn-soft p-4 font-medium text-warn">⚠ {r.safety_warning}</p>
             ) : null}
-            <div className="rounded-2xl border border-line bg-white p-6">
+            <div className="rounded-2xl border border-line bg-surface p-6">
               <p className="mb-4 text-muted">{r.summary}</p>
               <h2 className="mb-3 text-lg font-semibold">Causes probables</h2>
               <ul className="mb-6 flex flex-col gap-3">
@@ -64,7 +64,7 @@ export function DiagnosticForm({ machines, disabled }: { machines: { id: string;
             </div>
           </>
         ) : (
-          <div className="rounded-2xl border border-dashed border-field bg-white p-10 text-center text-muted">
+          <div className="rounded-2xl border border-dashed border-field bg-surface p-10 text-center text-muted">
             Le résultat du diagnostic s’affichera ici.
           </div>
         )}

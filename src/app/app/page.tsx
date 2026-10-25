@@ -28,11 +28,11 @@ export default async function DashboardPage() {
           <ol className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             {[
               ['tag', 'Ajoutez votre première machine', 'Choisissez son modèle : le plan d’entretien est repris de la fiche technique.'],
-              ['clock', 'Relevez le compteur', 'Une fois par semaine ou par mois : Sillon calcule vos heures de travail.'],
+              ['clock', 'Relevez le compteur', 'Une fois par semaine ou par mois : Tracteurs & Co calcule vos heures de travail.'],
               ['wrench', 'Notez entretiens et dépenses', 'Vous voyez ce qui arrive, et ce que coûte vraiment chaque heure.'],
             ].map(([icon, title, text], i) => (
               <li key={title} className="flex gap-3.5">
-                <span className="flex size-10 flex-none items-center justify-center rounded-full bg-brand font-bold text-white">{i + 1}</span>
+                <span className="flex size-10 flex-none items-center justify-center rounded-full bg-brand font-bold text-on-brand">{i + 1}</span>
                 <div>
                   <p className="flex items-center gap-1.5 font-semibold"><Icon name={icon as 'tag'} size={16} className="text-brand" /> {title}</p>
                   <p className="text-sm text-muted">{text}</p>
@@ -125,7 +125,7 @@ export default async function DashboardPage() {
           {activity.length === 0 ? (
             <p className="text-muted">Notez vos entretiens et dépenses depuis la page de chaque machine.</p>
           ) : (
-            <ul className="divide-y divide-[#eef0eb]">
+            <ul className="divide-y divide-line-soft">
               {activity.map((a, i) => (
                 <li key={i} className="flex items-center gap-3 py-2.5">
                   <Icon name={a.icon} size={18} className="flex-none text-muted" />

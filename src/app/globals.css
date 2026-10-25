@@ -1,17 +1,96 @@
 @import "tailwindcss";
 
-/* Palette Sillon : simple, lumineuse, naturelle (voir maquettes). */
+/*
+ * Charte Tracteurs & Co (voir design/README.md)
+ * Terre cuite #E0875A, beige #C9C1B5, blanc ; Barlow (titres) + Inter (textes).
+ * Mode SOMBRE par défaut ; le mode clair redéfinit les mêmes variables
+ * sous [data-theme="light"]. Les utilitaires Tailwind lisent ces variables
+ * à l'exécution : un changement de thème ne recharge rien.
+ */
 @theme {
-  --color-brand: #2f6d3a;
-  --color-brand-dark: #21512a;
-  --color-brand-soft: #e4efe3;
-  --color-brand-tint: #eef5ed;
-  --color-ink: #1d2420;
-  --color-muted: #5b6660;
-  --color-line: #e6e9e3;
-  --color-field: #c9cfc6;
-  --color-ground: #f6f7f4;
-  --color-photo: #e9ece6;
+  /* Fonds */
+  --color-page: #12110f;          /* fond de page */
+  --color-ground: #181613;        /* bandeaux, fonds de section */
+  --color-surface: #1e1b18;       /* cartes */
+  --color-surface-2: #24211d;     /* en-têtes de tableaux, zones internes */
+  --color-photo: #29251f;
+  --color-line: #332e28;
+  --color-line-soft: #2a2622;
+  --color-field: #4d463d;         /* bordures des champs */
+  /* Textes */
+  --color-ink: #f3efe9;
+  --color-muted: #ada497;
+  --color-beige: #c9c1b5;
+  /* Accent terre cuite */
+  --color-brand: #e0875a;
+  --color-brand-dark: #f0a57e;    /* survol / texte accentué */
+  --color-brand-soft: #3d2719;
+  --color-brand-tint: #2b1f17;
+  --color-on-brand: #1a110b;      /* texte posé sur l'accent */
+  /* États */
+  --color-warn: #f0b860;
+  --color-warn-soft: #33270f;
+  --color-warn-line: #5a4520;
+  --color-danger: #f08a7a;
+  --color-danger-soft: #3a1d18;
+  --color-info: #8db7e0;
+  --color-info-soft: #182634;
+  --color-success: #8fcf8a;
+  --color-success-soft: #1c2a1b;
+  /* Panneaux contrastés (admin, encarts) : toujours sombres */
+  --color-admin: #0c0b0a;
+  --color-admin-2: #1f1c18;
+  --color-panel: #ece6dd;
+  --color-panel-muted: #b3aa9d;
+  /* Terre et blés (fiches techniques) */
+  --color-wheat: #d4a955;
+  --color-wheat-soft: #2f2716;
+  --color-soil: #e3c48a;
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  color-scheme: dark;
+  /* Illustrations (champ et machines) : crépuscule */
+  --art-sky-top: #2b2620;
+  --art-sky-bottom: #1d1a16;
+  --art-sun: #e0875a;
+  --art-sun-opacity: 0.35;
+  --art-hill-far: #29301f;
+  --art-hill-near: #222a1a;
+  --art-field-top: #3a3024;
+  --art-field-bottom: #2a221a;
+  --art-furrow: #4c3f2e;
+  --art-horizon: #34402a;
+  --art-shadow: #000000;
+  --art-grid: #2a2622;
+  --art-ground-line: #5c4c37;
+  --art-ink: #c9c1b5;
+}
+
+/* ───────────── Mode clair ───────────── */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-page: #ffffff;
+  --color-ground: #f6f3ee;
+  --color-surface: #ffffff;
+  --color-surface-2: #faf8f4;
+  --color-photo: #ece7df;
+  --color-line: #e5dfd6;
+  --color-line-soft: #efeae3;
+  --color-field: #cdc4b7;
+  --color-ink: #1b1916;
+  --color-muted: #6b6358;
+  --color-beige: #6b6358;
+  --color-brand: #b25a2e;          /* terre cuite assombrie : texte blanc lisible */
+  --color-brand-dark: #8f4422;
+  --color-brand-soft: #f6e3d8;
+  --color-brand-tint: #fbf1ea;
+  --color-on-brand: #ffffff;
   --color-warn: #7a4e0b;
   --color-warn-soft: #fdf5e6;
   --color-warn-line: #f0d9a8;
@@ -19,27 +98,57 @@
   --color-danger-soft: #f6e1de;
   --color-info: #234866;
   --color-info-soft: #e4ecf4;
-  --color-admin: #1d2420;
-  /* Tons de la terre et des blés (fiches techniques). */
+  --color-success: #2f6d3a;
+  --color-success-soft: #e4efe3;
+  --color-admin: #1b1916;
+  --color-admin-2: #2a2622;
   --color-wheat: #c9972f;
   --color-wheat-soft: #f8f0dc;
   --color-soil: #6e5124;
 
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-
-  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --art-sky-top: #f1ebe2;
+  --art-sky-bottom: #f8f4ec;
+  --art-sun: #e0875a;
+  --art-sun-opacity: 0.45;
+  --art-hill-far: #dfe3cf;
+  --art-hill-near: #cdd6bd;
+  --art-field-top: #ede2cc;
+  --art-field-bottom: #dcc8a3;
+  --art-furrow: #c8b289;
+  --art-horizon: #bccbae;
+  --art-shadow: #5b4a2e;
+  --art-grid: #ebe5dc;
+  --art-ground-line: #b7a37d;
+  --art-ink: #5b5248;
 }
 
 body {
-  background: #ffffff;
+  background: var(--color-page);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 250ms ease, color 250ms ease;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+h1 {
+  font-weight: 800;
+}
+
+/* Logos : chaque thème affiche sa version (texte blanc ou foncé). */
+:root:not([data-theme="light"]) .only-light,
+:root[data-theme="light"] .only-dark {
+  display: none !important;
 }
 
 ::selection {
-  background: var(--color-brand-soft);
-  color: var(--color-brand-dark);
+  background: var(--color-brand);
+  color: var(--color-on-brand);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -99,7 +208,7 @@ input[type="file"] {
   transition: transform 600ms var(--ease-out-soft);
 }
 .btn-primary:not(:disabled):hover {
-  box-shadow: 0 10px 22px -10px rgb(47 109 58 / 0.85);
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--color-brand) 85%, transparent);
 }
 .btn-primary:not(:disabled):hover::after {
   transform: translateX(120%);
@@ -160,10 +269,10 @@ input[type="file"] {
 }
 .lift-card:not(.border-brand):hover,
 .sheet-card:hover {
-  border-color: #cfdccb;
+  border-color: color-mix(in srgb, var(--color-brand) 45%, var(--color-line));
 }
 .spec-card:hover {
-  border-color: #cfdccb;
+  border-color: color-mix(in srgb, var(--color-brand) 45%, var(--color-line));
   box-shadow: 0 12px 28px -22px rgb(29 36 32 / 0.4);
 }
 
@@ -239,8 +348,8 @@ details[open] > :not(summary) {
   left: 0;
   z-index: 100;
   height: 3px;
-  background: linear-gradient(90deg, var(--color-brand), #6fb36f 60%, var(--color-wheat));
-  box-shadow: 0 0 10px rgb(47 109 58 / 0.5);
+  background: linear-gradient(90deg, var(--color-brand), var(--color-wheat));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-brand) 60%, transparent);
   pointer-events: none;
 }
 .nav-progress.is-loading {
@@ -275,7 +384,7 @@ details[open] > :not(summary) {
   position: absolute;
   inset: auto 0 0 0;
   height: 14px;
-  background: repeating-linear-gradient(90deg, #d8c9ad 0 10px, transparent 10px 18px);
+  background: repeating-linear-gradient(90deg, var(--art-furrow) 0 10px, transparent 10px 18px);
   border-radius: 4px;
   animation: furrows 600ms linear infinite;
 }
@@ -297,7 +406,7 @@ details[open] > :not(summary) {
   }
 }
 .loader-skeleton {
-  background: linear-gradient(90deg, #eceee9 0%, #f6f7f4 50%, #eceee9 100%);
+  background: linear-gradient(90deg, var(--color-surface-2) 0%, var(--color-line) 50%, var(--color-surface-2) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
@@ -380,19 +489,25 @@ details[open] > :not(summary) {
 }
 
 /* Contenu des articles (rendu Markdown sécurisé, voir src/lib/markdown.ts) */
-.prose-sillon h2 { font-size: 1.5rem; font-weight: 700; margin: 2rem 0 0.75rem; letter-spacing: -0.01em; }
-.prose-sillon h3 { font-size: 1.2rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
-.prose-sillon p { margin: 0 0 1rem; line-height: 1.75; }
-.prose-sillon ul, .prose-sillon ol { margin: 0 0 1rem 1.25rem; line-height: 1.75; }
-.prose-sillon ul { list-style: disc; }
-.prose-sillon ol { list-style: decimal; }
-.prose-sillon a { color: var(--color-brand); text-decoration: underline; text-underline-offset: 3px; transition: color 160ms ease; }
-.prose-sillon a:hover { color: var(--color-brand-dark); }
-.prose-sillon strong { font-weight: 600; }
+.prose-content h2 { font-size: 1.5rem; font-weight: 700; margin: 2rem 0 0.75rem; letter-spacing: -0.01em; }
+.prose-content h3 { font-size: 1.2rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+.prose-content p { margin: 0 0 1rem; line-height: 1.75; }
+.prose-content ul, .prose-content ol { margin: 0 0 1rem 1.25rem; line-height: 1.75; }
+.prose-content ul { list-style: disc; }
+.prose-content ol { list-style: decimal; }
+.prose-content a { color: var(--color-brand); text-decoration: underline; text-underline-offset: 3px; transition: color 160ms ease; }
+.prose-content a:hover { color: var(--color-brand-dark); }
+.prose-content strong { font-weight: 600; }
 
 /* Impression (registre, fiches techniques) */
 @media print {
   .no-print { display: none !important; }
+  /* À l'impression : toujours les couleurs du mode clair. */
+  :root {
+    --color-page: #fff; --color-ground: #fff; --color-surface: #fff; --color-surface-2: #faf8f4;
+    --color-line: #e5dfd6; --color-line-soft: #efeae3; --color-ink: #1b1916; --color-muted: #6b6358;
+    --color-brand: #b25a2e; --color-brand-dark: #8f4422; --color-brand-tint: #fbf1ea; --color-brand-soft: #f6e3d8;
+  }
   body { background: #fff; }
   .reveal, .figure, .hero-scene .machine-drive { animation: none !important; opacity: 1 !important; transform: none !important; }
 }

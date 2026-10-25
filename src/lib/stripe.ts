@@ -7,7 +7,7 @@ let instance: Stripe | null = null;
 /** Client Stripe (créé à la demande pour que le build fonctionne sans clé). */
 export function stripe() {
   instance ??= new Stripe(env.stripeSecretKey(), {
-    appInfo: { name: 'Sillon' },
+    appInfo: { name: 'Tracteurs & Co' },
   });
   return instance;
 }

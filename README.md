@@ -1,4 +1,4 @@
-# Sillon
+# Tracteurs & Co
 
 Le carnet de santé numérique du matériel agricole. Site vitrine, blog et base de fiches techniques
 (caractéristiques, entretien, pannes connues et tests), et un SaaS pour suivre son parc : relevés de compteur,
@@ -94,7 +94,7 @@ Sans clés, les pages publiques s’affichent mais la connexion et l’applicati
 
 ### 2. Stripe
 
-1. **Catalogue de produits** : créez le produit « Sillon Complet » avec un prix mensuel récurrent.
+1. **Catalogue de produits** : créez le produit « Tracteurs & Co Complet » avec un prix mensuel récurrent.
    Copiez son identifiant `price_…` dans `STRIPE_PRICE_COMPLET` et le prix affiché dans `NEXT_PUBLIC_PRICE_COMPLET_LABEL`.
 2. **Developers → Webhooks** : ajoutez l’adresse `https://votre-domaine.fr/api/stripe/webhook` avec les événements
    `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
@@ -141,7 +141,7 @@ Plusieurs couches indépendantes protègent les données :
   changement de rôle, export de données) demandent un code saisi depuis moins de 15 minutes.
   Déconnexion de l’admin après 30 min d’inactivité.
 - **Journal d’activité** non modifiable depuis le site (écrit uniquement côté serveur).
-- **Paiements** : aucune donnée de carte ne transite par Sillon ; le webhook vérifie la signature Stripe.
+- **Paiements** : aucune donnée de carte ne transite par Tracteurs & Co ; le webhook vérifie la signature Stripe.
 - **Contenus** : les articles sont rendus avec échappement du HTML (pas d’injection de script possible).
 - **En-têtes HTTP** : HSTS, CSP, interdiction d’affichage en iframe, etc. (`next.config.ts`).
 - **Mots de passe** : 10 caractères minimum avec majuscule, minuscule et chiffre (mêmes règles que dans Supabase),
@@ -200,7 +200,7 @@ tracteur, ajoutée quand les sources sont muettes, sans capacité ni référence
 les repères indicatifs sont toujours « à vérifier » : la fiche ne peut pas être publiée sans relecture. L’origine est
 modifiable dans la relecture.
 
-**Photos** : après la rédaction, Sillon cherche une photo du modèle sur **Wikimedia Commons** (licences libres
+**Photos** : après la rédaction, Tracteurs & Co cherche une photo du modèle sur **Wikimedia Commons** (licences libres
 uniquement : CC BY, CC BY-SA, CC0, domaine public). Claude regarde les candidates et ne retient qu’une photo qui montre
 clairement ce modèle ; sinon la fiche garde son illustration. La photo est copiée dans le stockage `media` et la fiche
 affiche **auteur, licence et lien vers la source**, comme l’exigent ces licences. Dans la relecture, l’admin peut

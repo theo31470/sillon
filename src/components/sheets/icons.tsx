@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { GroupIcon } from '@/lib/sheets/insights';
 
-/** Pictogrammes au trait des fiches techniques (dessinés pour Sillon). */
+/** Pictogrammes au trait des fiches techniques (dessinés pour Tracteurs & Co). */
 
 function Svg({ children, size = 22, className = '' }: { children: ReactNode; size?: number; className?: string }) {
   return (

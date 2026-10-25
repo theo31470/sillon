@@ -53,7 +53,7 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
         </div>
       </div>
 
-      <article className="mx-auto w-full max-w-3xl rounded-2xl border border-line bg-white p-8 print:border-0 print:p-0">
+      <article className="mx-auto w-full max-w-3xl rounded-2xl border border-line bg-surface p-8 print:border-0 print:p-0">
         <header className="mb-6 flex items-start justify-between gap-4 border-b border-line pb-5">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-brand">Historique d’entretien</p>
@@ -67,7 +67,7 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
           <h2 className="mb-2 text-lg font-semibold">Identification</h2>
           <dl className="grid grid-cols-2 gap-x-6 text-sm sm:grid-cols-3">
             {identity.map(([k, v]) => (
-              <div key={k} className="border-b border-[#eef0eb] py-2">
+              <div key={k} className="border-b border-line-soft py-2">
                 <dt className="text-muted">{k}</dt>
                 <dd className="font-semibold">{v}</dd>
               </div>
@@ -91,9 +91,9 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
               <tbody>
                 {logs.map((l) => (
                   <tr key={l.id}>
-                    <td className="border-b border-[#eef0eb] py-2 pr-3 whitespace-nowrap">{formatDate(l.done_on)}</td>
-                    <td className="border-b border-[#eef0eb] py-2 pr-3 whitespace-nowrap tabular-nums">{formatNumber(Number(l.done_at_hours), 0)} h</td>
-                    <td className="border-b border-[#eef0eb] py-2">{l.operation}{l.notes ? <span className="text-muted"> · {l.notes}</span> : null}</td>
+                    <td className="border-b border-line-soft py-2 pr-3 whitespace-nowrap">{formatDate(l.done_on)}</td>
+                    <td className="border-b border-line-soft py-2 pr-3 whitespace-nowrap tabular-nums">{formatNumber(Number(l.done_at_hours), 0)} h</td>
+                    <td className="border-b border-line-soft py-2">{l.operation}{l.notes ? <span className="text-muted"> · {l.notes}</span> : null}</td>
                   </tr>
                 ))}
               </tbody>
@@ -126,8 +126,8 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
               <tbody>
                 {[...byYear].sort(([a], [b]) => b.localeCompare(a)).map(([year, row]) => (
                   <tr key={year}>
-                    <td className="border-b border-[#eef0eb] py-2 pr-3">{year}</td>
-                    {Object.keys(COST_KINDS).map((k) => <td key={k} className="border-b border-[#eef0eb] py-2 pr-3 text-right tabular-nums">{row[k] ? euros(row[k]) : '—'}</td>)}
+                    <td className="border-b border-line-soft py-2 pr-3">{year}</td>
+                    {Object.keys(COST_KINDS).map((k) => <td key={k} className="border-b border-line-soft py-2 pr-3 text-right tabular-nums">{row[k] ? euros(row[k]) : '—'}</td>)}
                   </tr>
                 ))}
               </tbody>
@@ -136,7 +136,7 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
         ) : null}
 
         <footer className="border-t border-line pt-4 text-xs text-muted">
-          Document établi par le propriétaire à partir de ses saisies dans Sillon. Il ne remplace pas les factures d’entretien, à conserver et à présenter à l’acheteur.
+          Document établi par le propriétaire à partir de ses saisies dans Tracteurs & Co. Il ne remplace pas les factures d’entretien, à conserver et à présenter à l’acheteur.
         </footer>
       </article>
     </>

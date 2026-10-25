@@ -42,7 +42,7 @@ export async function GET() {
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Content-Disposition': `attachment; filename="sillon-mes-donnees-${new Date().toISOString().slice(0, 10)}.json"`,
+      'Content-Disposition': `attachment; filename="tracteurs-and-co-mes-donnees-${new Date().toISOString().slice(0, 10)}.json"`,
       'Cache-Control': 'private, no-store',
     },
   });

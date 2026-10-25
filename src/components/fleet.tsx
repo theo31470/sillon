@@ -12,8 +12,8 @@ import { Icon } from '@/components/sheets/icons';
 
 export const STATUS_STYLE: Record<MaintenanceDue['status'], { bar: string; text: string; bg: string; label: string }> = {
   retard: { bar: 'bg-danger', text: 'text-danger', bg: 'bg-danger-soft', label: 'En retard' },
-  bientot: { bar: 'bg-[#d99a2b]', text: 'text-warn', bg: 'bg-warn-soft', label: 'Bientôt' },
-  ok: { bar: 'bg-brand', text: 'text-brand-dark', bg: 'bg-brand-tint', label: 'À jour' },
+  bientot: { bar: 'bg-wheat', text: 'text-warn', bg: 'bg-warn-soft', label: 'Bientôt' },
+  ok: { bar: 'bg-success', text: 'text-success', bg: 'bg-success-soft', label: 'À jour' },
 };
 
 export function MachinePicture({ m, className = '' }: { m: Pick<FleetMachine, 'id' | 'name' | 'art' | 'sheet'>; className?: string }) {
@@ -32,7 +32,7 @@ export function MachinePicture({ m, className = '' }: { m: Pick<FleetMachine, 'i
 export function DueBar({ due }: { due: MaintenanceDue }) {
   const s = STATUS_STYLE[due.status];
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-[#eef0eb]">
+    <div className="h-2 overflow-hidden rounded-full bg-line">
       <div className={`h-full rounded-full ${s.bar} transition-[width] duration-700`} style={{ width: `${Math.max(4, (1 - due.progress) * 100)}%` }} />
     </div>
   );
@@ -42,7 +42,7 @@ export function MachineCard({ m }: { m: FleetMachine }) {
   const next = m.due[0];
   const late = m.due.filter((d) => d.status === 'retard').length;
   return (
-    <Link href={`/app/materiel/${m.id}`} transitionTypes={['nav-forward']} className="sheet-card group flex flex-col overflow-hidden rounded-2xl border border-line bg-white text-ink">
+    <Link href={`/app/materiel/${m.id}`} transitionTypes={['nav-forward']} className="sheet-card group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-ink">
       <MachinePicture m={m} className="h-36" />
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex items-start justify-between gap-3">
@@ -77,7 +77,7 @@ export function MachineCard({ m }: { m: FleetMachine }) {
 
 export function Kpi({ icon, label, value, sub }: { icon: Parameters<typeof Icon>[0]['name']; label: string; value: string; sub?: string }) {
   return (
-    <div className="lift-card flex items-center gap-3.5 rounded-2xl border border-line bg-white p-4">
+    <div className="lift-card flex items-center gap-3.5 rounded-2xl border border-line bg-surface p-4">
       <span className="flex size-11 flex-none items-center justify-center rounded-full bg-wheat-soft text-soil">
         <Icon name={icon} size={22} />
       </span>

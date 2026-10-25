@@ -80,33 +80,33 @@ export default async function MembersPage(props: PageProps<'/admin/membres'>) {
           {filtre !== 'tous' ? <input type="hidden" name="filtre" value={filtre} /> : null}
         </form>
         {Object.entries(FILTERS).map(([k, label]) => (
-          <Link key={k} href={link({ filtre: k === 'tous' ? undefined : k, page: undefined })} className={`rounded-full px-3.5 py-2 text-[15px] ${filtre === k ? 'bg-admin font-semibold text-white' : 'border border-field bg-white'}`}>
+          <Link key={k} href={link({ filtre: k === 'tous' ? undefined : k, page: undefined })} className={`rounded-full px-3.5 py-2 text-[15px] ${filtre === k ? 'bg-admin font-semibold text-white' : 'border border-field bg-surface'}`}>
             {label}
           </Link>
         ))}
       </div>
 
       <div className="flex flex-wrap items-start gap-5">
-        <section className="min-w-0 flex-[2_1_560px] overflow-x-auto rounded-2xl border border-line bg-white">
+        <section className="min-w-0 flex-[2_1_560px] overflow-x-auto rounded-2xl border border-line bg-surface">
           <table className="w-full min-w-[600px] border-collapse text-sm">
             <thead>
-              <tr className="bg-[#fafbf9] text-left text-[13px] text-muted">
+              <tr className="bg-surface-2 text-left text-[13px] text-muted">
                 {['Exploitation', 'Formule', 'Statut', 'Inscrit le'].map((h) => <th key={h} className="border-b border-line px-4 py-3 font-medium">{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {members.map((m) => (
                 <tr key={m.id} className={m.id === selected?.id ? 'bg-brand-tint' : 'hover:bg-ground'}>
-                  <td className="border-b border-[#eef0eb] px-4 py-3.5">
+                  <td className="border-b border-line-soft px-4 py-3.5">
                     <Link href={link({ id: m.id })} className="block text-ink">
                       <strong className="font-semibold">{m.farm_name || m.full_name || '—'}</strong>
                       <br />
                       <span className="text-muted">{m.full_name} · {maskEmail(m.email)}</span>
                     </Link>
                   </td>
-                  <td className="border-b border-[#eef0eb] px-4 py-3.5">{PLANS[m.plan].name}{m.role === 'admin' ? ' · admin' : ''}</td>
-                  <td className="border-b border-[#eef0eb] px-4 py-3.5">{m.suspended ? <Badge tone="red">Suspendu</Badge> : <Badge tone="green">Actif</Badge>}</td>
-                  <td className="border-b border-[#eef0eb] px-4 py-3.5">{formatDate(m.created_at)}</td>
+                  <td className="border-b border-line-soft px-4 py-3.5">{PLANS[m.plan].name}{m.role === 'admin' ? ' · admin' : ''}</td>
+                  <td className="border-b border-line-soft px-4 py-3.5">{m.suspended ? <Badge tone="red">Suspendu</Badge> : <Badge tone="green">Actif</Badge>}</td>
+                  <td className="border-b border-line-soft px-4 py-3.5">{formatDate(m.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -141,7 +141,7 @@ export default async function MembersPage(props: PageProps<'/admin/membres'>) {
                   <h3 className="mb-1.5 text-[15px] font-semibold">Derniers paiements</h3>
                   <ul className="text-sm">
                     {payments.map((p) => (
-                      <li key={p.id} className="flex justify-between border-b border-[#eef0eb] py-2">
+                      <li key={p.id} className="flex justify-between border-b border-line-soft py-2">
                         <span>{formatDate(p.created_at)}</span>
                         <span>{formatEuros(p.amount_cents, p.currency)} · <span className={p.status === 'paid' ? 'text-brand' : 'text-warn'}>{p.status === 'paid' ? 'payé' : p.status === 'failed' ? 'échec' : 'remboursé'}</span></span>
                       </li>
@@ -161,7 +161,7 @@ export default async function MembersPage(props: PageProps<'/admin/membres'>) {
                     <input type="hidden" name="user_id" value={selected.id} />
                     <SubmitButton variant="secondary">Envoyer un lien de réinitialisation</SubmitButton>
                   </ActionForm>
-                  <a href={`/api/admin/membres/${selected.id}/export`} className="inline-flex min-h-12 items-center justify-center rounded-[10px] border border-field bg-white px-5 font-semibold" download>
+                  <a href={`/api/admin/membres/${selected.id}/export`} className="inline-flex min-h-12 items-center justify-center rounded-[10px] border border-field bg-surface px-5 font-semibold" download>
                     Exporter ses données (RGPD)
                   </a>
                   <ActionForm action={setRole} className="flex flex-col gap-2">
@@ -173,7 +173,7 @@ export default async function MembersPage(props: PageProps<'/admin/membres'>) {
                     <input type="hidden" name="user_id" value={selected.id} />
                     <SubmitButton variant="danger">{selected.suspended ? 'Réactiver le compte' : 'Suspendre le compte'}</SubmitButton>
                   </ActionForm>
-                  <details className="rounded-xl border border-[#e3b7b0] p-3.5">
+                  <details className="rounded-xl border border-danger/40 p-3.5">
                     <summary className="cursor-pointer font-semibold text-danger">Supprimer le compte</summary>
                     <ActionForm action={deleteMember} className="mt-3 flex flex-col gap-2">
                       <input type="hidden" name="user_id" value={selected.id} />

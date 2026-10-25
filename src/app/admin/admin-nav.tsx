@@ -23,11 +23,11 @@ export function AdminNav({ pendingSheets }: { pendingSheets: number }) {
         key={l.href}
         href={l.href}
         aria-current={active ? 'page' : undefined}
-        className={`flex justify-between rounded-lg px-3 py-2.5 transition-all duration-200 ${active ? 'bg-brand font-medium text-white' : 'hover:translate-x-0.5 hover:bg-[#26302a]'}`}
+        className={`flex justify-between rounded-lg px-3 py-2.5 transition-all duration-200 ${active ? 'bg-brand font-medium text-on-brand' : 'hover:translate-x-0.5 hover:bg-admin-2'}`}
       >
         {l.label}
         {l.href === '/admin/fiches' && pendingSheets > 0 ? (
-          <span className="rounded-full bg-[#d99a2b] px-2 text-xs font-bold text-admin">{pendingSheets}</span>
+          <span className="rounded-full bg-wheat px-2 text-xs font-bold text-admin">{pendingSheets}</span>
         ) : null}
       </Link>
     );
@@ -35,9 +35,9 @@ export function AdminNav({ pendingSheets }: { pendingSheets: number }) {
   return (
     <nav aria-label="Administration" className="flex flex-col gap-0.5 text-[15px]">
       {main.map(item)}
-      <p className="mx-3 mb-1 mt-3.5 text-xs font-semibold uppercase tracking-wider text-[#8fa195]">Sécurité</p>
+      <p className="mx-3 mb-1 mt-3.5 text-xs font-semibold uppercase tracking-wider text-panel-muted">Sécurité</p>
       {security.map(item)}
-      <Link href="/app" className="mt-3 rounded-lg px-3 py-2.5 text-[#8fa195] transition-colors hover:bg-[#26302a] hover:text-white">← Retour à l’application</Link>
+      <Link href="/app" className="mt-3 rounded-lg px-3 py-2.5 text-panel-muted transition-colors hover:bg-admin-2 hover:text-white">← Retour à l’application</Link>
     </nav>
   );
 }

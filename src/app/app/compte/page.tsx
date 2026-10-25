@@ -48,7 +48,7 @@ export default async function AccountPage() {
             <h2 className="mb-2 text-xl font-semibold">Mes données</h2>
             <p className="mb-4 text-muted">Téléchargez toutes vos données (machines, relevés, entretiens, dépenses) au format JSON.</p>
             <a href="/api/compte/export" className={btn.secondary} download>Télécharger mes données</a>
-            <details className="mt-6 rounded-xl border border-[#e3b7b0] p-4">
+            <details className="mt-6 rounded-xl border border-danger/40 p-4">
               <summary className="cursor-pointer font-semibold text-danger">Supprimer mon compte</summary>
               <p className="my-3 text-sm text-muted">
                 Suppression définitive de votre compte et de toutes vos données. Votre abonnement est résilié. Cette action est irréversible.

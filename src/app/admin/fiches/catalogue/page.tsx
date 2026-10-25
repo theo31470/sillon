@@ -64,7 +64,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
     const qs = sp.toString();
     return `/admin/fiches/catalogue${qs ? `?${qs}` : ''}`;
   };
-  const chip = (active: boolean) => `rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${active ? 'bg-brand text-white' : 'border border-field bg-white hover:border-brand'}`;
+  const chip = (active: boolean) => `rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${active ? 'bg-brand text-on-brand' : 'border border-field bg-surface hover:border-brand'}`;
 
   return (
     <>
@@ -82,7 +82,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
         {(['todo', 'queued', 'researching', 'writing', 'done', 'error'] as const).map((s) => {
           const n = s === 'researching' ? (counts.researching ?? 0) + (counts.researched ?? 0) : counts[s] ?? 0;
           return (
-            <Link key={s} href={filterLink({ statut: statusFilter === s ? undefined : s })} className={`rounded-xl border bg-white p-4 text-ink transition-shadow hover:shadow-md ${statusFilter === s ? 'border-brand ring-2 ring-brand/30' : 'border-line'}`}>
+            <Link key={s} href={filterLink({ statut: statusFilter === s ? undefined : s })} className={`rounded-xl border bg-surface p-4 text-ink transition-shadow hover:shadow-md ${statusFilter === s ? 'border-brand ring-2 ring-brand/30' : 'border-line'}`}>
               <p className="text-sm text-muted">{CATALOG_STATUSES[s]}</p>
               <p className="text-2xl font-bold tabular-nums">{n}</p>
             </Link>
@@ -140,7 +140,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
         </Card>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-line bg-white">
+      <section className="overflow-hidden rounded-2xl border border-line bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
           <h2 className="text-lg font-semibold">2. Choisir les modèles à générer</h2>
           <nav aria-label="Filtrer par marque" className="flex flex-wrap gap-1.5">
@@ -164,26 +164,26 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
                 {[...groups].map(([group, rows]) => (
                   <tbody key={group}>
                     <tr>
-                      <th colSpan={6} className="bg-[#fafbf9] px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted">{group}</th>
+                      <th colSpan={6} className="bg-surface-2 px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted">{group}</th>
                     </tr>
                     {rows.map((m) => {
                       const busy = ['researching', 'researched', 'writing', 'queued'].includes(m.status);
                       return (
                         <tr key={m.id} className="transition-colors hover:bg-brand-tint/50">
-                          <td className="border-b border-[#eef0eb] px-4 py-2.5">
+                          <td className="border-b border-line-soft px-4 py-2.5">
                             <input type="checkbox" name="ids" value={m.id} data-series={`${m.brand}|${m.series || m.model}`} disabled={busy} aria-label={`Sélectionner ${m.brand} ${m.model}`} className="size-4 accent-brand" />
                           </td>
-                          <td className="border-b border-[#eef0eb] px-3 py-2.5 font-semibold">
+                          <td className="border-b border-line-soft px-3 py-2.5 font-semibold">
                             {m.model}
                             {m.source_url ? <a href={m.source_url} target="_blank" rel="noopener noreferrer" className="ml-2 text-xs font-normal text-muted hover:text-brand">source ↗</a> : null}
                           </td>
-                          <td className="border-b border-[#eef0eb] px-3 py-2.5 text-muted">{m.years || '—'}</td>
-                          <td className="border-b border-[#eef0eb] px-3 py-2.5 tabular-nums">{m.power_hp ? `${m.power_hp} ch` : '—'}</td>
-                          <td className="border-b border-[#eef0eb] px-3 py-2.5">
+                          <td className="border-b border-line-soft px-3 py-2.5 text-muted">{m.years || '—'}</td>
+                          <td className="border-b border-line-soft px-3 py-2.5 tabular-nums">{m.power_hp ? `${m.power_hp} ch` : '—'}</td>
+                          <td className="border-b border-line-soft px-3 py-2.5">
                             <Badge tone={tone[m.status]}>{busy && m.status !== 'queued' ? <span className="spinner mr-1.5 size-3" aria-hidden="true" /> : null}{CATALOG_STATUSES[m.status]}</Badge>
                             {m.error ? <p className="mt-1 max-w-xs text-xs text-danger">{m.error}</p> : null}
                           </td>
-                          <td className="border-b border-[#eef0eb] px-3 py-2.5 text-right">
+                          <td className="border-b border-line-soft px-3 py-2.5 text-right">
                             {m.photo_status === 'found' ? <span className="mr-3 text-xs text-muted" title="Photo libre trouvée">📷 photo</span> : m.photo_status === 'none' ? <span className="mr-3 text-xs text-muted" title="Aucune photo libre : illustration affichée">sans photo</span> : null}
                             {m.sheet_id ? <Link href={`/admin/fiches/${m.sheet_id}`} className="font-semibold text-brand hover:text-brand-dark">Relire →</Link> : null}
                           </td>
@@ -194,7 +194,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
                 ))}
               </table>
             </div>
-            <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-line bg-white/95 px-5 py-4 backdrop-blur">
+            <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-line bg-surface/95 px-5 py-4 backdrop-blur">
               <CostEstimate formId="catalog" />
               <div className="flex flex-wrap gap-2.5">
                 <SubmitButton name="intent" value="remove" variant="secondary" pendingLabel="…">Retirer de la liste</SubmitButton>

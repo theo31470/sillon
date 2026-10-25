@@ -22,7 +22,7 @@ export default async function EditPostPage(props: PageProps<'/admin/blog/[id]'>)
   return (
     <>
       <Link href="/admin/blog" className="text-sm text-brand">← Tous les articles</Link>
-      <ActionForm action={savePost} resetOnSuccess={false} className="flex flex-col gap-5 rounded-2xl border border-line bg-white p-6">
+      <ActionForm action={savePost} resetOnSuccess={false} className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6">
         <input type="hidden" name="id" value={post.id} />
         <label htmlFor="title" className="sr-only">Titre</label>
         <input id="title" name="title" defaultValue={post.title} required maxLength={200} className="border-b border-line pb-3 text-[26px] font-bold outline-none focus:border-brand" />

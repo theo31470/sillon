@@ -52,7 +52,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
       {ajout ? <Notice tone="green">Machine ajoutée. Complétez ses informations d’achat pour calculer son coût de revient.</Notice> : null}
 
       {/* En-tête de la machine */}
-      <section className="overflow-hidden rounded-3xl border border-line bg-white">
+      <section className="overflow-hidden rounded-3xl border border-line bg-surface">
         <div className="grid md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
           <MachinePicture m={m} className="h-52 md:h-full" />
           <div className="flex flex-col gap-4 p-6">
@@ -68,7 +68,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
                 ) : null}
               </div>
               <div className="rounded-2xl bg-admin px-5 py-3 text-white">
-                <p className="text-xs font-semibold uppercase tracking-wider text-[#9fb3a4]">Compteur</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-panel-muted">Compteur</p>
                 <p className="font-mono text-3xl font-bold tabular-nums">{formatNumber(hoursNow, 1)} h</p>
               </div>
             </div>
@@ -83,7 +83,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
                 <a key={anchor} href={`#${anchor}`} className="rounded-full border border-field px-3 py-1.5 text-sm font-medium transition-colors hover:border-brand hover:text-brand-dark">{label}</a>
               ))}
               {paid ? (
-                <Link href={`/app/materiel/${m.id}/rapport`} className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark">
+                <Link href={`/app/materiel/${m.id}/rapport`} className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-dark">
                   <Icon name="print" size={15} /> Rapport pour la revente
                 </Link>
               ) : null}
@@ -105,7 +105,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           ) : (
             <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
               {m.due.map((d) => (
-                <li key={d.operation} className={`rounded-xl border border-line p-4 ${d.status !== 'ok' ? STATUS_STYLE[d.status].bg : 'bg-white'}`}>
+                <li key={d.operation} className={`rounded-xl border border-line p-4 ${d.status !== 'ok' ? STATUS_STYLE[d.status].bg : 'bg-surface'}`}>
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <p className="font-semibold leading-snug">{d.operation}</p>
                     <Badge tone={d.status === 'retard' ? 'red' : d.status === 'bientot' ? 'amber' : 'green'}>{STATUS_STYLE[d.status].label}</Badge>
@@ -152,7 +152,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
             <h3 className="mb-1 text-lg font-semibold">Mon plan d’entretien</h3>
             <p className="mb-3 text-sm text-muted">Vos propres opérations. Une opération du même nom remplace celle de la fiche.</p>
             {m.tasks.length ? (
-              <ul className="mb-4 divide-y divide-[#eef0eb] text-sm">
+              <ul className="mb-4 divide-y divide-line-soft text-sm">
                 {m.tasks.map((t) => (
                   <li key={t.id} className="flex items-center justify-between gap-3 py-2">
                     <span><strong>{t.operation}</strong> · tous les {[t.interval_hours ? `${formatNumber(Number(t.interval_hours), 0)} h` : null, t.interval_months ? `${t.interval_months} mois` : null].filter(Boolean).join(' ou ')}</span>
@@ -180,7 +180,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
         {m.logs.length ? (
           <Card>
             <h3 className="mb-2 text-lg font-semibold">Historique des entretiens ({m.logs.length})</h3>
-            <ul className="divide-y divide-[#eef0eb] text-sm">
+            <ul className="divide-y divide-line-soft text-sm">
               {m.logs.map((l) => (
                 <li key={l.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
                   <span className="w-24 flex-none text-muted">{formatDate(l.done_on)}</span>
@@ -237,7 +237,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           {m.costs.length === 0 ? (
             <p className="text-muted">Aucune dépense enregistrée.</p>
           ) : (
-            <ul className="divide-y divide-[#eef0eb] text-sm">
+            <ul className="divide-y divide-line-soft text-sm">
               {m.costs.slice(0, 40).map((c) => (
                 <li key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
                   <span className="w-24 flex-none text-muted">{formatDate(c.spent_on)}</span>
@@ -290,7 +290,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
                     ['Pneumatiques', e.variable.pneumatiques, ''],
                     ['Autres', e.variable.autre, ''],
                   ].map(([label, value, hint]) => (
-                    <div key={label as string} className="flex items-baseline justify-between gap-3 border-b border-[#f0f2ee] py-2">
+                    <div key={label as string} className="flex items-baseline justify-between gap-3 border-b border-line-soft py-2">
                       <dt>{label}{hint ? <span className="block text-xs text-muted">{hint}</span> : null}</dt>
                       <dd className="font-semibold tabular-nums">{euros(value as number)}</dd>
                     </div>
@@ -311,7 +311,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
                     ].map(([label, value, color]) => (
                       <div key={label as string}>
                         <div className="mb-1 flex justify-between text-sm"><span>{label}</span><strong className="tabular-nums">{euros(value as number, 2)} / h</strong></div>
-                        <div className="h-2.5 overflow-hidden rounded-full bg-[#eef0eb]">
+                        <div className="h-2.5 overflow-hidden rounded-full bg-line">
                           <div className={`h-full rounded-full ${color}`} style={{ width: `${e.perHour!.total > 0 ? ((value as number) / e.perHour!.total) * 100 : 0}%` }} />
                         </div>
                       </div>
@@ -390,7 +390,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
             <SubmitButton pendingLabel="Enregistrement…">Enregistrer</SubmitButton>
           </ActionForm>
         </Card>
-        <Card className="min-w-0 flex-[1_1_280px] border-[#e3b7b0]">
+        <Card className="min-w-0 flex-[1_1_280px] border-danger/40">
           <h2 className="mb-2 text-lg font-semibold text-danger">Retirer du parc</h2>
           <p className="mb-3 text-sm text-muted">Supprime la machine et tout son historique (entretiens, relevés, dépenses). Pensez à imprimer le rapport avant une vente.</p>
           <ActionForm action={deleteMachine}>

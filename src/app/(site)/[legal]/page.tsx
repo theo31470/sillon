@@ -15,7 +15,7 @@ const pages: Record<string, { title: string; body: string[] }> = {
     title: 'Politique de confidentialité',
     body: [
       '[À rédiger avec un conseil RGPD.] Données collectées : compte (nom, e-mail), données du parc matériel (machines, relevés de compteur, entretiens, dépenses), facturation via Stripe.',
-      'Finalités : fourniture du service, facturation, sécurité. Les numéros de carte bancaire ne sont jamais stockés par Sillon.',
+      'Finalités : fourniture du service, facturation, sécurité. Les numéros de carte bancaire ne sont jamais stockés par Tracteurs & Co.',
       'Vos droits : accès, rectification, export et suppression de vos données sur simple demande à [e-mail].',
     ],
   },

@@ -34,13 +34,13 @@ export default async function PaymentsPage() {
 
   const row = (p: Payment, failedView = false) => (
     <tr key={p.id}>
-      <td className="border-b border-[#eef0eb] px-3 py-3">{formatDate(p.created_at)}</td>
-      <td className="border-b border-[#eef0eb] px-3 py-3 font-medium">{p.user_id ? <Link href={`/admin/membres?id=${p.user_id}`} className="text-ink hover:text-brand">{names.get(p.user_id) ?? '—'}</Link> : '—'}</td>
-      <td className="border-b border-[#eef0eb] px-3 py-3">{formatEuros(p.amount_cents, p.currency)}</td>
-      <td className="border-b border-[#eef0eb] px-3 py-3">
+      <td className="border-b border-line-soft px-3 py-3">{formatDate(p.created_at)}</td>
+      <td className="border-b border-line-soft px-3 py-3 font-medium">{p.user_id ? <Link href={`/admin/membres?id=${p.user_id}`} className="text-ink hover:text-brand">{names.get(p.user_id) ?? '—'}</Link> : '—'}</td>
+      <td className="border-b border-line-soft px-3 py-3">{formatEuros(p.amount_cents, p.currency)}</td>
+      <td className="border-b border-line-soft px-3 py-3">
         {failedView ? `${p.attempt_count} tentative${p.attempt_count > 1 ? 's' : ''}` : p.status === 'paid' ? <Badge tone="green">Payé</Badge> : p.status === 'failed' ? <Badge tone="amber">Échec</Badge> : <Badge>Remboursé</Badge>}
       </td>
-      <td className="border-b border-[#eef0eb] px-3 py-3 text-right">
+      <td className="border-b border-line-soft px-3 py-3 text-right">
         <a href={stripeDashboard(`invoices/${p.id}`)} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand">
           {p.status === 'paid' ? 'Facture / rembourser' : 'Voir dans Stripe'}
         </a>
@@ -60,7 +60,7 @@ export default async function PaymentsPage() {
 
       <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
         {kpis.map((k) => (
-          <div key={k.label} className="rounded-2xl border border-line bg-white p-5">
+          <div key={k.label} className="rounded-2xl border border-line bg-surface p-5">
             <p className="mb-1.5 text-sm text-muted">{k.label}</p>
             <p className="text-[26px] font-bold">{k.value}</p>
           </div>
@@ -105,7 +105,7 @@ export default async function PaymentsPage() {
         ) : (
           <p className="text-muted">Aucun paiement pour le moment.</p>
         )}
-        <p className="mt-3.5 text-[13px] text-muted">Les remboursements se font dans Stripe (traçabilité bancaire complète). Les numéros de carte ne passent jamais par Sillon.</p>
+        <p className="mt-3.5 text-[13px] text-muted">Les remboursements se font dans Stripe (traçabilité bancaire complète). Les numéros de carte ne passent jamais par Tracteurs & Co.</p>
       </Card>
     </>
   );

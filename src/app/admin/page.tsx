@@ -70,7 +70,7 @@ export default async function AdminHome() {
 
       <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
         {kpis.map((k) => (
-          <div key={k.label} className={`rounded-2xl border p-5 ${k.warn ? 'border-warn-line bg-warn-soft' : 'border-line bg-white'}`}>
+          <div key={k.label} className={`rounded-2xl border p-5 ${k.warn ? 'border-warn-line bg-warn-soft' : 'border-line bg-surface'}`}>
             <p className="mb-1.5 text-sm text-muted">{k.label}</p>
             <p className={`text-[28px] font-bold ${k.warn ? 'text-warn' : ''}`}>{k.value}</p>
             <p className="mt-1 text-[13px] text-muted">{k.sub}</p>
@@ -86,7 +86,7 @@ export default async function AdminHome() {
             {weeks.map((n, i) => (
               <div key={i} className="flex flex-1 flex-col items-center gap-1">
                 <span className="text-xs text-muted">{n || ''}</span>
-                <div className={`w-full rounded-t ${i === 11 ? 'bg-[#d99a2b]' : 'bg-brand'}`} style={{ height: `${Math.max(2, (n / maxWeek) * 140)}px` }} />
+                <div className={`w-full rounded-t ${i === 11 ? 'bg-wheat' : 'bg-brand'}`} style={{ height: `${Math.max(2, (n / maxWeek) * 140)}px` }} />
               </div>
             ))}
           </div>
@@ -114,7 +114,7 @@ export default async function AdminHome() {
           </div>
           <ul className="text-sm">
             {((journal.data ?? []) as AuditEntry[]).map((e) => (
-              <li key={e.id} className="flex gap-3.5 border-b border-[#eef0eb] py-3 last:border-0">
+              <li key={e.id} className="flex gap-3.5 border-b border-line-soft py-3 last:border-0">
                 <span className="w-28 flex-none text-muted">{formatDate(e.created_at, { day: '2-digit', month: '2-digit', year: undefined, hour: '2-digit', minute: '2-digit' })}</span>
                 <span className="flex-1">{e.actor_email ?? 'système'} · {e.action}</span>
               </li>
