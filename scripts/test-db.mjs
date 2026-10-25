@@ -127,6 +127,28 @@ await c.query(`insert into public.catalog_models (brand, series, model, status, 
 const nextSeries = (await c.query('select * from public.claim_catalog_job()')).rows[0];
 ok(nextSeries?.model === '930 Vario', 'file : pas deux recherches en parallèle sur la même série');
 
+// E-mails : préférences, journal, campagnes, rappels
+const tokA = (await c.query('select email_token from public.profiles where id = $1', [A])).rows[0].email_token;
+ok(Boolean(tokA), 'chaque profil reçoit un jeton de désinscription');
+ok((await as(A, 'aal1', 'update public.profiles set email_reminders = false, email_news = false where id = $1', [A])).rowCount === 1, 'A coupe ses rappels et annonces');
+await throws(() => as(A, 'aal1', `update public.profiles set email_token = gen_random_uuid() where id = $1`, [A]), 'A ne peut pas changer son jeton de désinscription');
+ok((await as(A, 'aal1', 'update public.profiles set email_news = true where id = $1', [B])).rowCount === 0, 'A ne peut pas changer les préférences de B');
+await c.query(`insert into public.email_log (user_id, to_email, kind, template, subject, status) values ($1, 'a@x.fr', 'rappel', 'rappel_entretien', 'Vidange', 'sent')`, [A]);
+await c.query(`insert into public.email_campaigns (subject, body_md, audience) values ('Annonce', 'Bonjour à tous', 'tous')`);
+await c.query(`insert into public.maintenance_reminders (machine_id, operation_key, due_key, level) values ($1, 'vidange', '1500|', 'bientot')`, [machineA]);
+await c.query(`insert into public.reminder_runs (day) values (current_date)`);
+for (const t of ['email_log', 'email_campaigns', 'maintenance_reminders', 'reminder_runs']) {
+  ok((await as(A, 'aal1', `select * from public.${t}`)).rowCount === 0, `un membre ne lit pas ${t}`);
+  await throws(() => as(A, 'aal1', `delete from public.${t}`).then((r) => { if (r.rowCount === 0) throw new Error('aucune ligne'); }), `un membre ne peut rien effacer dans ${t}`);
+  await throws(() => as(null, null, `select * from public.${t}`), `un visiteur ne lit pas ${t}`);
+}
+ok((await as(ADM, 'aal2', 'select * from public.email_log')).rowCount === 1, 'admin avec 2FA : voit le journal des envois');
+ok((await as(ADM, 'aal1', 'select * from public.email_log')).rowCount === 0, 'admin sans 2FA : journal des envois invisible');
+ok((await as(ADM, 'aal2', 'select * from public.maintenance_reminders')).rowCount === 0, 'suivi des rappels : réservé au serveur, même pour l’admin');
+await throws(() => c.query(`insert into public.reminder_runs (day) values (current_date)`), 'une seule tournée de rappels par jour');
+await c.query(`delete from public.machines where id = $1`, [machineA]);
+ok((await c.query('select count(*)::int n from public.maintenance_reminders')).rows[0].n === 0, 'machine supprimée : ses rappels envoyés partent avec');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

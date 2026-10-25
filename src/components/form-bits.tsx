@@ -12,6 +12,7 @@ export function SubmitButton({
   className = '',
   name,
   value,
+  formAction,
 }: {
   children: ReactNode;
   pendingLabel?: string;
@@ -19,11 +20,15 @@ export function SubmitButton({
   className?: string;
   name?: string;
   value?: string;
+  /** Action propre à ce bouton (formulaire à plusieurs boutons). */
+  formAction?: (formData: FormData) => void;
 }) {
-  const { pending } = useFormStatus();
+  const { pending, action } = useFormStatus();
+  // Avec plusieurs boutons, seul celui qui a lancé l'envoi affiche l'attente.
+  const mine = pending && (!formAction || action === formAction);
   return (
-    <button type="submit" name={name} value={value} disabled={pending} aria-busy={pending} className={`${btn[variant]} ${className}`}>
-      {pending ? (
+    <button type="submit" name={name} value={value} formAction={formAction} disabled={pending} aria-busy={mine} className={`${btn[variant]} ${className}`}>
+      {mine ? (
         <>
           <span className="spinner" aria-hidden="true" />
           {pendingLabel}

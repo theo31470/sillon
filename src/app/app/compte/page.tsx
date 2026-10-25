@@ -5,7 +5,8 @@ import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
 import { Card, Field, Input, btn } from '@/components/ui';
 import { NewPasswordForm } from '@/app/(auth)/forms';
-import { deleteOwnAccount, updateProfile } from './actions';
+import { EmailPrefsFields } from '@/components/email-prefs-fields';
+import { deleteOwnAccount, updateEmailPrefs, updateProfile } from './actions';
 
 export const metadata: Metadata = { title: 'Mon compte' };
 
@@ -16,19 +17,29 @@ export default async function AccountPage() {
     <>
       <h1 className="text-3xl font-bold tracking-tight">Mon compte</h1>
       <div className="flex flex-wrap items-start gap-6">
-        <Card className="min-w-0 flex-[1_1_420px]">
-          <h2 className="mb-4 text-xl font-semibold">Mes informations</h2>
-          <ActionForm action={updateProfile} resetOnSuccess={false}>
-            <Field label="Nom" htmlFor="full_name">
-              <Input id="full_name" name="full_name" defaultValue={profile.full_name} required maxLength={120} />
-            </Field>
-            <Field label="Exploitation" htmlFor="farm_name">
-              <Input id="farm_name" name="farm_name" defaultValue={profile.farm_name} maxLength={120} />
-            </Field>
-            <p className="text-sm text-muted">E-mail : {profile.email}</p>
-            <SubmitButton>Enregistrer</SubmitButton>
-          </ActionForm>
-        </Card>
+        <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-6">
+          <Card>
+            <h2 className="mb-4 text-xl font-semibold">Mes informations</h2>
+            <ActionForm action={updateProfile} resetOnSuccess={false}>
+              <Field label="Nom" htmlFor="full_name">
+                <Input id="full_name" name="full_name" defaultValue={profile.full_name} required maxLength={120} />
+              </Field>
+              <Field label="Exploitation" htmlFor="farm_name">
+                <Input id="farm_name" name="farm_name" defaultValue={profile.farm_name} maxLength={120} />
+              </Field>
+              <p className="text-sm text-muted">E-mail : {profile.email}</p>
+              <SubmitButton>Enregistrer</SubmitButton>
+            </ActionForm>
+          </Card>
+
+          <Card>
+            <h2 className="mb-4 text-xl font-semibold">E-mails</h2>
+            <ActionForm action={updateEmailPrefs} resetOnSuccess={false}>
+              <EmailPrefsFields reminders={profile.email_reminders} news={profile.email_news} />
+              <SubmitButton>Enregistrer</SubmitButton>
+            </ActionForm>
+          </Card>
+        </div>
 
         <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-6">
           <Card>

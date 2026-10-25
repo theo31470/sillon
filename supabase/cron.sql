@@ -28,3 +28,21 @@ select cron.schedule(
 );
 
 -- Pour arrêter : select cron.unschedule('sillon-catalogue');
+
+-- =====================================================================
+-- Rappels d'entretien par e-mail : tous les matins vers 7 h (heure de Paris
+-- en hiver ; 8 h en été). La route n'envoie qu'une tournée par jour.
+-- =====================================================================
+select cron.schedule(
+  'tracteurs-rappels',
+  '0 6 * * *',
+  $$
+  select net.http_post(
+    url := 'https://sillon-five.vercel.app/api/e-mails/rappels',
+    body := '{}'::jsonb,
+    timeout_milliseconds := 5000
+  );
+  $$
+);
+
+-- Pour arrêter : select cron.unschedule('tracteurs-rappels');

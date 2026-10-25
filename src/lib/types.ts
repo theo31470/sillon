@@ -11,6 +11,12 @@ export type Profile = {
   plan: Plan;
   stripe_customer_id: string | null;
   suspended: boolean;
+  /** Rappels d'entretien par e-mail. */
+  email_reminders: boolean;
+  /** Annonces et nouveautés envoyées depuis l'admin. */
+  email_news: boolean;
+  /** Jeton des liens « se désinscrire » (ne permet que de changer ces deux préférences). */
+  email_token: string;
   created_at: string;
   updated_at: string;
 };

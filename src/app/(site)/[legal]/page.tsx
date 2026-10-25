@@ -16,6 +16,7 @@ const pages: Record<string, { title: string; body: string[] }> = {
     body: [
       '[À rédiger avec un conseil RGPD.] Données collectées : compte (nom, e-mail), données du parc matériel (machines, relevés de compteur, entretiens, dépenses), facturation via Stripe.',
       'Finalités : fourniture du service, facturation, sécurité. Les numéros de carte bancaire ne sont jamais stockés par Tracteurs & Co.',
+      'E-mails : les e-mails de compte, les rappels d’entretien et les annonces sont envoyés par notre prestataire Resend. Rappels et annonces se désactivent à tout moment (lien en bas de chaque e-mail ou « Mon compte »).',
       'Vos droits : accès, rectification, export et suppression de vos données sur simple demande à [e-mail].',
     ],
   },

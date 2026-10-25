@@ -7,6 +7,7 @@ const main = [
   { href: '/admin', label: 'Vue d’ensemble' },
   { href: '/admin/membres', label: 'Membres' },
   { href: '/admin/paiements', label: 'Abonnements & paiements' },
+  { href: '/admin/emails', label: 'E-mails' },
   { href: '/admin/blog', label: 'Blog' },
   { href: '/admin/fiches', label: 'Fiches techniques' },
   { href: '/admin/fiches/catalogue', label: '↳ Import par marque' },

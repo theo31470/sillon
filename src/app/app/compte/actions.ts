@@ -30,6 +30,18 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
   return { ok: true, message: 'Informations enregistrées.' };
 }
 
+export async function updateEmailPrefs(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { session } = await requireUser('/app/compte');
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('profiles')
+    .update({ email_reminders: formData.get('email_reminders') === 'on', email_news: formData.get('email_news') === 'on' })
+    .eq('id', session.userId);
+  if (error) return { error: 'Enregistrement impossible.' };
+  revalidatePath('/app/compte');
+  return { ok: true, message: 'Préférences d’e-mail enregistrées.' };
+}
+
 /** Suppression du compte par l'exploitant lui-même (droit à l'effacement). */
 export async function deleteOwnAccount(_prev: FormState, formData: FormData): Promise<FormState> {
   const { session, profile } = await requireUser('/app/compte');

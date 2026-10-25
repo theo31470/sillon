@@ -83,9 +83,8 @@ Sans clés, les pages publiques s’affichent mais la connexion et l’applicati
 4. **Authentication → URL Configuration** : *Site URL* = votre adresse ; ajoutez `http://localhost:3000/**`
    et `https://votre-domaine.fr/**` aux *Redirect URLs*.
 5. **Authentication → Multi-Factor** : activez **TOTP** (application d’authentification).
-6. **Authentication → Emails** (recommandé) : traduisez les modèles en français. Pour le rendu serveur, faites
-   pointer les liens vers `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&suite=/app`
-   (inscription) et `…&type=recovery&suite=/app/compte` (mot de passe).
+6. **Authentication → Hooks → Send Email** : les e-mails de compte sont envoyés par le site (voir « E-mails »
+   plus bas). Inutile de modifier les modèles d’e-mail de Supabase.
 7. Créez votre compte sur le site, puis donnez-vous les droits admin dans le SQL Editor :
    ```sql
    update public.profiles set role = 'admin' where email = 'votre@email.fr';
@@ -104,7 +103,37 @@ Sans clés, les pages publiques s’affichent mais la connexion et l’applicati
 3. **Settings → Billing → Customer portal** : activez le portail (résiliation, moyens de paiement, factures).
 4. **Settings → Billing → Revenue recovery** : réglez les relances automatiques des paiements échoués.
 
-### 3. Claude (Anthropic)
+### 3. E-mails (Resend)
+
+Tous les e-mails partent du site, aux couleurs de Tracteurs & Co, par [Resend](https://resend.com)
+(gratuit jusqu’à 3 000 e-mails/mois, 100/jour). Code : `src/lib/email/`.
+
+1. **Nom de domaine** : il en faut un (ex. `tracteurs-and-co.com`), sans quoi Resend n’écrit qu’au propriétaire du compte.
+2. **Resend → Domains** : ajoutez le domaine, puis créez chez l’hébergeur du domaine les enregistrements DNS
+   indiqués (DKIM, SPF, et DMARC recommandé). Attendez le statut « Verified ».
+3. **Resend → API Keys** : créez une clé « Sending access » → `RESEND_API_KEY` (Vercel, option *Sensitive*).
+4. `EMAIL_FROM` = `Tracteurs & Co <bonjour@votre-domaine.fr>` ; `EMAIL_REPLY_TO` (facultatif) = une boîte que vous lisez.
+5. **Supabase → Authentication → Hooks → Send Email** : type *HTTPS*, adresse
+   `https://votre-domaine.fr/api/auth/email-hook`, bouton *Generate secret* → copiez le secret (`v1,whsec_…`)
+   dans `SEND_EMAIL_HOOK_SECRET` (Vercel, *Sensitive*), redéployez, **puis** activez le hook.
+   Sans hook, Supabase continue d’envoyer ses propres e-mails (en anglais, limités à quelques par heure).
+6. Facultatif : **Authentication → Emails → Security notifications** pour les alertes (mot de passe modifié…).
+7. **Rappels d’entretien** : exécutez la partie « Rappels » de `supabase/cron.sql` (tous les matins, 7 h).
+
+E-mails gérés :
+
+- **Compte** (via le hook Supabase, signature vérifiée) : inscription, mot de passe oublié, lien de connexion,
+  invitation, changement d’adresse (ancienne et nouvelle), code de vérification, alertes de sécurité.
+- **Rappels d’entretien** (`/api/e-mails/rappels`) : une tournée par jour (verrou `reminder_runs`) ; un membre est
+  prévenu quand une échéance passe « bientôt » puis « en retard », une seule fois par niveau (`maintenance_reminders`),
+  dans un seul e-mail récapitulatif.
+- **Annonces** (`/admin/emails`) : rédaction en Markdown, aperçu, test sur sa propre adresse, envoi par paquets de 100.
+- Chaque rappel et annonce porte un lien « Gérer mes e-mails » (`/preferences-e-mail`, sans connexion grâce à un
+  jeton propre à chaque membre) et l’en-tête de désinscription en un clic (Gmail, Apple Mail). Préférences aussi
+  dans « Mon compte ».
+- Journal de tous les envois : table `email_log`, visible dans l’admin. Aperçu de tous les modèles : `/admin/emails/modeles`.
+
+### 4. Claude (Anthropic)
 
 Créez une clé sur [console.anthropic.com](https://console.anthropic.com) et mettez-la dans `ANTHROPIC_API_KEY`.
 L’usage est facturé au nombre de tokens : la consommation de chaque appel est enregistrée dans la table `ai_usage`.
@@ -246,7 +275,7 @@ Le plus simple : [Vercel](https://vercel.com).
       tourne sur plusieurs serveurs (cas de Vercel).
 - [ ] Durcir la CSP avec des nonces (guide Next.js « Content Security Policy »).
 - [ ] Activer les sauvegardes quotidiennes Supabase (offre payante) et la limite de dépense Anthropic.
-- [ ] Traduire les e-mails Supabase et configurer un service d’envoi (SMTP) à votre nom de domaine.
+- [ ] Acheter le nom de domaine, le vérifier dans Resend et activer le hook « Send Email » (voir « E-mails »).
 
 ## À reprendre (notes d’équipe)
 
