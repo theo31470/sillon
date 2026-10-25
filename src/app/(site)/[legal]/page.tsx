@@ -25,7 +25,7 @@ const pages: Record<string, LegalPage> = {
         h: 'Éditeur du site',
         p: [
           `${SITE.domain} est édité par ${E.name}, ${E.status.toLowerCase()}.`,
-          `SIRET : ${E.siret}. Adresse : ${E.address}. Téléphone : ${E.phone}. E-mail : ${CONTACT}.`,
+          `SIRET : ${E.siret}. Adresse : ${E.address}.${E.phone ? ` Téléphone : ${E.phone}.` : ''} E-mail : ${CONTACT}.`,
           `Directeur de la publication : ${E.name}.`,
           `${SITE.vatMention}.`,
         ],
