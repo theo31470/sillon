@@ -4,7 +4,7 @@
 --
 -- Chaque minute, s'il reste du travail, la base « réveille » le site, qui
 -- traite une étape (recherche web ou rédaction). Au plus 3 étapes tournent
--- en parallèle. Remplacez l'adresse par celle de votre site.
+-- en parallèle. (Adresse du site : https://tracteursandco.fr.)
 -- =====================================================================
 
 create extension if not exists pg_cron;
@@ -15,7 +15,7 @@ select cron.schedule(
   '* * * * *',
   $$
   select net.http_post(
-    url := 'https://sillon-five.vercel.app/api/catalogue/tick',
+    url := 'https://tracteursandco.fr/api/catalogue/tick',
     body := '{}'::jsonb,
     timeout_milliseconds := 5000
   )
@@ -38,7 +38,7 @@ select cron.schedule(
   '0 6 * * *',
   $$
   select net.http_post(
-    url := 'https://sillon-five.vercel.app/api/e-mails/rappels',
+    url := 'https://tracteursandco.fr/api/e-mails/rappels',
     body := '{}'::jsonb,
     timeout_milliseconds := 5000
   );
