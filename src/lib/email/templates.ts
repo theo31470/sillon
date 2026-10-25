@@ -295,3 +295,145 @@ export function campaignEmail(
     site,
   );
 }
+
+// ---------------------------------------------------------------------
+// Abonnement et facturation (déclenchés par le webhook Stripe)
+// ---------------------------------------------------------------------
+
+export const BILLING_TEMPLATES = ['abonnement_active', 'essai_fin_proche', 'paiement_recu', 'paiement_refuse', 'resiliation_programmee', 'abonnement_termine'] as const;
+export type BillingTemplate = (typeof BILLING_TEMPLATES)[number];
+
+export const BILLING_TEMPLATE_LABELS: Record<BillingTemplate, string> = {
+  abonnement_active: 'Abonnement activé',
+  essai_fin_proche: 'Fin d’essai dans 3 jours',
+  paiement_recu: 'Paiement reçu',
+  paiement_refuse: 'Paiement refusé',
+  resiliation_programmee: 'Résiliation confirmée',
+  abonnement_termine: 'Abonnement terminé',
+};
+
+export type BillingEmailInput = {
+  name?: string | null;
+  /** « 6,99 € par mois » */
+  priceLabel?: string;
+  /** Date lisible : fin d'essai, prochaine échéance ou fin d'accès. */
+  date?: string;
+  /** Montant payé, ex. « 6,99 € ». */
+  amount?: string;
+  invoiceUrl?: string | null;
+  trial?: boolean;
+};
+
+const BILLING_REASON = 'Vous recevez cet e-mail parce qu’il concerne votre abonnement Tracteurs & Co.';
+
+export function billingEmail(template: BillingTemplate, input: BillingEmailInput, siteUrl: string): BuiltEmail {
+  const site = siteUrl.replace(/\/$/, '');
+  const account = `${site}/app/abonnement`;
+  const price = input.priceLabel ?? 'le prix de votre formule';
+  switch (template) {
+    case 'abonnement_active':
+      return build(
+        input.trial ? 'Votre essai de la formule Complet a commencé' : 'Votre formule Complet est activée',
+        {
+          preheader: input.trial ? `30 jours offerts, jusqu’au ${input.date}.` : 'Toutes les fonctions sont débloquées.',
+          heading: 'Bienvenue dans la formule Complet',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            {
+              type: 'p',
+              text: input.trial
+                ? `Merci ! Votre essai gratuit est ouvert **jusqu’au ${input.date}**. Ensuite, l’abonnement continue à **${price}**, sauf si vous le résiliez avant : un e-mail vous le rappellera 3 jours avant.`
+                : `Merci ! Votre abonnement est actif à **${price}**.${input.date ? ` Prochaine échéance : ${input.date}.` : ''}`,
+            },
+            { type: 'p', text: 'Ce qui est maintenant débloqué : parc matériel illimité, coût de revient à l’heure de chaque machine, rapport d’historique pour la revente et aide au diagnostic des pannes.' },
+            { type: 'button', label: 'Ouvrir mon parc matériel', url: `${site}/app/materiel` },
+            { type: 'note', text: 'Vous pouvez changer de carte, passer à l’annuel ou résilier à tout moment depuis la page « Abonnement » de votre compte.' },
+          ],
+          reason: BILLING_REASON,
+        },
+        site,
+      );
+    case 'essai_fin_proche':
+      return build(
+        `Votre essai se termine le ${input.date}`,
+        {
+          preheader: `Ensuite : ${price}. Rien à faire pour continuer.`,
+          heading: 'Votre essai se termine bientôt',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: `Votre essai gratuit de la formule Complet se termine le **${input.date}**. Le premier paiement de **${price}** aura lieu ce jour-là, avec la carte enregistrée.` },
+            { type: 'p', text: 'Pour continuer, vous n’avez rien à faire. Pour arrêter, résiliez avant cette date depuis votre compte : vous ne serez pas débité et vous repasserez en formule Gratuit.' },
+            { type: 'button', label: 'Gérer mon abonnement', url: account },
+          ],
+          reason: BILLING_REASON,
+        },
+        site,
+      );
+    case 'paiement_recu':
+      return build(
+        `Paiement reçu : ${input.amount}`,
+        {
+          preheader: 'Merci, votre abonnement Tracteurs & Co continue.',
+          heading: 'Paiement reçu, merci',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: `Nous avons bien reçu votre paiement de **${input.amount}** pour la formule Complet.${input.date ? ` Prochaine échéance : ${input.date}.` : ''}` },
+            ...(input.invoiceUrl ? [{ type: 'button' as const, label: 'Voir la facture', url: input.invoiceUrl }] : []),
+            { type: 'note', text: 'Toutes vos factures restent disponibles à tout moment dans la page « Abonnement » de votre compte.' },
+          ],
+          reason: BILLING_REASON,
+        },
+        site,
+      );
+    case 'paiement_refuse':
+      return build(
+        'Paiement refusé : mettez à jour votre carte',
+        {
+          preheader: 'Votre accès à la formule Complet est maintenu quelques jours.',
+          heading: 'Votre paiement n’est pas passé',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: `Le paiement de **${input.amount ?? price}** pour votre formule Complet a été refusé par votre banque (carte expirée, plafond atteint…).` },
+            { type: 'p', text: 'Votre accès est maintenu pendant que nous réessayons automatiquement dans les prochains jours. Pour régler le problème tout de suite, mettez à jour votre carte :' },
+            { type: 'button', label: 'Mettre à jour ma carte', url: account },
+            { type: 'note', text: 'Sans paiement après plusieurs tentatives, votre compte repassera en formule Gratuit : vos données sont conservées, rien n’est supprimé.' },
+          ],
+          reason: BILLING_REASON,
+        },
+        site,
+      );
+    case 'resiliation_programmee':
+      return build(
+        'Résiliation confirmée',
+        {
+          preheader: `Accès à la formule Complet jusqu’au ${input.date}.`,
+          heading: 'Votre résiliation est enregistrée',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: `C’est noté : votre formule Complet s’arrêtera le **${input.date}**, sans nouveau prélèvement. D’ici là, vous gardez toutes les fonctions.` },
+            { type: 'p', text: 'Ensuite, votre compte repassera en formule Gratuit : vos machines, entretiens et dépenses sont conservés.' },
+            { type: 'button', label: 'J’ai changé d’avis', url: account },
+          ],
+          reason: BILLING_REASON,
+        },
+        site,
+      );
+    case 'abonnement_termine':
+      return build(
+        'Votre formule Complet est terminée',
+        {
+          preheader: 'Votre compte est repassé en formule Gratuit. Vos données sont conservées.',
+          heading: 'Votre abonnement est terminé',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: 'Votre formule Complet est terminée et votre compte est repassé en formule Gratuit. Toutes vos données sont conservées.' },
+            { type: 'p', text: 'Vous pouvez reprendre la formule Complet à tout moment, en un clic, depuis votre compte.' },
+            { type: 'button', label: 'Reprendre la formule Complet', url: account },
+            { type: 'note', text: 'Une remarque sur ce qui vous a manqué ? Répondez simplement à cet e-mail : c’est lu.' },
+          ],
+          reason: BILLING_REASON,
+        },
+        site,
+      );
+  }
+}

@@ -9,7 +9,7 @@ import type { BuiltEmail } from '@/lib/email/templates';
  * `email_log` (lisible dans l'admin, rubrique E-mails).
  */
 
-export type EmailKind = 'compte' | 'rappel' | 'annonce' | 'test';
+export type EmailKind = 'compte' | 'rappel' | 'annonce' | 'test' | 'facturation';
 export type EmailList = 'rappels' | 'annonces';
 
 export type OutgoingEmail = {

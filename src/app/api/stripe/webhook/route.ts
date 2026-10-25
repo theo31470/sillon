@@ -4,6 +4,7 @@ import { stripe, ACTIVE_STATUSES } from '@/lib/stripe';
 import { env } from '@/lib/env';
 import { createServiceClient } from '@/lib/supabase/admin';
 import type { Plan } from '@/lib/types';
+import { euros, frDate, notifyBilling, priceLabelOf } from '@/lib/email/billing';
 
 /**
  * Webhook Stripe : seule source de vérité pour les abonnements et paiements.
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
       default:
         break;
     }
+    await sendBillingEmails(event);
   } catch (error) {
     console.error('[stripe] erreur de traitement', event.type, error);
     // 500 : Stripe réessaiera plus tard.
@@ -106,4 +108,68 @@ async function recordInvoice(invoice: Stripe.Invoice, status: 'paid' | 'failed')
     hosted_invoice_url: invoice.hosted_invoice_url ?? null,
     created_at: new Date(invoice.created * 1000).toISOString(),
   });
+}
+
+/** E-mails à l'abonné, après l'enregistrement en base. */
+async function sendBillingEmails(event: Stripe.Event) {
+  switch (event.type) {
+    case 'customer.subscription.created': {
+      const sub = event.data.object;
+      const trial = sub.status === 'trialing';
+      await notifyBilling(
+        'abonnement_active',
+        { customerId: customerId(sub.customer), userId: sub.metadata?.user_id },
+        { trial, date: frDate(trial ? sub.trial_end : sub.items.data[0]?.current_period_end), priceLabel: priceLabelOf(sub) },
+        event.id,
+      );
+      break;
+    }
+    case 'customer.subscription.updated': {
+      const sub = event.data.object;
+      const before = (event.data.previous_attributes ?? {}) as Partial<Stripe.Subscription>;
+      const nowCancelling = sub.cancel_at_period_end || Boolean(sub.cancel_at);
+      const wasCancelling = before.cancel_at_period_end === true || Boolean(before.cancel_at);
+      const changed = 'cancel_at_period_end' in before || 'cancel_at' in before;
+      if (changed && nowCancelling && !wasCancelling) {
+        await notifyBilling(
+          'resiliation_programmee',
+          { customerId: customerId(sub.customer) },
+          { date: frDate(sub.cancel_at ?? sub.items.data[0]?.current_period_end) },
+          event.id,
+        );
+      }
+      break;
+    }
+    case 'customer.subscription.deleted':
+      await notifyBilling('abonnement_termine', { customerId: customerId(event.data.object.customer) }, {}, event.id);
+      break;
+    case 'customer.subscription.trial_will_end': {
+      const sub = event.data.object;
+      // Pas de rappel si l'abonné a déjà résilié.
+      if (!sub.cancel_at_period_end && !sub.cancel_at) {
+        await notifyBilling('essai_fin_proche', { customerId: customerId(sub.customer) }, { date: frDate(sub.trial_end), priceLabel: priceLabelOf(sub) }, event.id);
+      }
+      break;
+    }
+    case 'invoice.paid': {
+      const invoice = event.data.object;
+      // La facture à 0 € du début d'essai n'a pas besoin d'e-mail (l'activation en a déjà un).
+      if (invoice.amount_paid > 0) {
+        await notifyBilling(
+          'paiement_recu',
+          { customerId: customerId(invoice.customer) },
+          { amount: euros(invoice.amount_paid, invoice.currency), invoiceUrl: invoice.hosted_invoice_url ?? null, date: frDate(invoice.lines.data[0]?.period?.end) },
+          event.id,
+        );
+      }
+      break;
+    }
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object;
+      await notifyBilling('paiement_refuse', { customerId: customerId(invoice.customer) }, { amount: euros(invoice.amount_due, invoice.currency) }, event.id);
+      break;
+    }
+    default:
+      break;
+  }
 }

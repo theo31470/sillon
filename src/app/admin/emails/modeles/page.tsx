@@ -3,11 +3,23 @@ import type { Metadata } from 'next';
 import { requireAdmin } from '@/lib/auth';
 import { EmailPreview } from '@/components/email-preview';
 import { env } from '@/lib/env';
-import { AUTH_TEMPLATES, AUTH_TEMPLATE_LABELS, authEmail, campaignEmail, reminderEmail, type AuthTemplate, type BuiltEmail } from '@/lib/email/templates';
+import {
+  AUTH_TEMPLATES,
+  AUTH_TEMPLATE_LABELS,
+  BILLING_TEMPLATES,
+  BILLING_TEMPLATE_LABELS,
+  authEmail,
+  billingEmail,
+  campaignEmail,
+  reminderEmail,
+  type AuthTemplate,
+  type BillingTemplate,
+  type BuiltEmail,
+} from '@/lib/email/templates';
 
 export const metadata: Metadata = { title: 'Modèles d’e-mails' };
 
-type Key = AuthTemplate | 'rappel' | 'annonce';
+type Key = AuthTemplate | BillingTemplate | 'rappel' | 'annonce';
 
 const SAMPLE_MD = `La saison des moissons approche : c’est le bon moment pour faire le point sur vos machines.
 
@@ -35,16 +47,24 @@ function sample(key: Key, site: string, name: string): BuiltEmail {
       site,
     );
   }
+  if ((BILLING_TEMPLATES as readonly string[]).includes(key)) {
+    return billingEmail(
+      key as BillingTemplate,
+      { name, trial: true, priceLabel: '6,99 € par mois', date: '24 novembre 2026', amount: '6,99 €', invoiceUrl: `${site}/app/abonnement` },
+      site,
+    );
+  }
   if (key === 'annonce') return campaignEmail({ subject: 'Préparez la moisson avec Tracteurs & Co', bodyMd: SAMPLE_MD, name, preferencesUrl: `${site}/preferences-e-mail` }, site);
-  return authEmail(key, { name, url, code: '482915', newEmail: 'nouvelle.adresse@exemple.fr' }, site);
+  return authEmail(key as AuthTemplate, { name, url, code: '482915', newEmail: 'nouvelle.adresse@exemple.fr' }, site);
 }
 
 const GROUPS: { title: string; keys: Key[] }[] = [
   { title: 'Compte', keys: ['signup', 'recovery', 'magiclink', 'invite', 'email_change_current', 'email_change_new', 'reauthentication'] },
   { title: 'Alertes de sécurité', keys: AUTH_TEMPLATES.filter((t) => t.endsWith('_notification')) },
+  { title: 'Abonnement', keys: [...BILLING_TEMPLATES] },
   { title: 'Parc matériel', keys: ['rappel', 'annonce'] },
 ];
-const LABELS: Record<Key, string> = { ...AUTH_TEMPLATE_LABELS, rappel: 'Rappel d’entretien', annonce: 'Annonce (exemple)' };
+const LABELS: Record<Key, string> = { ...AUTH_TEMPLATE_LABELS, ...BILLING_TEMPLATE_LABELS, rappel: 'Rappel d’entretien', annonce: 'Annonce (exemple)' };
 
 export default async function EmailTemplatesPage(props: PageProps<'/admin/emails/modeles'>) {
   const { profile } = await requireAdmin('/admin/emails/modeles');
