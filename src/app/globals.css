@@ -297,6 +297,19 @@ input[type="file"] {
   }
 }
 
+/* Photo d'accueil : léger zoom lent à l'arrivée. */
+.hero-photo img {
+  animation: hero-zoom 14s var(--ease-out-soft) both;
+}
+@keyframes hero-zoom {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
 /* Chiffres clés et compteur d'heures. */
 .figure {
   animation: rise 600ms var(--ease-out-soft) both;
@@ -509,5 +522,5 @@ details[open] > :not(summary) {
     --color-brand: #b25a2e; --color-brand-dark: #8f4422; --color-brand-tint: #fbf1ea; --color-brand-soft: #f6e3d8;
   }
   body { background: #fff; }
-  .reveal, .figure, .hero-scene .machine-drive { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .reveal, .figure, .hero-scene .machine-drive, .hero-photo img { animation: none !important; opacity: 1 !important; transform: none !important; }
 }

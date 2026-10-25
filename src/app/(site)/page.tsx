@@ -9,6 +9,11 @@ import { listPublishedSheets } from '@/lib/content';
 import { keyFigures, machineKind } from '@/lib/sheets/insights';
 import { parseSheetContent } from '@/lib/sheets/schema';
 import { FREE_MACHINE_LIMIT } from '@/lib/plans';
+import heroPhoto from '../../../public/photos/accueil-travail-du-sol.jpg';
+import exploitantPhoto from '../../../public/photos/exploitant-tracteur.jpg';
+import cumaPhoto from '../../../public/photos/cuma-chantier.jpg';
+import etaPhoto from '../../../public/photos/eta-moisson.jpg';
+import costPhoto from '../../../public/photos/cout-de-revient-pressage.jpg';
 
 const features: { icon: IconName; title: string; text: string }[] = [
   { icon: 'wrench', title: 'Carnet d’entretien automatique', text: 'Choisissez le modèle de votre machine : vidanges, filtres et graissages sont repris de sa fiche technique.' },
@@ -20,9 +25,9 @@ const features: { icon: IconName; title: string; text: string }[] = [
 ];
 
 const audiences = [
-  { icon: 'tag' as IconName, title: 'Exploitants', text: 'Suivez vos tracteurs et outils sans paperasse, depuis le téléphone.' },
-  { icon: 'hitch' as IconName, title: 'CUMA', text: 'Coût horaire réel de chaque machine pour fixer des tarifs justes.' },
-  { icon: 'gear' as IconName, title: 'Entrepreneurs de travaux', text: 'Marge par machine et entretien d’une flotte qui tourne beaucoup.' },
+  { icon: 'tag' as IconName, title: 'Exploitants', text: 'Suivez vos tracteurs et outils sans paperasse, depuis le téléphone.', photo: exploitantPhoto, alt: 'Tracteur rouge en bordure de parcelle', position: 'object-[50%_60%]' },
+  { icon: 'hitch' as IconName, title: 'CUMA', text: 'Coût horaire réel de chaque machine pour fixer des tarifs justes.', photo: cumaPhoto, alt: 'Chantier de récolte vu du ciel : tracteur, benne et moissonneuse', position: 'object-center' },
+  { icon: 'gear' as IconName, title: 'Entrepreneurs de travaux', text: 'Marge par machine et entretien d’une flotte qui tourne beaucoup.', photo: etaPhoto, alt: 'Moissonneuse-batteuse en chantier dans la poussière', position: 'object-[50%_55%]' },
 ];
 
 const faq = [
@@ -72,8 +77,17 @@ export default async function HomePage() {
           </div>
 
           <div className="relative min-w-0 flex-[1_1_480px]">
-            <div className="overflow-hidden rounded-3xl border border-line shadow-[0_30px_60px_-40px_rgba(0,0,0,0.60)]">
-              <MachineScene kind="tracteur" uid="accueil" tall label="Illustration : tracteur dans un champ labouré" className="hero-scene block h-[420px] w-full" />
+            <div className="hero-photo relative h-[440px] overflow-hidden rounded-3xl border border-line shadow-[0_30px_60px_-40px_rgba(0,0,0,0.60)]">
+              <Image
+                src={heroPhoto}
+                alt="Tracteur au travail du sol au coucher du soleil"
+                fill
+                priority
+                placeholder="blur"
+                sizes="(min-width: 1024px) 560px, 100vw"
+                className="object-cover object-[42%_62%]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" aria-hidden="true" />
             </div>
             <div className="figure absolute -left-2 top-8 w-64 max-w-[78%] rounded-2xl bg-surface p-4 shadow-[0_16px_36px_rgba(0,0,0,0.36)] sm:-left-6" style={{ animationDelay: '350ms' }}>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">Prochain entretien</p>
@@ -93,15 +107,26 @@ export default async function HomePage() {
 
       {/* Pour qui */}
       <section className="bg-ground">
-        <div className="mx-auto grid max-w-6xl gap-5 px-6 py-12 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+        <div className="mx-auto grid max-w-6xl gap-5 px-6 py-14 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
           {audiences.map((a) => (
-            <div key={a.title} className="reveal flex items-start gap-3.5">
-              <span className="flex size-11 flex-none items-center justify-center rounded-xl bg-surface text-brand shadow-sm"><Icon name={a.icon} size={22} /></span>
-              <div>
-                <h2 className="font-semibold">{a.title}</h2>
+            <article key={a.title} className="lift-card reveal group overflow-hidden rounded-2xl border border-line bg-surface">
+              <div className="relative h-44 overflow-hidden bg-photo">
+                <Image
+                  src={a.photo}
+                  alt={a.alt}
+                  fill
+                  placeholder="blur"
+                  sizes="(min-width: 1024px) 370px, (min-width: 640px) 50vw, 100vw"
+                  className={`object-cover transition-transform duration-700 group-hover:scale-105 ${a.position}`}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" aria-hidden="true" />
+                <span className="absolute bottom-3 left-3 flex size-10 items-center justify-center rounded-xl bg-brand text-on-brand shadow-lg"><Icon name={a.icon} size={20} /></span>
+              </div>
+              <div className="p-5">
+                <h2 className="mb-1 text-lg font-semibold">{a.title}</h2>
                 <p className="text-[15px] text-muted">{a.text}</p>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </section>
@@ -124,8 +149,10 @@ export default async function HomePage() {
       </section>
 
       {/* Coût de revient */}
-      <section className="bg-admin text-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-14 px-6 py-20">
+      <section className="relative isolate overflow-hidden bg-admin text-white">
+        <Image src={costPhoto} alt="" fill sizes="100vw" placeholder="blur" className="-z-20 object-cover object-[50%_70%] opacity-40" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-admin via-admin/85 to-admin/30" aria-hidden="true" />
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-14 px-6 py-24">
           <div className="min-w-0 flex-[1_1_420px]">
             <p className="mb-2 font-semibold text-wheat">Coût de revient</p>
             <h2 className="mb-4 text-[clamp(30px,3.4vw,40px)] font-bold tracking-tight">Combien vous coûte vraiment une heure de tracteur ?</h2>

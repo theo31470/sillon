@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { PHOTO_CREDITS } from '@/lib/photo-credits';
 
 // Pages légales : textes à compléter avec un professionnel avant la mise en ligne.
 const pages: Record<string, { title: string; body: string[] }> = {
@@ -45,6 +46,21 @@ export default async function LegalPage(props: PageProps<'/[legal]'>) {
     <article className="mx-auto max-w-3xl px-6 py-14">
       <h1 className="mb-8 text-4xl font-bold tracking-tight">{page.title}</h1>
       {page.body.map((p) => <p key={p} className="mb-4 leading-relaxed text-muted">{p}</p>)}
+      {legal === 'mentions-legales' ? (
+        <section className="mt-10 border-t border-line pt-8">
+          <h2 className="mb-3 text-xl font-semibold">Crédits photos</h2>
+          <p className="mb-3 text-muted">
+            Photos de la page d’accueil sous <a href="https://unsplash.com/license" className="text-brand underline" rel="noopener noreferrer">licence Unsplash</a>. Photos des fiches techniques : auteur et licence indiqués sous chaque photo.
+          </p>
+          <ul className="flex flex-col gap-1.5 text-sm text-muted">
+            {PHOTO_CREDITS.map((c) => (
+              <li key={c.file}>
+                {c.subject} : <a href={c.url} className="text-brand underline" rel="noopener noreferrer">{c.author}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </article>
   );
 }
