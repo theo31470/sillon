@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate, formatEuros } from '@/lib/format';
-import { FREE_MACHINE_LIMIT, PLANS } from '@/lib/plans';
+import { ANNUAL_DISCOUNT, COMPLET_PRICES, FREE_MACHINE_LIMIT, PLANS } from '@/lib/plans';
+import { env } from '@/lib/env';
+import { SITE } from '@/lib/site';
 import type { Payment, Subscription } from '@/lib/types';
 import { Badge, Card, CheckIcon, Notice, btn } from '@/components/ui';
 import { openBillingPortal, startCheckout } from './actions';
@@ -55,8 +57,19 @@ export default async function SubscriptionPage(props: PageProps<'/app/abonnement
             {plan.features.map((f) => <li key={f} className="flex gap-2"><CheckIcon className="mt-0.5 flex-none text-brand" />{f}</li>)}
           </ul>
           {profile.plan === 'free' ? (
-            <form action={startCheckout}>
-              <button type="submit" className={btn.primary}>Passer à la formule Complet — 30 jours offerts</button>
+            <form action={startCheckout} className="flex flex-col gap-3">
+              <p className="font-semibold">Passer à la formule Complet : 30 jours offerts, puis</p>
+              <div className="flex flex-wrap gap-3">
+                <button type="submit" name="periode" value="mensuel" className={btn.secondary}>
+                  {COMPLET_PRICES.mensuel.label} {COMPLET_PRICES.mensuel.period}
+                </button>
+                {env.stripePriceCompletAnnuel() ? (
+                  <button type="submit" name="periode" value="annuel" className={btn.primary}>
+                    {COMPLET_PRICES.annuel.label} {COMPLET_PRICES.annuel.period} · −{ANNUAL_DISCOUNT} %
+                  </button>
+                ) : null}
+              </div>
+              <p className="text-xs text-muted">Prix TTC · {SITE.vatMention}</p>
             </form>
           ) : profile.stripe_customer_id ? (
             <form action={openBillingPortal}>

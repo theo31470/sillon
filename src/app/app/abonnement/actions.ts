@@ -16,9 +16,12 @@ async function ensureCustomer(userId: string, email: string, name: string, exist
   return customer.id;
 }
 
-export async function startCheckout() {
+export async function startCheckout(formData: FormData) {
   const { session, profile } = await requireUser('/app/abonnement');
   if (profile.plan !== 'free') redirect('/app/abonnement');
+
+  const annual = formData.get('periode') === 'annuel' && env.stripePriceCompletAnnuel();
+  const price = annual ? env.stripePriceCompletAnnuel()! : env.stripePriceComplet();
 
   const customer = await ensureCustomer(session.userId, profile.email, profile.full_name, profile.stripe_customer_id);
   const { count } = await createServiceClient()
@@ -30,9 +33,9 @@ export async function startCheckout() {
     mode: 'subscription',
     customer,
     client_reference_id: session.userId,
-    line_items: [{ price: env.stripePriceComplet(), quantity: 1 }],
+    line_items: [{ price, quantity: 1 }],
     // Essai gratuit uniquement pour un premier abonnement.
-    subscription_data: { ...(count ? {} : { trial_period_days: TRIAL_DAYS }), metadata: { user_id: session.userId, plan: 'complet' } },
+    subscription_data: { ...(count ? {} : { trial_period_days: TRIAL_DAYS }), metadata: { user_id: session.userId, plan: 'complet', periode: annual ? 'annuel' : 'mensuel' } },
     allow_promotion_codes: true,
     locale: 'fr',
     success_url: `${env.siteUrl()}/app/abonnement?statut=merci`,

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Logo, btn } from '@/components/ui';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { getSession } from '@/lib/auth';
+import { SITE } from '@/lib/site';
 
 async function isLoggedIn() {
   try {
@@ -52,6 +53,8 @@ export function SiteFooter() {
           <Link href="/fiches" className="link-underline transition-colors hover:text-ink">Fiches techniques</Link>
           <Link href="/mentions-legales" className="link-underline transition-colors hover:text-ink">Mentions légales</Link>
           <Link href="/confidentialite" className="link-underline transition-colors hover:text-ink">Confidentialité</Link>
+          <Link href="/conditions" className="link-underline transition-colors hover:text-ink">Conditions</Link>
+          <a href={`mailto:${SITE.contactEmail}`} className="link-underline transition-colors hover:text-ink">Contact</a>
         </div>
       </div>
     </footer>

@@ -94,7 +94,9 @@ Sans clés, les pages publiques s’affichent mais la connexion et l’applicati
 ### 2. Stripe
 
 1. **Catalogue de produits** : créez le produit « Tracteurs & Co Complet » avec un prix mensuel récurrent.
-   Copiez son identifiant `price_…` dans `STRIPE_PRICE_COMPLET` et le prix affiché dans `NEXT_PUBLIC_PRICE_COMPLET_LABEL`.
+   et deux prix récurrents TTC : **6,99 € / mois** et **69 € / an**. Copiez leurs identifiants `price_…` dans
+   `STRIPE_PRICE_COMPLET` (mensuel) et `STRIPE_PRICE_COMPLET_ANNUEL` (annuel). Les prix affichés sont dans
+   `src/lib/plans.ts` (`COMPLET_PRICES`) : gardez-les alignés avec Stripe.
 2. **Developers → Webhooks** : ajoutez l’adresse `https://votre-domaine.fr/api/stripe/webhook` avec les événements
    `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
    `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`.

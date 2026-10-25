@@ -19,6 +19,8 @@ export const env = {
   stripeSecretKey: () => required('STRIPE_SECRET_KEY'),
   stripeWebhookSecret: () => required('STRIPE_WEBHOOK_SECRET'),
   stripePriceComplet: () => required('STRIPE_PRICE_COMPLET'),
+  /** Prix annuel de la formule Complet (facultatif : sans lui, seul le mensuel est proposé). */
+  stripePriceCompletAnnuel: () => process.env.STRIPE_PRICE_COMPLET_ANNUEL || null,
   anthropicApiKey: () => required('ANTHROPIC_API_KEY'),
   anthropicModel: () => process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5-5',
   /** Modèle des tâches en série (import par marque, photos) : beaucoup moins cher. */
