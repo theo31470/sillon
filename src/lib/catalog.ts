@@ -7,6 +7,7 @@ import { logAudit } from '@/lib/audit';
 import { attachCommonsPhoto } from '@/lib/photos';
 import type { Session } from '@/lib/auth';
 import { CATALOG_DAILY_BUDGET_USD, CATALOG_PARALLEL, type CatalogModel } from '@/lib/catalog-shared';
+import { alertAdmins, isAiBillingError } from '@/lib/email/alerts';
 
 /** Dépense IA estimée (USD) depuis minuit UTC, toutes fonctions confondues. */
 export async function spentTodayUsd() {
@@ -131,9 +132,16 @@ export async function processNextJob(): Promise<ProcessResult> {
     const message = err instanceof Error ? err.message : 'erreur inconnue';
     console.error('[catalogue]', label, phase, message);
     // Budget du jour atteint ou crédits Anthropic épuisés : on arrête toute la file.
-    if (err instanceof BudgetError || /credit balance|billing|insufficient|quota/i.test(message)) {
+    if (err instanceof BudgetError || isAiBillingError(err)) {
       const reason = err instanceof BudgetError ? message : 'Crédits Anthropic épuisés : file mise en pause. Rechargez puis relancez la sélection.';
       await pauseQueue(reason.slice(0, 300));
+      if (!(err instanceof BudgetError)) {
+        await alertAdmins('credits-ia', 'Plus de crédit Claude : l’aide au diagnostic est en panne', [
+          'L’API Claude (Anthropic) refuse les demandes : le crédit du compte est épuisé.',
+          'L’aide au diagnostic affiche « momentanément indisponible » et l’import des fiches est en pause.',
+          'Rechargez le crédit sur console.anthropic.com (Plans & Billing), puis relancez la sélection dans l’admin.',
+        ], 'https://console.anthropic.com/settings/billing');
+      }
       return { idle: false, id: job.id, label, phase, ok: false, error: reason };
     }
     // Deux nouvelles tentatives automatiques, puis l'erreur reste affichée.

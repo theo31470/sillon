@@ -1,11 +1,13 @@
 'use server';
 
+import { after } from 'next/server';
 import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { diagnose, type Diagnosis } from '@/lib/ai';
 import { rateLimit } from '@/lib/rate-limit';
 import { parseSheetContent } from '@/lib/sheets/schema';
+import { alertAdmins, isAiBillingError } from '@/lib/email/alerts';
 
 export type DiagnosisState = { error?: string; result?: Diagnosis } | undefined;
 
@@ -47,6 +49,21 @@ export async function runDiagnosis(_prev: DiagnosisState, formData: FormData): P
     return { result };
   } catch (error) {
     console.error('[diagnostic]', error);
+    if (isAiBillingError(error)) {
+      after(() =>
+        alertAdmins(
+          'credits-ia',
+          'Plus de crédit Claude : l’aide au diagnostic est en panne',
+          [
+            'L’API Claude (Anthropic) refuse les demandes : le crédit du compte est épuisé.',
+            'Les abonnés voient « momentanément indisponible » dans l’aide au diagnostic, et l’import des fiches est en pause.',
+            'Rechargez le crédit sur console.anthropic.com (Plans & Billing). Pensez à activer la recharge automatique avec un plafond mensuel.',
+          ],
+          'https://console.anthropic.com/settings/billing',
+        ),
+      );
+      return { error: 'L’aide au diagnostic est momentanément indisponible. Nous sommes prévenus et la rétablissons au plus vite.' };
+    }
     return { error: 'Le diagnostic n’a pas pu aboutir. Réessayez dans un instant.' };
   }
 }
