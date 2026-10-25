@@ -51,6 +51,17 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
+  async redirects() {
+    // Une seule adresse officielle : www.tracteursandco.fr → tracteursandco.fr.
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.tracteursandco.fr' }],
+        destination: 'https://tracteursandco.fr/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
