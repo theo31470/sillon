@@ -284,6 +284,17 @@ Le plus simple : [Vercel](https://vercel.com).
 
 ## À reprendre (notes d’équipe)
 
+- **Passage de Stripe en mode réel** (25/10/2026) : le mode test fonctionne de bout en bout (produit, prix
+  6,99 €/mois et 69 €/an, webhook, portail, e-mails d'abonnement). Une fois le compte Stripe activé
+  (identité + IBAN) : recréer en mode réel le produit, les deux prix, le webhook (7 événements, dont
+  `customer.subscription.trial_will_end`) et le portail ; remplacer dans Vercel `STRIPE_SECRET_KEY`,
+  `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_COMPLET`, `STRIPE_PRICE_COMPLET_ANNUEL`, puis redéployer.
+  Dans le tableau de bord Stripe : informations publiques (nom, contact@) et e-mails clients.
+- **Mentions légales** : ajouter le téléphone de l'éditeur (`src/lib/site.ts`, champ `phone`).
+- **DNS** (Vercel) : tracteursandco.fr (site, Resend, messagerie Amen MX + SPF `include:spf1/spf2.webapps.net`),
+  tracteursandco.com (redirection, `v=spf1 -all`, DMARC reject). Ne pas modifier le MX Amen
+  (Amen supprime les boîtes si le MX ne pointe plus chez eux).
+
 - **Import des tracteurs — budget** (24/10/2026) : premier essai à ~1,30 $ par fiche (Sonnet, brochures lues en
   entier) ; version corrigée (Haiku, une recherche par série) estimée à ~3,5 centimes par fiche, soit ~250 fiches
   pour 10 € ; avec la recherche entretien/pannes ajoutée le 25/10 : ~5 centimes par fiche, soit ~180 fiches pour 10 €. **À valider** : lancer une seule série (Fendt 700 Vario, 5 modèles, estimation ≈ 0,17 $), comparer avec
