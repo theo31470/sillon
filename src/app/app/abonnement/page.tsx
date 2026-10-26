@@ -53,6 +53,11 @@ export default async function SubscriptionPage(props: PageProps<'/app/abonnement
               {formatDate(sub.current_period_end, { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           ) : null}
+          {profile.comp_active && !(sub && ['trialing', 'active', 'past_due'].includes(sub.status)) ? (
+            <p className="mb-4 text-muted">
+              Formule offerte par Tracteurs &amp; Co{profile.comp_until ? ` jusqu’au ${formatDate(profile.comp_until, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}.
+            </p>
+          ) : null}
           <ul className="mb-6 flex flex-col gap-2">
             {plan.features.map((f) => <li key={f} className="flex gap-2"><CheckIcon className="mt-0.5 flex-none text-brand" />{f}</li>)}
           </ul>

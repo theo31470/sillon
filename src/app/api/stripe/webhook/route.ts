@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import type Stripe from 'stripe';
-import { stripe, ACTIVE_STATUSES } from '@/lib/stripe';
+import { stripe } from '@/lib/stripe';
+import { syncPlan } from '@/lib/membership';
 import { env } from '@/lib/env';
 import { createServiceClient } from '@/lib/supabase/admin';
 import type { Plan } from '@/lib/types';
@@ -87,11 +88,8 @@ async function syncSubscription(sub: Stripe.Subscription) {
     cancel_at_period_end: sub.cancel_at_period_end,
   });
 
-  // La formule du profil suit le meilleur abonnement encore actif.
-  const { data: subs } = await supabase.from('subscriptions').select('status, plan').eq('user_id', userId);
-  const active = (subs ?? []).filter((s) => ACTIVE_STATUSES.has(s.status));
-  const newPlan: Plan = active.some((s) => s.plan === 'groupement') ? 'groupement' : active.length ? 'complet' : 'free';
-  await supabase.from('profiles').update({ plan: newPlan }).eq('id', userId);
+  // La formule du profil suit le meilleur abonnement actif (ou une formule offerte).
+  await syncPlan(userId);
 }
 
 async function recordInvoice(invoice: Stripe.Invoice, status: 'paid' | 'failed') {

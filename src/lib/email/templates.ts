@@ -296,6 +296,27 @@ export function campaignEmail(
   );
 }
 
+/** Message personnel écrit par un admin depuis la fiche d'un membre (ou plusieurs). */
+export function messageEmail(input: { subject: string; bodyMd: string; name?: string | null }, siteUrl: string): BuiltEmail {
+  const site = siteUrl.replace(/\/$/, '');
+  const body = markdownToText(input.bodyMd);
+  return build(
+    input.subject,
+    {
+      preheader: body.split('\n').find((l) => l.trim())?.slice(0, 140) ?? input.subject,
+      heading: input.subject,
+      blocks: [
+        { type: 'p', text: hello(input.name) },
+        { type: 'html', html: markdownToEmailHtml(renderMarkdown(input.bodyMd), site), text: body },
+        { type: 'p', text: 'Bien cordialement,\n**L’équipe Tracteurs & Co**' },
+        { type: 'note', text: 'Pour nous répondre, répondez simplement à cet e-mail.' },
+      ],
+      reason: 'Vous recevez ce message personnel de l’équipe Tracteurs & Co au sujet de votre compte.',
+    },
+    site,
+  );
+}
+
 // ---------------------------------------------------------------------
 // Abonnement et facturation (déclenchés par le webhook Stripe)
 // ---------------------------------------------------------------------

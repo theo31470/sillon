@@ -15,7 +15,7 @@ import { runRemindersNow } from './actions';
 export const metadata: Metadata = { title: 'E-mails' };
 export const dynamic = 'force-dynamic';
 
-const KIND_LABELS: Record<string, string> = { compte: 'Compte', rappel: 'Rappel', annonce: 'Annonce', test: 'Test', facturation: 'Abonnement' };
+const KIND_LABELS: Record<string, string> = { compte: 'Compte', rappel: 'Rappel', annonce: 'Annonce', test: 'Test', facturation: 'Abonnement', message: 'Message' };
 const dateTime = (iso: string) => formatDate(iso, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export default async function AdminEmailsPage() {

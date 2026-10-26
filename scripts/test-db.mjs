@@ -18,7 +18,7 @@ await c.connect();
 const stub = `
 create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
 create schema auth;
-create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}'::jsonb);
+create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}'::jsonb, last_sign_in_at timestamptz);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claims', true)::jsonb ->> 'sub','')::uuid $$;
 create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
 grant usage on schema auth to anon, authenticated;
@@ -148,6 +148,31 @@ ok((await as(ADM, 'aal2', 'select * from public.maintenance_reminders')).rowCoun
 await throws(() => c.query(`insert into public.reminder_runs (day) values (current_date)`), 'une seule tournée de rappels par jour');
 await c.query(`delete from public.machines where id = $1`, [machineA]);
 ok((await c.query('select count(*)::int n from public.maintenance_reminders')).rows[0].n === 0, 'machine supprimée : ses rappels envoyés partent avec');
+
+// Gestion des membres (admin)
+await c.query(`update auth.users set last_sign_in_at = now() where id = $1`, [A]);
+ok((await c.query('select last_seen_at from public.profiles where id = $1', [A])).rows[0].last_seen_at !== null, 'connexion : dernière activité recopiée sur le profil');
+await c.query(`insert into public.member_admin (user_id, note, tags, diag_monthly_limit) values ($1, 'Client fidèle', '{cuma}', 50)`, [A]);
+ok((await as(A, 'aal1', 'select * from public.member_admin')).rowCount === 0, 'un membre ne lit pas sa fiche d’administration (notes internes)');
+await throws(() => as(A, 'aal1', `insert into public.member_admin (user_id, note) values ($1, 'x')`, [B]).then((r) => { if (!r.rowCount) throw new Error('refusé'); }), 'un membre ne peut pas écrire de note');
+ok((await as(ADM, 'aal1', 'select * from public.member_admin')).rowCount === 0, 'admin sans 2FA : notes invisibles');
+ok((await as(ADM, 'aal2', 'select * from public.member_admin')).rowCount === 1, 'admin avec 2FA : lit les notes');
+await throws(() => as(A, 'aal1', `update public.profiles set comp_active = true where id = $1`, [A]), 'un membre ne peut pas s’offrir la formule Complet');
+await throws(() => as(ADM, 'aal2', `select * from public.admin_member_list()`), 'la liste admin n’est pas appelable depuis l’API publique');
+await c.query('set role service_role');
+const list = (await c.query(`select * from public.admin_member_list('', 'tous', '', 'recent', 0, 25)`)).rows;
+const tagged = (await c.query(`select * from public.admin_member_list('', 'tous', 'cuma', 'recent', 0, 25)`)).rows;
+const suspendedList = (await c.query(`select * from public.admin_member_list('', 'suspendus', '', 'recent', 0, 25)`)).rows;
+const searchList = (await c.query(`select * from public.admin_member_list('earl', 'tous', '', 'nom', 0, 25)`)).rows;
+const tags = (await c.query(`select * from public.admin_member_tags()`)).rows;
+await c.query('reset role');
+ok(list.length === 3 && Number(list[0].total_count) === 3, 'liste admin : tous les membres, avec le total');
+ok(tagged.length === 1 && tagged[0].id === A, 'liste admin : filtre par étiquette');
+ok(suspendedList.length === 1 && suspendedList[0].id === B, 'liste admin : filtre « suspendus »');
+ok(searchList.length >= 1 && searchList.every((r) => /earl/i.test(r.farm_name + r.full_name + r.email)) , 'liste admin : recherche');
+ok(tags[0]?.tag === 'cuma', 'étiquettes utilisées : suggestions');
+await c.query(`insert into public.email_log (user_id, to_email, kind, template, subject, status) values ($1, 'a@x.fr', 'message', 'message_admin', 'Bonjour', 'sent')`, [A]);
+ok(true, 'journal des e-mails : type « message » accepté');
 
 await c.end();
 await server.stop();

@@ -21,7 +21,7 @@ export function parisMonthStart(now = new Date()) {
   return new Date(`${parts.year}-${parts.month}-01T00:00:00${offset}`);
 }
 
-export type DiagnosticQuota = { usedMonth: number; usedDay: number; remaining: number; blocked: null | 'jour' | 'mois' };
+export type DiagnosticQuota = { usedMonth: number; usedDay: number; limit: number; remaining: number; blocked: null | 'jour' | 'mois' };
 
 export async function diagnosticQuota(userId: string): Promise<DiagnosticQuota> {
   const db = createServiceClient();
@@ -34,7 +34,14 @@ export async function diagnosticQuota(userId: string): Promise<DiagnosticQuota> 
       .gte('created_at', since.toISOString());
     return count ?? 0;
   };
-  const [usedMonth, usedDay] = await Promise.all([count(parisMonthStart()), count(new Date(Date.now() - 24 * 3600_000))]);
-  const blocked = usedMonth >= DIAGNOSTIC_MONTHLY_LIMIT ? 'mois' : usedDay >= DIAGNOSTIC_DAILY_LIMIT ? 'jour' : null;
-  return { usedMonth, usedDay, remaining: Math.max(0, DIAGNOSTIC_MONTHLY_LIMIT - usedMonth), blocked };
+  const [usedMonth, usedDay, { data: custom }] = await Promise.all([
+    count(parisMonthStart()),
+    count(new Date(Date.now() - 24 * 3600_000)),
+    db.from('member_admin').select('diag_monthly_limit').eq('user_id', userId).maybeSingle(),
+  ]);
+  // Quota propre au membre (réglé par un admin), sinon le quota par défaut.
+  const limit = custom?.diag_monthly_limit ?? DIAGNOSTIC_MONTHLY_LIMIT;
+  const daily = Math.min(DIAGNOSTIC_DAILY_LIMIT, limit);
+  const blocked = usedMonth >= limit ? 'mois' : usedDay >= daily ? 'jour' : null;
+  return { usedMonth, usedDay, limit, remaining: Math.max(0, limit - usedMonth), blocked };
 }

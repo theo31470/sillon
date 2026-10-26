@@ -28,7 +28,7 @@ export default async function DiagnosticPage() {
           <Link href="/app/abonnement" className={btn.primary}>Voir la formule Complet</Link>
         </Card>
       ) : null}
-      <DiagnosticForm machines={data ?? []} disabled={free} remaining={quota?.remaining ?? null} limit={DIAGNOSTIC_MONTHLY_LIMIT} />
+      <DiagnosticForm machines={data ?? []} disabled={free} remaining={quota?.remaining ?? null} limit={quota?.limit ?? DIAGNOSTIC_MONTHLY_LIMIT} />
     </>
   );
 }

@@ -17,6 +17,12 @@ export type Profile = {
   email_news: boolean;
   /** Jeton des liens « se désinscrire » (ne permet que de changer ces deux préférences). */
   email_token: string;
+  /** Formule Complet offerte par un admin, hors Stripe. */
+  comp_active: boolean;
+  /** Fin de la formule offerte (null : sans date de fin). */
+  comp_until: string | null;
+  /** Dernière activité (connexion ou visite de l'espace membre). */
+  last_seen_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -178,6 +184,17 @@ export type BlogPost = {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+/** Fiche d'administration d'un membre (lisible des seuls admins). */
+export type MemberAdmin = {
+  user_id: string;
+  note: string;
+  tags: string[];
+  /** Quota mensuel de diagnostics propre à ce membre (null : quota par défaut). */
+  diag_monthly_limit: number | null;
+  updated_at: string;
+  updated_by: string | null;
 };
 
 export type Subscription = {

@@ -1,8 +1,10 @@
 import 'server-only';
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { Profile } from '@/lib/types';
+import { compExpired, syncPlan, touchLastSeen } from '@/lib/membership';
 
 /**
  * Couche d'accès aux données (DAL) : toutes les pages et actions protégées
@@ -54,6 +56,13 @@ export async function requireUser(next = '/app') {
   const profile = await getProfile();
   if (!profile) redirect(`/connexion?suite=${encodeURIComponent(next)}`);
   if (profile.suspended) redirect('/compte-suspendu');
+
+  // Formule offerte arrivée à échéance : on la retire tout de suite.
+  if (compExpired(profile)) {
+    const plan = await syncPlan(profile.id);
+    Object.assign(profile, { plan, comp_active: false });
+  }
+  after(() => touchLastSeen(profile.id, profile.last_seen_at));
 
   // Un membre qui a activé la double authentification doit saisir son code.
   if (session.aal !== 'aal2') {

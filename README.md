@@ -293,6 +293,11 @@ Le plus simple : [Vercel](https://vercel.com).
 - **Aide au diagnostic** (26/10/2026) : modèle Haiku 5.5 (`ANTHROPIC_DIAGNOSTIC_MODEL`, ~0,2 centime par diagnostic),
   quota compté en base : 30 par mois et 10 par 24 h (`src/lib/plans.ts`). À comparer avec Sonnet sur quelques pannes
   réelles une fois le crédit rechargé ; pour revenir à Sonnet, mettre `ANTHROPIC_DIAGNOSTIC_MODEL=claude-sonnet-5-5`.
+- **Gestion des membres** (26/10/2026) : fiche `/admin/membres/[id]` (formule offerte hors Stripe, jours offerts,
+  résiliation, remboursement, quota de diagnostics, infos, notes et étiquettes internes, activité, e-mail personnel)
+  et liste filtrée/triée avec actions groupées (fonction `admin_member_list`, appelée côté serveur). Le remboursement
+  demande d'ajouter à la clé Stripe restreinte : Refunds (écriture) et Invoice Payments (lecture). Les formules
+  offertes expirent chaque matin (tournée des rappels) ou à la visite suivante du membre.
 - **Boutique de goodies et vêtements** (idée, 26/10/2026) : à l'ouverture, mettre à jour la description d'activité
   dans Stripe, déclarer l'activité commerciale (vente de marchandises) au guichet unique, rédiger des CGV grand public
   (rétractation 14 jours, livraison, retours). Piste : impression à la demande (pas de stock).

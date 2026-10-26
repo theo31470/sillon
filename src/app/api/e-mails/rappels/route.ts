@@ -1,5 +1,6 @@
 import { after, NextResponse } from 'next/server';
 import { runReminders } from '@/lib/email/reminders';
+import { expireComps } from '@/lib/membership';
 import { rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 300;
@@ -17,6 +18,8 @@ export async function POST() {
   if (!rateLimit('rappels-tick', 3, 60 * 60_000).ok) return NextResponse.json({ ok: false }, { status: 429 });
   after(async () => {
     try {
+      const expired = await expireComps();
+      if (expired) console.info('[formules offertes] expirées :', expired);
       const r = await runReminders();
       console.info('[rappels]', r);
     } catch (err) {

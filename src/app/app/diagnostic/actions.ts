@@ -6,7 +6,7 @@ import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { diagnose, type Diagnosis } from '@/lib/ai';
 import { rateLimit } from '@/lib/rate-limit';
-import { DIAGNOSTIC_DAILY_LIMIT, DIAGNOSTIC_MONTHLY_LIMIT, diagnosticQuota } from '@/lib/diagnostic-quota';
+import { DIAGNOSTIC_DAILY_LIMIT, diagnosticQuota } from '@/lib/diagnostic-quota';
 import { parseSheetContent } from '@/lib/sheets/schema';
 import { alertAdmins, isAiBillingError } from '@/lib/email/alerts';
 
@@ -30,7 +30,7 @@ export async function runDiagnosis(_prev: DiagnosisState, formData: FormData): P
   }
   const quota = await diagnosticQuota(session.userId);
   if (quota.blocked === 'mois') {
-    return { error: `Vous avez utilisé vos ${DIAGNOSTIC_MONTHLY_LIMIT} diagnostics du mois. Le compteur repart à zéro le 1er du mois prochain.` };
+    return { error: `Vous avez utilisé vos ${quota.limit} diagnostics du mois. Le compteur repart à zéro le 1er du mois prochain.` };
   }
   if (quota.blocked === 'jour') {
     return { error: `Limite de ${DIAGNOSTIC_DAILY_LIMIT} diagnostics par 24 heures atteinte. Réessayez demain.` };
