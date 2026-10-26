@@ -114,12 +114,14 @@ async function download(url: string, maxBytes: number) {
 
 const choiceSchema = z.object({
   index: z.number().int().nullable().describe('Numéro de la photo retenue (à partir de 1), ou null si aucune ne convient'),
+  match: z.enum(['modele', 'serie']).describe('« modele » si la photo montre exactement ce modèle, « serie » si c’est un autre modèle de la même série et de la même génération (même carrosserie)'),
+  shown_model: z.string().describe('Modèle visible sur la photo, tel qu’indiqué par le nom du fichier ou la description (ex. « Fendt 314 Vario »)'),
   confidence: z.enum(['haute', 'moyenne', 'faible']),
   reason: z.string().describe('Une phrase'),
 });
 
 /** Claude regarde les photos candidates et retient celle qui montre bien ce modèle. */
-async function pickPhoto(params: { userId: string; label: string; candidates: Candidate[] }) {
+async function pickPhoto(params: { userId: string; label: string; series: string; candidates: Candidate[] }) {
   const images = (await Promise.all(params.candidates.map((c) => download(c.smallUrl, 1_500_000)))).map((img, i) => ({ img, c: params.candidates[i] }));
   const usable = images.filter((x) => x.img);
   if (!usable.length) return null;
@@ -131,8 +133,11 @@ async function pickPhoto(params: { userId: string; label: string; candidates: Ca
   });
   content.push({
     type: 'text',
-    text: `Choisis la photo qui illustrera la fiche du tracteur « ${params.label} ».
-Critères : c'est bien CE modèle (vérifie avec le nom du fichier, la description et l'aspect : un autre modèle de la marque ne convient pas), le tracteur entier est visible et net, de préférence de trois-quarts ou de profil, en situation réelle. Refuse les jouets, miniatures, maquettes, détails, intérieurs de cabine, et les photos où une personne est reconnaissable au premier plan.
+    text: `Choisis la photo qui illustrera la fiche du tracteur « ${params.label} »${params.series ? ` (série ${params.series})` : ''}.
+Ordre de préférence :
+1. une photo de CE modèle exactement (match = "modele") ;
+2. à défaut, une photo d'un autre modèle de la MÊME série et de la même génération, qui a la même carrosserie (match = "serie") : par exemple un 314 Vario pour illustrer un 312 Vario de la même génération. Une autre série, une génération plus ancienne ou plus récente (design différent) ne convient pas.
+Vérifie avec le nom du fichier, la description et l'aspect. Le tracteur entier doit être visible et net, de préférence de trois-quarts ou de profil, en situation réelle. Refuse les jouets, miniatures, maquettes, détails, intérieurs de cabine, et les photos où une personne est reconnaissable au premier plan.
 Si aucune ne convient, réponds index = null.`,
   });
 
@@ -147,29 +152,37 @@ Si aucune ne convient, réponds index = null.`,
   await recordUsage(params.userId, 'photo_selection', response.usage, env.anthropicImportModel());
   const choice = response.parsed_output;
   if (!choice || choice.index === null || choice.confidence === 'faible') return null;
-  return usable[choice.index - 1]?.c ?? null;
+  const c = usable[choice.index - 1]?.c;
+  return c ? { candidate: c, sameModel: choice.match === 'modele', shownModel: choice.shown_model.trim().slice(0, 80) } : null;
 }
 
 /**
  * Cherche une photo libre du modèle et l'attache à la fiche (copie dans notre
  * stockage, crédit complet). Renvoie le crédit, ou null si rien de convenable.
  */
-export async function attachCommonsPhoto(params: { userId: string; sheetId: string; brand: string; model: string }): Promise<PhotoCredit | null> {
+export async function attachCommonsPhoto(params: { userId: string; sheetId: string; brand: string; model: string; series?: string | null }): Promise<PhotoCredit | null> {
   const label = `${params.brand} ${params.model}`.trim();
+  // Série sans la génération (« 300 Vario Gen5 » → « 300 Vario ») : c'est ainsi que les photos sont nommées.
+  const series = (params.series ?? '').trim();
+  const seriesBase = series.replace(/\s*(gen|génération)\s*\d+(\.\d+)?\b/i, '').trim();
+  const queries = [`"${label}"`, label, `${label} tractor`];
+  if (series) queries.push(`${params.brand} ${series}`, `${params.brand} ${seriesBase}`);
   const seen = new Set<string>();
   const candidates: Candidate[] = [];
-  for (const q of [`"${label}"`, label, `${label} tractor`]) {
+  for (const q of [...new Set(queries)]) {
     for (const c of await searchCommons(q)) {
       if (seen.has(c.pageUrl)) continue;
       seen.add(c.pageUrl);
       candidates.push(c);
     }
-    if (candidates.length >= 6) break;
+    // Assez de candidates pour le modèle exact : inutile d'élargir à la série.
+    if (candidates.length >= 8) break;
   }
   if (!candidates.length) return null;
 
-  const chosen = await pickPhoto({ userId: params.userId, label, candidates: candidates.slice(0, 8) });
-  if (!chosen) return null;
+  const picked = await pickPhoto({ userId: params.userId, label, series, candidates: candidates.slice(0, 10) });
+  if (!picked) return null;
+  const chosen = picked.candidate;
 
   const image = await download(chosen.thumbUrl, 5 * 1024 * 1024);
   if (!image) return null;
@@ -185,8 +198,43 @@ export async function attachCommonsPhoto(params: { userId: string; sheetId: stri
     license_url: chosen.licenseUrl,
     source_url: chosen.pageUrl,
     title: chosen.title,
+    // Photo d'un autre modèle de la même série : on le dit clairement sous la photo.
+    note: picked.sameModel ? null : `Photo d’un ${picked.shownModel || 'modèle de la même série'}, même série`,
   };
   const cover_url = db.storage.from('media').getPublicUrl(path).data.publicUrl;
   await db.from('tech_sheets').update({ cover_url, cover_credit: credit }).eq('id', params.sheetId);
   return credit;
+}
+
+/**
+ * Reprend la photo d'un autre modèle de la même série déjà illustré (aucun coût) :
+ * le fichier est copié pour que chaque fiche garde sa propre photo.
+ */
+export async function reuseSeriesPhoto(params: { sheetId: string; brand: string; series: string; model: string }): Promise<PhotoCredit | null> {
+  if (!params.series) return null;
+  const db = createServiceClient();
+  const { data: siblings } = await db
+    .from('catalog_models')
+    .select('model, sheet_id')
+    .ilike('brand', params.brand)
+    .eq('series', params.series)
+    .eq('photo_status', 'found')
+    .neq('model', params.model)
+    .not('sheet_id', 'is', null)
+    .limit(10);
+  for (const sib of siblings ?? []) {
+    const { data: sheet } = await db.from('tech_sheets').select('cover_url, cover_credit').eq('id', sib.sheet_id!).maybeSingle();
+    const credit = sheet?.cover_credit as PhotoCredit | null;
+    if (!sheet?.cover_url || !credit || credit.source !== 'commons') continue;
+    const from = decodeURIComponent(sheet.cover_url.split('/object/public/media/')[1] ?? '');
+    if (!/^fiches\/[0-9a-f-]{36}\/[\w.-]+$/.test(from)) continue;
+    const to = `fiches/${params.sheetId}/${Date.now()}.${from.split('.').pop()}`;
+    const { error } = await db.storage.from('media').copy(from, to);
+    if (error) continue;
+    const reused: PhotoCredit = { ...credit, note: credit.note ?? `Photo d’un ${params.brand} ${sib.model}, même série` };
+    const cover_url = db.storage.from('media').getPublicUrl(to).data.publicUrl;
+    await db.from('tech_sheets').update({ cover_url, cover_credit: reused }).eq('id', params.sheetId);
+    return reused;
+  }
+  return null;
 }

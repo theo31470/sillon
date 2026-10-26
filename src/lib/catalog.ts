@@ -4,7 +4,7 @@ import { researchSeries, researchUpkeep, sheetFromResearch, UPKEEP_MARKER } from
 import { countPendingReview } from '@/lib/sheets/schema';
 import { uniqueSheetSlug } from '@/lib/sheets/slug';
 import { logAudit } from '@/lib/audit';
-import { attachCommonsPhoto } from '@/lib/photos';
+import { attachCommonsPhoto, reuseSeriesPhoto } from '@/lib/photos';
 import type { Session } from '@/lib/auth';
 import { CATALOG_DAILY_BUDGET_USD, CATALOG_PARALLEL, type CatalogModel } from '@/lib/catalog-shared';
 import { alertAdmins, isAiBillingError } from '@/lib/email/alerts';
@@ -40,7 +40,11 @@ export async function processNextJob(): Promise<ProcessResult> {
   const { data, error } = await db.rpc('claim_catalog_job', { max_active: CATALOG_PARALLEL });
   if (error) throw new Error(`File d’attente indisponible : ${error.message}`);
   const job = (data as CatalogModel[] | null)?.[0];
-  if (!job) return { idle: true };
+  if (!job) {
+    // File au repos : on en profite pour retenter une photo manquante.
+    await retryMissingPhoto();
+    return { idle: true };
+  }
   // La consommation est rattachée à l'admin qui a lancé l'import.
   const userId = job.created_by;
   const actor: Session | null = userId ? { userId, email: 'import automatique', aal: 'system', lastMfaAt: null } : null;
@@ -119,7 +123,11 @@ export async function processNextJob(): Promise<ProcessResult> {
       photo_status = 'found';
     } else {
       try {
-        photo_status = (await attachCommonsPhoto({ userId, sheetId, brand: job.brand, model: job.model })) ? 'found' : 'none';
+        // D'abord la photo d'un modèle de la même série déjà trouvée (gratuit), sinon Wikimedia Commons.
+        const credit =
+          (await reuseSeriesPhoto({ sheetId, brand: job.brand, series: job.series, model: job.model })) ??
+          (await attachCommonsPhoto({ userId, sheetId, brand: job.brand, model: job.model, series: job.series }));
+        photo_status = credit ? 'found' : 'none';
       } catch (err) {
         console.error('[catalogue] photo', label, err);
         photo_status = 'error';
@@ -155,5 +163,46 @@ export async function processNextJob(): Promise<ProcessResult> {
       })
       .eq('id', job.id);
     return { idle: false, id: job.id, label, phase, ok: false, error: message };
+  }
+}
+
+/**
+ * Une fiche importée sans photo : une seule nouvelle tentative (photo d'un modèle de la
+ * même série trouvée entre-temps, sinon recherche élargie à la série sur Commons).
+ */
+async function retryMissingPhoto() {
+  const db = createServiceClient();
+  const { data: next } = await db
+    .from('catalog_models')
+    .select('id, brand, series, model, sheet_id, created_by')
+    .eq('status', 'done')
+    .in('photo_status', ['none', 'error'])
+    .is('photo_retry_at', null)
+    .not('sheet_id', 'is', null)
+    .order('updated_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!next?.sheet_id || !next.created_by) return;
+  // Marqué avant la tentative : jamais de boucle, même en cas d'erreur.
+  const { data: claimed } = await db
+    .from('catalog_models')
+    .update({ photo_retry_at: new Date().toISOString() })
+    .eq('id', next.id)
+    .is('photo_retry_at', null)
+    .select('id');
+  if (!claimed?.length) return;
+  try {
+    const { data: sheet } = await db.from('tech_sheets').select('cover_url').eq('id', next.sheet_id).single();
+    if (sheet?.cover_url) {
+      await db.from('catalog_models').update({ photo_status: 'found' }).eq('id', next.id);
+      return;
+    }
+    const credit =
+      (await reuseSeriesPhoto({ sheetId: next.sheet_id, brand: next.brand, series: next.series, model: next.model })) ??
+      (await attachCommonsPhoto({ userId: next.created_by, sheetId: next.sheet_id, brand: next.brand, model: next.model, series: next.series }));
+    await db.from('catalog_models').update({ photo_status: credit ? 'found' : 'none' }).eq('id', next.id);
+  } catch (err) {
+    console.error('[catalogue] photo (nouvelle tentative)', next.brand, next.model, err);
+    await db.from('catalog_models').update({ photo_status: 'error' }).eq('id', next.id);
   }
 }

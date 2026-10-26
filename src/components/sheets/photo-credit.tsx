@@ -20,6 +20,7 @@ export function PhotoCreditLine({ credit, compact = false }: { credit: PhotoCred
   const licenseUrl = safe(credit.license_url);
   return (
     <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-4 pb-2.5 pt-8 text-xs text-white/90">
+      {credit.note ? <span className="block font-semibold">{credit.note}</span> : null}
       Photo : {credit.author}
       {' · '}
       {licenseUrl ? <a href={licenseUrl} target="_blank" rel="noopener noreferrer license" className={link}>{credit.license}</a> : credit.license}

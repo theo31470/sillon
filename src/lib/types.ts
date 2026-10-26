@@ -138,6 +138,8 @@ export type PhotoCredit = {
   license_url: string | null;
   source_url: string | null;
   title?: string | null;
+  /** Précision affichée sous la photo (ex. photo d'un autre modèle de la même série). */
+  note?: string | null;
 };
 
 export type TechSheet = {

@@ -260,8 +260,9 @@ export async function findPhoto(_prev: FormState, formData: FormData): Promise<F
   if (!rateLimit(`photo:${session.userId}`, 30, 60 * 60_000).ok) return { error: 'Limite de recherches de photos atteinte pour cette heure.' };
   const previous = sheet.cover_url;
   try {
-    const credit = await attachCommonsPhoto({ userId: session.userId, sheetId: sheet.id, brand: sheet.brand, model: sheet.model || sheet.title });
-    if (!credit) return { error: 'Aucune photo libre ne montre clairement ce modèle. Vous pouvez en déposer une.' };
+    const { data: cat } = await createServiceClient().from('catalog_models').select('series').eq('sheet_id', sheet.id).limit(1).maybeSingle();
+    const credit = await attachCommonsPhoto({ userId: session.userId, sheetId: sheet.id, brand: sheet.brand, model: sheet.model || sheet.title, series: cat?.series ?? null });
+    if (!credit) return { error: 'Aucune photo libre ne montre clairement ce modèle ni un modèle de la même série. Vous pouvez en déposer une.' };
     await removeStoredPhoto(previous);
     await logAudit(session, 'fiche.photo_libre', { type: 'tech_sheet', id: sheet.id }, { auteur: credit.author, licence: credit.license, source: credit.source_url });
   } catch (err) {
