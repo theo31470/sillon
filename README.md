@@ -290,6 +290,9 @@ Le plus simple : [Vercel](https://vercel.com).
   `customer.subscription.trial_will_end`) et le portail ; remplacer dans Vercel `STRIPE_SECRET_KEY`,
   `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_COMPLET`, `STRIPE_PRICE_COMPLET_ANNUEL`, puis redéployer.
   Dans le tableau de bord Stripe : informations publiques (nom, contact@) et e-mails clients.
+- **Boutique de goodies et vêtements** (idée, 26/10/2026) : à l'ouverture, mettre à jour la description d'activité
+  dans Stripe, déclarer l'activité commerciale (vente de marchandises) au guichet unique, rédiger des CGV grand public
+  (rétractation 14 jours, livraison, retours). Piste : impression à la demande (pas de stock).
 - **Mentions légales** : ajouter le téléphone de l'éditeur (`src/lib/site.ts`, champ `phone`).
 - **DNS** (Vercel) : tracteursandco.fr (site, Resend, messagerie Amen MX + SPF `include:spf1/spf2.webapps.net`),
   tracteursandco.com (redirection, `v=spf1 -all`, DMARC reject). Ne pas modifier le MX Amen
