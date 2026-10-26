@@ -85,7 +85,8 @@ async function syncSubscription(sub: Stripe.Subscription) {
     plan,
     price_id: item?.price.id ?? null,
     current_period_end: item?.current_period_end ? new Date(item.current_period_end * 1000).toISOString() : null,
-    cancel_at_period_end: sub.cancel_at_period_end,
+    // Le portail Stripe programme désormais la résiliation avec « cancel_at » (date) plutôt qu'avec ce booléen.
+    cancel_at_period_end: sub.cancel_at_period_end || Boolean(sub.cancel_at),
   });
 
   // La formule du profil suit le meilleur abonnement actif (ou une formule offerte).

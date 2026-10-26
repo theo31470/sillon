@@ -293,7 +293,12 @@ export async function manageSubscription(_prev: FormState, formData: FormData): 
 
   try {
     if (mode.data === 'immediat') await stripe().subscriptions.cancel(current.id);
-    else await stripe().subscriptions.update(current.id, { cancel_at_period_end: mode.data === 'fin' });
+    else if (mode.data === 'fin') await stripe().subscriptions.update(current.id, { cancel_at_period_end: true });
+    else {
+      // Une résiliation peut être programmée par date (« cancel_at », portail Stripe) ou en fin de période.
+      const live = await stripe().subscriptions.retrieve(current.id);
+      await stripe().subscriptions.update(current.id, live.cancel_at && !live.cancel_at_period_end ? { cancel_at: '' } : { cancel_at_period_end: false });
+    }
     await logAudit(session, `membre.abonnement_${mode.data === 'fin' ? 'resiliation_programmee' : mode.data === 'reprendre' ? 'resiliation_annulee' : 'resilie_immediatement'}`, { type: 'profile', id: target.id }, { abonnement: current.id });
     refresh(target.id);
     return {
