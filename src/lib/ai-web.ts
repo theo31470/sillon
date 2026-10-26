@@ -98,29 +98,55 @@ async function runWithWebTools(params: {
     server_tool_use: { web_search_requests: 0, web_fetch_requests: 0 } as Anthropic.ServerToolUsage,
   };
   const blocks: Anthropic.ContentBlock[] = [];
-
-  for (let turn = 0; turn < 3; turn++) {
-    const response = await client().messages.create(
-      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), messages },
-      { timeout: Math.max(30_000, params.deadlineMs - (Date.now() - started)) },
-    );
+  const add = (response: Anthropic.Message) => {
     usage.input_tokens += response.usage.input_tokens;
     usage.output_tokens += response.usage.output_tokens;
     usage.max_prompt_tokens = Math.max(usage.max_prompt_tokens, response.usage.input_tokens);
     usage.server_tool_use.web_search_requests += response.usage.server_tool_use?.web_search_requests ?? 0;
     usage.server_tool_use.web_fetch_requests += response.usage.server_tool_use?.web_fetch_requests ?? 0;
     blocks.push(...response.content);
-    if (response.stop_reason !== 'pause_turn' || Date.now() - started > params.deadlineMs * 0.75) break;
+  };
+  const remaining = () => Math.max(30_000, params.deadlineMs - (Date.now() - started));
+
+  let stop: Anthropic.Message['stop_reason'] = null;
+  for (let turn = 0; turn < 6; turn++) {
+    const response = await client().messages.create(
+      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), messages },
+      { timeout: remaining() },
+    );
+    add(response);
+    stop = response.stop_reason;
     // Pause d'un long tour de recherche : on renvoie la réponse telle quelle pour continuer.
     messages.push({ role: 'assistant', content: response.content as Anthropic.ContentBlockParam[] });
+    if (stop !== 'pause_turn' || Date.now() - started > params.deadlineMs * 0.6) break;
   }
 
-  // Texte final (sans les blocs de recherche) et pages réellement citées ou lues.
-  const text = blocks
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('')
-    .trim();
+  const textOf = (bs: Anthropic.ContentBlock[]) =>
+    bs
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('')
+      .trim();
+  let text = textOf(blocks);
+
+  // Recherche interrompue (pause non reprise, réponse coupée) ou dossier vide : on demande
+  // la rédaction du dossier complet à partir de ce qui a déjà été lu, sans nouvelle recherche.
+  if (stop !== 'end_turn' || text.length < 400) {
+    console.warn('[recherche web] rédaction finale forcée', { stop, longueur: text.length });
+    messages.push({
+      role: 'user',
+      content: 'Rédige maintenant le dossier COMPLET, dans le format demandé, uniquement avec les informations déjà trouvées dans les pages consultées. Aucune nouvelle recherche.',
+    });
+    const final = await client().messages.create(
+      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), tool_choice: { type: 'none' }, messages },
+      { timeout: remaining() },
+    );
+    add(final);
+    const finalText = textOf(final.content);
+    if (finalText.length > 200) text = finalText;
+  }
+
+  // Pages réellement citées ou lues.
   const sources = new Map<string, string>();
   for (const b of blocks) {
     if (b.type === 'text') {
