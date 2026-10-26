@@ -23,6 +23,8 @@ export const env = {
   stripePriceCompletAnnuel: () => process.env.STRIPE_PRICE_COMPLET_ANNUEL || null,
   anthropicApiKey: () => required('ANTHROPIC_API_KEY'),
   anthropicModel: () => process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5-5',
+  /** Modèle de l'aide au diagnostic : Haiku par défaut (environ 20 fois moins cher que Sonnet). */
+  anthropicDiagnosticModel: () => process.env.ANTHROPIC_DIAGNOSTIC_MODEL ?? 'claude-haiku-5-5',
   /** Modèle des tâches en série (import par marque, photos) : beaucoup moins cher. */
   anthropicImportModel: () => process.env.ANTHROPIC_IMPORT_MODEL ?? 'claude-haiku-5-5',
 };

@@ -5,9 +5,20 @@ import { SubmitButton } from '@/components/form-bits';
 import { Badge, Field, Select, Textarea } from '@/components/ui';
 import { runDiagnosis } from './actions';
 
-export function DiagnosticForm({ machines, disabled }: { machines: { id: string; name: string }[]; disabled: boolean }) {
+export function DiagnosticForm({
+  machines,
+  disabled,
+  remaining: initialRemaining,
+  limit,
+}: {
+  machines: { id: string; name: string }[];
+  disabled: boolean;
+  remaining: number | null;
+  limit: number;
+}) {
   const [state, action] = useActionState(runDiagnosis, undefined);
   const r = state?.result;
+  const remaining = state?.remaining ?? initialRemaining;
 
   return (
     <div className="flex flex-wrap items-start gap-6">
@@ -23,6 +34,11 @@ export function DiagnosticForm({ machines, disabled }: { machines: { id: string;
         </Field>
         {state?.error ? <p role="alert" className="rounded-[10px] bg-danger-soft px-4 py-3 text-sm text-danger">{state.error}</p> : null}
         <SubmitButton pendingLabel="Analyse en cours…">Trouver la cause</SubmitButton>
+        {remaining !== null ? (
+          <p className="text-sm text-muted">
+            {remaining > 0 ? `${remaining} diagnostic${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''} ce mois-ci (sur ${limit}).` : `Vous avez utilisé vos ${limit} diagnostics du mois.`}
+          </p>
+        ) : null}
         <p className="text-sm text-muted">Une aide, pas un mécanicien : en cas de doute, faites appel à un professionnel.</p>
       </form>
 

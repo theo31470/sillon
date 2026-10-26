@@ -6,12 +6,11 @@ import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { diagnose, type Diagnosis } from '@/lib/ai';
 import { rateLimit } from '@/lib/rate-limit';
+import { DIAGNOSTIC_DAILY_LIMIT, DIAGNOSTIC_MONTHLY_LIMIT, diagnosticQuota } from '@/lib/diagnostic-quota';
 import { parseSheetContent } from '@/lib/sheets/schema';
 import { alertAdmins, isAiBillingError } from '@/lib/email/alerts';
 
-export type DiagnosisState = { error?: string; result?: Diagnosis } | undefined;
-
-const DAILY_LIMIT = 20;
+export type DiagnosisState = { error?: string; result?: Diagnosis; remaining?: number } | undefined;
 
 export async function runDiagnosis(_prev: DiagnosisState, formData: FormData): Promise<DiagnosisState> {
   const { session, profile } = await requireUser('/app/diagnostic');
@@ -25,9 +24,16 @@ export async function runDiagnosis(_prev: DiagnosisState, formData: FormData): P
     .safeParse({ machine_id: formData.get('machine_id') ?? '', description: formData.get('description') });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  // Limite d'usage pour maîtriser les coûts : 20 diagnostics par jour et par compte.
-  if (!rateLimit(`diag:${session.userId}`, DAILY_LIMIT, 24 * 3600_000).ok) {
-    return { error: `Limite de ${DAILY_LIMIT} diagnostics par jour atteinte. Réessayez demain.` };
+  // Anti-rafale (par serveur), puis quota compté en base pour maîtriser les coûts.
+  if (!rateLimit(`diag:${session.userId}`, 3, 60_000).ok) {
+    return { error: 'Un instant : attendez une minute avant de relancer un diagnostic.' };
+  }
+  const quota = await diagnosticQuota(session.userId);
+  if (quota.blocked === 'mois') {
+    return { error: `Vous avez utilisé vos ${DIAGNOSTIC_MONTHLY_LIMIT} diagnostics du mois. Le compteur repart à zéro le 1er du mois prochain.` };
+  }
+  if (quota.blocked === 'jour') {
+    return { error: `Limite de ${DIAGNOSTIC_DAILY_LIMIT} diagnostics par 24 heures atteinte. Réessayez demain.` };
   }
 
   const supabase = await createClient();
@@ -46,7 +52,7 @@ export async function runDiagnosis(_prev: DiagnosisState, formData: FormData): P
 
   try {
     const result = await diagnose({ userId: session.userId, description: parsed.data.description, machineName, sheetContent });
-    return { result };
+    return { result, remaining: Math.max(0, quota.remaining - 1) };
   } catch (error) {
     console.error('[diagnostic]', error);
     if (isAiBillingError(error)) {

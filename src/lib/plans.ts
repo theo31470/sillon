@@ -5,6 +5,9 @@
  */
 export const FREE_MACHINE_LIMIT = 3;
 export const TRIAL_DAYS = 30;
+/** Aide au diagnostic (formule Complet) : quota compté en base, voir src/lib/diagnostic-quota.ts. */
+export const DIAGNOSTIC_MONTHLY_LIMIT = 30;
+export const DIAGNOSTIC_DAILY_LIMIT = 10;
 
 /** Formule Complet : prix TTC (micro-entreprise, TVA non applicable). */
 export const COMPLET_PRICES = {
@@ -35,7 +38,7 @@ export const PLANS = {
       'Parc matériel illimité',
       'Coût de revient à l’heure, machine par machine',
       'Rapport d’historique pour la revente',
-      'Aide au diagnostic des pannes',
+      `Aide au diagnostic des pannes (${DIAGNOSTIC_MONTHLY_LIMIT} par mois)`,
       `${TRIAL_DAYS} jours d’essai gratuit`,
     ],
   },

@@ -200,7 +200,7 @@ export async function diagnose(params: {
   const context = params.sheetContent
     ? `Fiche technique de la machine (JSON) :\n<fiche>\n${JSON.stringify({ specs: params.sheetContent.specs, faults: params.sheetContent.faults })}\n</fiche>\n\n`
     : '';
-  const model = env.anthropicModel();
+  const model = env.anthropicDiagnosticModel();
   const response = await client().messages.parse({
     model,
     max_tokens: 3000,

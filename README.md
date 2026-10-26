@@ -290,6 +290,9 @@ Le plus simple : [Vercel](https://vercel.com).
   restreinte `rk_live_…` (Customers, Checkout Sessions, Subscriptions, Customer portal en écriture ; Prices,
   Products, Invoices en lecture). Les données de test (client, abonnement, paiement) ont été effacées de la base.
   Reste dans le tableau de bord : informations publiques (nom, contact@) et e-mails clients.
+- **Aide au diagnostic** (26/10/2026) : modèle Haiku 5.5 (`ANTHROPIC_DIAGNOSTIC_MODEL`, ~0,2 centime par diagnostic),
+  quota compté en base : 30 par mois et 10 par 24 h (`src/lib/plans.ts`). À comparer avec Sonnet sur quelques pannes
+  réelles une fois le crédit rechargé ; pour revenir à Sonnet, mettre `ANTHROPIC_DIAGNOSTIC_MODEL=claude-sonnet-5-5`.
 - **Boutique de goodies et vêtements** (idée, 26/10/2026) : à l'ouverture, mettre à jour la description d'activité
   dans Stripe, déclarer l'activité commerciale (vente de marchandises) au guichet unique, rédiger des CGV grand public
   (rétractation 14 jours, livraison, retours). Piste : impression à la demande (pas de stock).

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { PHOTO_CREDITS } from '@/lib/photo-credits';
 import { SITE } from '@/lib/site';
-import { ANNUAL_DISCOUNT, COMPLET_PRICES, FREE_MACHINE_LIMIT, TRIAL_DAYS } from '@/lib/plans';
+import { ANNUAL_DISCOUNT, COMPLET_PRICES, DIAGNOSTIC_DAILY_LIMIT, DIAGNOSTIC_MONTHLY_LIMIT, FREE_MACHINE_LIMIT, TRIAL_DAYS } from '@/lib/plans';
 
 /**
  * Pages légales. Base rédigée pour une micro-entreprise : à faire relire par
@@ -133,6 +133,7 @@ const pages: Record<string, LegalPage> = {
         p: [
           `Formule Gratuit : jusqu’à ${FREE_MACHINE_LIMIT} machines, sans limite de durée.`,
           `Formule Complet : ${COMPLET_PRICES.mensuel.label} par mois, ou ${COMPLET_PRICES.annuel.label} par an (soit −${ANNUAL_DISCOUNT} %). Prix TTC, ${SITE.vatMention}.`,
+          `La formule Complet comprend jusqu’à ${DIAGNOSTIC_MONTHLY_LIMIT} aides au diagnostic par mois (et ${DIAGNOSTIC_DAILY_LIMIT} par 24 heures), pour garantir un usage raisonnable du service.`,
           `Un premier abonnement commence par ${TRIAL_DAYS} jours d’essai gratuit. Sans résiliation pendant l’essai, l’abonnement démarre à la fin de celui-ci.`,
           'Le paiement se fait par carte via Stripe, au début de chaque période. L’abonnement se renouvelle automatiquement pour la même durée.',
           'Toute évolution de prix vous est annoncée par e-mail au moins 30 jours avant de s’appliquer, et vous pouvez résilier avant.',
