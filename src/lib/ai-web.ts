@@ -106,12 +106,14 @@ async function runWithWebTools(params: {
     usage.server_tool_use.web_fetch_requests += response.usage.server_tool_use?.web_fetch_requests ?? 0;
     blocks.push(...response.content);
   };
+  // Réflexion désactivée : sans cela, le modèle peut dépenser tout son budget de sortie
+  // à réfléchir entre deux recherches et ne rien écrire (dossier vide, « max_tokens »).
   const remaining = () => Math.max(30_000, params.deadlineMs - (Date.now() - started));
 
   let stop: Anthropic.Message['stop_reason'] = null;
   for (let turn = 0; turn < 6; turn++) {
     const response = await client().messages.create(
-      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), messages },
+      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), thinking: { type: 'disabled' }, messages },
       { timeout: remaining() },
     );
     add(response);
@@ -138,7 +140,7 @@ async function runWithWebTools(params: {
       content: 'Rédige maintenant le dossier COMPLET, dans le format demandé, uniquement avec les informations déjà trouvées dans les pages consultées. Aucune nouvelle recherche.',
     });
     const final = await client().messages.create(
-      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), tool_choice: { type: 'none' }, messages },
+      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), thinking: { type: 'disabled' }, tool_choice: { type: 'none' }, messages },
       { timeout: remaining() },
     );
     add(final);
