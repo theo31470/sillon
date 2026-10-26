@@ -50,6 +50,9 @@ const WEB_SEARCH_USD = 0.01;
 
 type UsageLike = Pick<Anthropic.Usage, 'input_tokens' | 'output_tokens'> & {
   server_tool_use?: Anthropic.Usage['server_tool_use'];
+  /** Lectures et écritures du cache de prompt (facturées 0,1× et 1,25× le prix d'entrée). */
+  cache_read_input_tokens?: number | null;
+  cache_creation_input_tokens?: number | null;
   /** Plus gros prompt d'une seule requête (pour le palier de prix Haiku). */
   max_prompt_tokens?: number;
 };
@@ -60,7 +63,8 @@ export function estimateCostUsd(model: string, usage: UsageLike) {
   const input = big ? p.bigInput! : p.input;
   const output = big ? p.bigOutput! : p.output;
   const searches = usage.server_tool_use?.web_search_requests ?? 0;
-  return (usage.input_tokens * input + usage.output_tokens * output) / 1_000_000 + searches * WEB_SEARCH_USD;
+  const cached = (usage.cache_read_input_tokens ?? 0) * input * 0.1 + (usage.cache_creation_input_tokens ?? 0) * input * 1.25;
+  return (usage.input_tokens * input + cached + usage.output_tokens * output) / 1_000_000 + searches * WEB_SEARCH_USD;
 }
 
 export async function recordUsage(userId: string, feature: AiFeature, usage: UsageLike, model: string) {

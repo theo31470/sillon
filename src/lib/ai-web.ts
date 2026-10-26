@@ -67,12 +67,12 @@ const USER_LOCATION = { type: 'approximate' as const, country: 'FR', timezone: '
  * de recherches et la taille des pages lues, et on utilise Haiku (20 fois moins
  * cher que Sonnet tant que chaque requête reste sous 100 000 tokens).
  */
-function webTools(searches: number, fetches: number): Anthropic.ToolUnion[] {
+function webTools(searches: number, fetches: number, pageTokens = 6000): Anthropic.ToolUnion[] {
   const tools: Anthropic.ToolUnion[] = [
     { type: 'web_search_20250305', name: 'web_search', max_uses: searches, blocked_domains: BLOCKED_DOMAINS, user_location: USER_LOCATION },
   ];
   if (fetches > 0) {
-    tools.push({ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: fetches, blocked_domains: BLOCKED_DOMAINS, max_content_tokens: 12000 });
+    tools.push({ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: fetches, blocked_domains: BLOCKED_DOMAINS, max_content_tokens: pageTokens });
   }
   return tools;
 }
@@ -95,13 +95,20 @@ async function runWithWebTools(params: {
     input_tokens: 0,
     output_tokens: 0,
     max_prompt_tokens: 0,
+    cache_read_input_tokens: 0,
+    cache_creation_input_tokens: 0,
     server_tool_use: { web_search_requests: 0, web_fetch_requests: 0 } as Anthropic.ServerToolUsage,
   };
   const blocks: Anthropic.ContentBlock[] = [];
   const add = (response: Anthropic.Message) => {
     usage.input_tokens += response.usage.input_tokens;
     usage.output_tokens += response.usage.output_tokens;
-    usage.max_prompt_tokens = Math.max(usage.max_prompt_tokens, response.usage.input_tokens);
+    usage.cache_read_input_tokens += response.usage.cache_read_input_tokens ?? 0;
+    usage.cache_creation_input_tokens += response.usage.cache_creation_input_tokens ?? 0;
+    usage.max_prompt_tokens = Math.max(
+      usage.max_prompt_tokens,
+      response.usage.input_tokens + (response.usage.cache_read_input_tokens ?? 0) + (response.usage.cache_creation_input_tokens ?? 0),
+    );
     usage.server_tool_use.web_search_requests += response.usage.server_tool_use?.web_search_requests ?? 0;
     usage.server_tool_use.web_fetch_requests += response.usage.server_tool_use?.web_fetch_requests ?? 0;
     blocks.push(...response.content);
@@ -223,7 +230,7 @@ Dresse la liste des modèles (60 au maximum), regroupés par série.`,
 const RESEARCH_SYSTEM = `Tu es documentaliste technique pour Tracteurs & Co, un site destiné aux agriculteurs français.
 Tu prépares le dossier technique d'une série de tracteurs (ou d'un modèle), qui servira ensuite à rédiger une fiche par modèle.
 
-Méthode (4 recherches au maximum, 1 seule page lue en entier) :
+Méthode (3 recherches au maximum, 1 seule page lue en entier : choisis bien tes requêtes) :
 1. Cherche d'abord sur le site officiel du constructeur : page de la série, tableau des caractéristiques, brochure.
 2. Complète si besoin avec la presse agricole spécialisée. Forums et petites annonces : jamais seuls.
 
@@ -247,7 +254,7 @@ export async function researchSeries(params: { userId: string; brand: string; se
     prompt: `${target}${params.years ? ` Années : ${params.years}.` : ''}
 ${site ? `Site officiel du constructeur : ${site}.` : ''}
 Prépare le dossier.`,
-    searches: 4,
+    searches: 3,
     fetches: 1,
     maxTokens: 8000,
     deadlineMs: 230_000,
@@ -266,7 +273,7 @@ export const UPKEEP_MARKER = '=== ENTRETIEN ET PANNES ===';
 const UPKEEP_SYSTEM = `Tu es documentaliste technique pour Tracteurs & Co, un site destiné aux agriculteurs français.
 Tu prépares la partie ENTRETIEN et PANNES du dossier d'une série de tracteurs (ou d'un modèle).
 
-À chercher (4 recherches au maximum, 1 seule page lue en entier) :
+À chercher (3 recherches au maximum, 1 seule page lue en entier : choisis bien tes requêtes) :
 1. Plan d'entretien : manuel d'utilisation ou carnet d'entretien officiel (sites de documentation des constructeurs), intervalles en heures, normes et types d'huile, capacités.
 2. Pannes connues sur cette série : rappels du constructeur, essais longue durée et retours d'expérience de la presse agricole, problèmes rapportés par PLUSIEURS propriétaires sur des forums agricoles (un témoignage isolé ne suffit pas).
 3. Pour chaque panne : symptômes, causes, et tests à faire dans l'ordre (contrôles visuels, niveaux, codes défaut affichés, filtres, mesures de pression ou de tension avec leurs valeurs si elles sont publiées).
@@ -285,7 +292,7 @@ export async function researchUpkeep(params: { userId: string; brand: string; se
   const result = await runWithWebTools({
     system: UPKEEP_SYSTEM,
     prompt: `${target}${params.years ? ` Années : ${params.years}.` : ''}\nPrépare la partie entretien et pannes du dossier.`,
-    searches: 4,
+    searches: 3,
     fetches: 1,
     maxTokens: 6000,
     deadlineMs: 230_000,
