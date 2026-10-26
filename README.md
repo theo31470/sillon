@@ -284,12 +284,12 @@ Le plus simple : [Vercel](https://vercel.com).
 
 ## À reprendre (notes d’équipe)
 
-- **Passage de Stripe en mode réel** (25/10/2026) : le mode test fonctionne de bout en bout (produit, prix
-  6,99 €/mois et 69 €/an, webhook, portail, e-mails d'abonnement). Une fois le compte Stripe activé
-  (identité + IBAN) : recréer en mode réel le produit, les deux prix, le webhook (7 événements, dont
-  `customer.subscription.trial_will_end`) et le portail ; remplacer dans Vercel `STRIPE_SECRET_KEY`,
-  `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_COMPLET`, `STRIPE_PRICE_COMPLET_ANNUEL`, puis redéployer.
-  Dans le tableau de bord Stripe : informations publiques (nom, contact@) et e-mails clients.
+- **Stripe en mode réel** (26/10/2026) : compte activé. Créés par l'API en réel : produit `prod_VVw1RdCLMVnBVH`,
+  prix mensuel `price_1UUu9mBMy0t4Mfm1GAZtSGVZ` (6,99 €) et annuel `price_1UUu9nBMy0t4Mfm1ttWEITOh` (69 €),
+  portail `bpc_1UUuA6BMy0t4Mfm1lN5vyJJO`, webhook `we_1UUuAIBMy0t4Mfm12EdKgIP7` (7 événements). Clé API : clé
+  restreinte `rk_live_…` (Customers, Checkout Sessions, Subscriptions, Customer portal en écriture ; Prices,
+  Products, Invoices en lecture). Les données de test (client, abonnement, paiement) ont été effacées de la base.
+  Reste dans le tableau de bord : informations publiques (nom, contact@) et e-mails clients.
 - **Boutique de goodies et vêtements** (idée, 26/10/2026) : à l'ouverture, mettre à jour la description d'activité
   dans Stripe, déclarer l'activité commerciale (vente de marchandises) au guichet unique, rédiger des CGV grand public
   (rétractation 14 jours, livraison, retours). Piste : impression à la demande (pas de stock).
