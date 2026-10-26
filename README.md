@@ -287,16 +287,15 @@ Le plus simple : [Vercel](https://vercel.com).
 - **Stripe en mode réel** (26/10/2026) : compte activé. Créés par l'API en réel : produit `prod_VVw1RdCLMVnBVH`,
   prix mensuel `price_1UUu9mBMy0t4Mfm1GAZtSGVZ` (6,99 €) et annuel `price_1UUu9nBMy0t4Mfm1ttWEITOh` (69 €),
   portail `bpc_1UUuA6BMy0t4Mfm1lN5vyJJO`, webhook `we_1UUuAIBMy0t4Mfm12EdKgIP7` (7 événements). Clé API : clé
-  restreinte `rk_live_…` (Customers, Checkout Sessions, Subscriptions, Customer portal en écriture ; Prices,
-  Products, Invoices en lecture). Les données de test (client, abonnement, paiement) ont été effacées de la base.
+  secrète standard `sk_live_…` (accès complet). Les données de test (client, abonnement, paiement) ont été effacées de la base.
   Reste dans le tableau de bord : informations publiques (nom, contact@) et e-mails clients.
 - **Aide au diagnostic** (26/10/2026) : modèle Haiku 5.5 (`ANTHROPIC_DIAGNOSTIC_MODEL`, ~0,2 centime par diagnostic),
   quota compté en base : 30 par mois et 10 par 24 h (`src/lib/plans.ts`). À comparer avec Sonnet sur quelques pannes
   réelles une fois le crédit rechargé ; pour revenir à Sonnet, mettre `ANTHROPIC_DIAGNOSTIC_MODEL=claude-sonnet-5-5`.
 - **Gestion des membres** (26/10/2026) : fiche `/admin/membres/[id]` (formule offerte hors Stripe, jours offerts,
   résiliation, remboursement, quota de diagnostics, infos, notes et étiquettes internes, activité, e-mail personnel)
-  et liste filtrée/triée avec actions groupées (fonction `admin_member_list`, appelée côté serveur). Le remboursement
-  demande d'ajouter à la clé Stripe restreinte : Refunds (écriture) et Invoice Payments (lecture). Les formules
+  et liste filtrée/triée avec actions groupées (fonction `admin_member_list`, appelée côté serveur).
+  Si la clé Stripe devient un jour une clé restreinte (`rk_`), y inclure Refunds (écriture) et Invoice Payments (lecture). Les formules
   offertes expirent chaque matin (tournée des rappels) ou à la visite suivante du membre.
 - **Boutique de goodies et vêtements** (idée, 26/10/2026) : à l'ouverture, mettre à jour la description d'activité
   dans Stripe, déclarer l'activité commerciale (vente de marchandises) au guichet unique, rédiger des CGV grand public
