@@ -30,11 +30,32 @@ export const BLOCKED_DOMAINS = [
   'lectura-specs.de',
   'tracteurdata.com',
   'tractorspecs.net',
+  'agridonnees.fr',
+  'tractorbook.de',
+  'traktorbook.com',
   'agriaffaires.com',
   'leboncoin.fr',
   'ebay.fr',
   'motocult.fr',
 ];
+
+/** Autres domaines officiels d'un constructeur (brochures, documentation). */
+const EXTRA_BRAND_DOMAINS: Record<string, string[]> = {
+  'John Deere': ['deere.com', 'johndeere.fr'],
+  Fendt: ['fendt.fr', 'agcocorp.com'],
+  'Massey Ferguson': ['masseyferguson.fr', 'agcocorp.com'],
+  Valtra: ['valtra.com', 'agcocorp.com'],
+  Claas: ['claas.fr'],
+  'New Holland': ['newholland.fr', 'cnh.com'],
+  'Case IH': ['caseih.fr', 'cnh.com'],
+  Kubota: ['kubota.fr', 'kubota.com'],
+};
+
+/** Domaines officiels d'une marque (site principal + domaines secondaires connus). */
+export function brandDomains(brand: string) {
+  const main = BRAND_SITES[brand];
+  return main ? [main, ...(EXTRA_BRAND_DOMAINS[brand] ?? [])] : [];
+}
 
 /** Sites des constructeurs, à consulter en priorité. */
 export const BRAND_SITES: Record<string, string> = {
@@ -67,12 +88,14 @@ const USER_LOCATION = { type: 'approximate' as const, country: 'FR', timezone: '
  * de recherches et la taille des pages lues, et on utilise Haiku (20 fois moins
  * cher que Sonnet tant que chaque requête reste sous 100 000 tokens).
  */
-function webTools(searches: number, fetches: number, pageTokens = 6000): Anthropic.ToolUnion[] {
-  const tools: Anthropic.ToolUnion[] = [
-    { type: 'web_search_20250305', name: 'web_search', max_uses: searches, blocked_domains: BLOCKED_DOMAINS, user_location: USER_LOCATION },
-  ];
+type WebToolsOptions = { searches: number; fetches: number; pageTokens?: number; allowedDomains?: string[] };
+
+function webTools({ searches, fetches, pageTokens = 6000, allowedDomains }: WebToolsOptions): Anthropic.ToolUnion[] {
+  // allowed_domains et blocked_domains ne peuvent pas être combinés.
+  const domains = allowedDomains?.length ? { allowed_domains: allowedDomains } : { blocked_domains: BLOCKED_DOMAINS };
+  const tools: Anthropic.ToolUnion[] = [{ type: 'web_search_20250305', name: 'web_search', max_uses: searches, ...domains, user_location: USER_LOCATION }];
   if (fetches > 0) {
-    tools.push({ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: fetches, blocked_domains: BLOCKED_DOMAINS, max_content_tokens: pageTokens });
+    tools.push({ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: fetches, ...domains, max_content_tokens: pageTokens });
   }
   return tools;
 }
@@ -85,9 +108,14 @@ async function runWithWebTools(params: {
   prompt: string;
   searches: number;
   fetches: number;
+  /** Taille maximale d'une page lue en entier (tokens). */
+  pageTokens?: number;
+  /** Limite la recherche et la lecture à ces domaines (sites officiels). */
+  allowedDomains?: string[];
   maxTokens: number;
   deadlineMs: number;
 }) {
+  const tools = webTools(params);
   const model = env.anthropicImportModel();
   const started = Date.now();
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: params.prompt }];
@@ -120,7 +148,7 @@ async function runWithWebTools(params: {
   let stop: Anthropic.Message['stop_reason'] = null;
   for (let turn = 0; turn < 6; turn++) {
     const response = await client().messages.create(
-      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), thinking: { type: 'disabled' }, messages },
+      { model, max_tokens: params.maxTokens, system: params.system, tools, thinking: { type: 'disabled' }, messages },
       { timeout: remaining() },
     );
     add(response);
@@ -147,7 +175,7 @@ async function runWithWebTools(params: {
       content: 'Rédige maintenant le dossier COMPLET, dans le format demandé, uniquement avec les informations déjà trouvées dans les pages consultées. Aucune nouvelle recherche.',
     });
     const final = await client().messages.create(
-      { model, max_tokens: params.maxTokens, system: params.system, tools: webTools(params.searches, params.fetches), thinking: { type: 'disabled' }, tool_choice: { type: 'none' }, messages },
+      { model, max_tokens: params.maxTokens, system: params.system, tools, thinking: { type: 'disabled' }, tool_choice: { type: 'none' }, messages },
       { timeout: remaining() },
     );
     add(final);
@@ -244,24 +272,64 @@ Règles impératives :
 
 Rubriques : Identification (années, usine) ; Moteur ; Transmission ; Prise de force ; Hydraulique et relevage ; Pneumatiques ; Dimensions et masses ; Capacités (carburant, AdBlue, huiles) ; Entretien (intervalles) ; Pièces d'entretien (références d'origine si publiées).`;
 
+/**
+ * Lecture de la documentation OFFICIELLE : la meilleure source (valeurs exactes, modèle
+ * par modèle) et la moins chère (une recherche, une ou deux pages lues en entier).
+ */
+const OFFICIAL_SYSTEM = `Tu es documentaliste technique pour Tracteurs & Co, un site destiné aux agriculteurs français.
+Tu recopies les caractéristiques techniques OFFICIELLES d'une série de tracteurs, publiées par le constructeur.
+
+Méthode :
+1. Une recherche (deux au plus) sur le site du constructeur pour trouver la page « caractéristiques techniques / données techniques » de la série, ou sa brochure PDF (en français de préférence, sinon en anglais ou en allemand).
+2. Lis en entier la page ou la brochure qui contient le TABLEAU COMPLET des données techniques. Si elle est incomplète, lis-en une deuxième.
+3. Recopie fidèlement ce tableau.
+
+Règles impératives :
+- Uniquement ce qui est écrit dans les pages lues. Jamais de valeur de mémoire, jamais d'estimation.
+- Format : tableaux markdown, une colonne par modèle, une ligne par caractéristique, unités d'origine converties en métrique. Sous chaque tableau : « Source : URL exacte de la page lue ».
+- Rubriques, dans cet ordre, avec tout ce que le document donne : Moteur (marque, cylindres, cylindrée, puissance nominale et maximale en ch et kW avec la norme, couple maxi, régime) ; Transmission (type, vitesses, vitesse maxi) ; Prise de force (régimes, avant/arrière) ; Hydraulique (débit, pression, distributeurs, relevage arrière et avant) ; Pneumatiques ; Dimensions et masses (empattement, longueur, largeur, hauteur, garde au sol, poids à vide, PTAC) ; Capacités (carburant, AdBlue, huile moteur, transmission, hydraulique, refroidissement) ; Entretien (intervalles de vidange et de filtres s'ils sont indiqués).
+- Indique la version ou la génération exacte décrite par le document (et son année). Si le document couvre plusieurs générations, sépare-les.
+- Si tu ne trouves aucune donnée officielle, écris seulement « INTROUVABLE » suivi des adresses consultées.`;
+
 export async function researchSeries(params: { userId: string; brand: string; series: string; models: string[]; years: string }) {
-  const site = BRAND_SITES[params.brand];
+  const domains = brandDomains(params.brand);
   const target = params.series
     ? `Série : ${params.brand} ${params.series}. Modèles à couvrir : ${params.models.join(', ')}.`
     : `Tracteur : ${params.brand} ${params.models[0]}.`;
+  const years = params.years ? ` Années : ${params.years}.` : '';
+
+  // 1. Documentation officielle du constructeur.
+  let official: Awaited<ReturnType<typeof runWithWebTools>> | null = null;
+  if (domains.length) {
+    official = await runWithWebTools({
+      system: OFFICIAL_SYSTEM,
+      prompt: `${target}${years}\nSites officiels : ${domains.join(', ')}.\nRecopie les caractéristiques techniques officielles.`,
+      searches: 2,
+      fetches: 2,
+      pageTokens: 20_000,
+      allowedDomains: domains,
+      maxTokens: 8000,
+      deadlineMs: 120_000,
+    });
+    await recordUsage(params.userId, 'sheet_research', official.usage, official.model);
+  }
+  const officialOk = Boolean(official && official.text.length > 1200 && !/^\s*INTROUVABLE/i.test(official.text));
+  if (official && officialOk) return { notes: official.text, sources: official.sources };
+
+  // 2. Rien d'exploitable chez le constructeur : recherche élargie (presse spécialisée).
   const result = await runWithWebTools({
     system: RESEARCH_SYSTEM,
-    prompt: `${target}${params.years ? ` Années : ${params.years}.` : ''}
-${site ? `Site officiel du constructeur : ${site}.` : ''}
+    prompt: `${target}${years}
+${domains.length ? `Site officiel du constructeur : ${domains[0]} (déjà consulté sans succès : privilégie la presse agricole et les essais).` : ''}
 Prépare le dossier.`,
     searches: 3,
     fetches: 1,
     maxTokens: 8000,
-    deadlineMs: 230_000,
+    deadlineMs: 150_000,
   });
   await recordUsage(params.userId, 'sheet_research', result.usage, result.model);
   if (result.text.length < 200) throw new Error('Dossier de recherche trop maigre : modèle introuvable ?');
-  return { notes: result.text, sources: result.sources };
+  return { notes: result.text, sources: [...(official?.sources ?? []), ...result.sources] };
 }
 
 // ---------------------------------------------------------------------

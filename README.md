@@ -310,6 +310,12 @@ Le plus simple : [Vercel](https://vercel.com).
   pour 10 € ; avec la recherche entretien/pannes ajoutée le 25/10 : ~5 centimes par fiche, soit ~180 fiches pour 10 €. **À valider** : lancer une seule série (Fendt 700 Vario, 5 modèles, estimation ≈ 0,17 $), comparer avec
   la dépense affichée dans l’écran d’import, puis recalculer. Les 57 Fendt sont déjà listés (« À générer »).
   Penser à fixer une limite de dépense mensuelle dans la console Anthropic.
+- **Import : documentation officielle d'abord** (26/10/2026, soir) : le dossier technique d'une série est d'abord
+  recopié depuis le site du constructeur (2 recherches et 2 pages lues au plus, limitées aux domaines officiels de
+  `BRAND_SITES` / `EXTRA_BRAND_DOMAINS`), sous forme de tableaux modèle par modèle. Recherche élargie (presse) seulement
+  si rien d'exploitable n'est trouvé. Bases de données tierces bloquées (droit des bases de données) : agridonnees,
+  tractorbook ajoutés. Réflexion désactivée pendant la recherche (sinon dossier vide). Constat du 26/10 avant ce
+  changement : ~0,16 $ par recherche (palier > 100 000 tokens de Haiku), fiches 900 Vario sans puissance par modèle.
 - Si la qualité des fiches rédigées par Haiku déçoit : repasser Sonnet pour la seule étape de rédaction (peu coûteuse).
 
 ## Choix techniques
