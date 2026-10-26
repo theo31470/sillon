@@ -65,47 +65,64 @@ export function BulkBar({ tags }: { tags: string[] }) {
   }, [state, router]);
 
   return (
-    <form ref={formRef} id={FORM_ID} action={formAction} className={`flex flex-col gap-3 rounded-2xl border p-4 ${count ? 'border-brand bg-brand-tint' : 'border-line bg-surface'}`}>
-      <div className="flex flex-wrap items-end gap-3">
-        <p className="min-w-40 font-semibold">{count ? `${count} membre${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''}` : 'Cochez des membres pour agir sur plusieurs à la fois'}</p>
-        <div className="min-w-52">
-          <Field label="Action" htmlFor="bulk_action">
-            <Select id="bulk_action" name="bulk_action" value={action} onChange={(e) => setAction(e.target.value)} disabled={!count}>
-              <option value="tag_add">Ajouter une étiquette</option>
-              <option value="tag_remove">Retirer une étiquette</option>
-              <option value="message">Envoyer un e-mail</option>
-              <option value="suspend">Suspendre</option>
-              <option value="reactivate">Réactiver</option>
-            </Select>
-          </Field>
-        </div>
-        {action === 'tag_add' || action === 'tag_remove' ? (
-          <div className="min-w-48">
-            <Field label="Étiquette" htmlFor="bulk_tag">
-              <Input id="bulk_tag" name="tag" list="bulk-tags" autoComplete="off" disabled={!count} required />
+    <form
+      ref={formRef}
+      id={FORM_ID}
+      action={formAction}
+      className={`flex flex-col gap-3 rounded-2xl border px-4 py-3 ${count ? 'border-brand bg-brand-tint' : 'border-dashed border-line'}`}
+    >
+      {count ? (
+        <>
+          <div className="grid items-end gap-3 md:grid-cols-[minmax(0,180px)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <p className="pb-3 font-semibold">
+              {count} sélectionné{count > 1 ? 's' : ''}
+            </p>
+            <Field label="Action groupée" htmlFor="bulk_action">
+              <Select id="bulk_action" name="bulk_action" value={action} onChange={(e) => setAction(e.target.value)}>
+                <option value="tag_add">Ajouter une étiquette</option>
+                <option value="tag_remove">Retirer une étiquette</option>
+                <option value="message">Envoyer un e-mail</option>
+                <option value="suspend">Suspendre</option>
+                <option value="reactivate">Réactiver</option>
+              </Select>
             </Field>
-            <datalist id="bulk-tags">
-              {tags.map((t) => <option key={t} value={t} />)}
-            </datalist>
+            {action === 'tag_add' || action === 'tag_remove' ? (
+              <div>
+                <Field label="Étiquette" htmlFor="bulk_tag">
+                  <Input id="bulk_tag" name="tag" list="bulk-tags" autoComplete="off" required />
+                </Field>
+                <datalist id="bulk-tags">
+                  {tags.map((t) => <option key={t} value={t} />)}
+                </datalist>
+              </div>
+            ) : (
+              <span />
+            )}
+            {action !== 'message' ? (
+              <SubmitButton variant={action === 'suspend' ? 'danger' : 'primary'} pendingLabel="…">
+                Appliquer
+              </SubmitButton>
+            ) : (
+              <span />
+            )}
           </div>
-        ) : null}
-        {action !== 'message' ? (
-          <SubmitButton variant={action === 'suspend' ? 'danger' : 'secondary'} pendingLabel="…">
-            Appliquer
-          </SubmitButton>
-        ) : null}
-      </div>
-      {action === 'message' && count ? (
-        <div className="flex flex-col gap-3">
-          <Field label="Objet" htmlFor="bulk_subject">
-            <Input id="bulk_subject" name="subject" required minLength={3} maxLength={150} />
-          </Field>
-          <Field label="Message" htmlFor="bulk_body" hint="« Bonjour [prénom], » et la signature sont ajoutés pour chacun. Mise en forme : **gras**, listes avec « - ».">
-            <Textarea id="bulk_body" name="body" rows={6} required minLength={10} maxLength={10000} />
-          </Field>
-          <SubmitButton pendingLabel="Envoi…">Envoyer à {count} membre{count > 1 ? 's' : ''}</SubmitButton>
-        </div>
-      ) : null}
+          {action === 'message' ? (
+            <div className="flex flex-col gap-3 border-t border-line pt-3">
+              <Field label="Objet" htmlFor="bulk_subject">
+                <Input id="bulk_subject" name="subject" required minLength={3} maxLength={150} />
+              </Field>
+              <Field label="Message" htmlFor="bulk_body" hint="« Bonjour [prénom], » et la signature sont ajoutés pour chacun. Mise en forme : **gras**, listes avec « - ».">
+                <Textarea id="bulk_body" name="body" rows={6} required minLength={10} maxLength={10000} />
+              </Field>
+              <div className="flex justify-end">
+                <SubmitButton pendingLabel="Envoi…">Envoyer à {count} membre{count > 1 ? 's' : ''}</SubmitButton>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <p className="text-sm text-muted">Cochez des membres dans le tableau pour les étiqueter, leur écrire ou les suspendre en une fois.</p>
+      )}
       <FormMessage state={state} />
     </form>
   );
