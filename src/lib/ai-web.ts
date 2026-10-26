@@ -248,6 +248,8 @@ Dresse la liste des modèles (60 au maximum), regroupés par série.`,
   const response = await client().messages.parse({
     model,
     max_tokens: 8000,
+    // Pas de réflexion : elle consommait le budget de sortie et coupait le JSON.
+    thinking: { type: 'disabled' },
     system: 'Tu convertis une liste de modèles de tracteurs en données structurées, sans rien ajouter ni deviner.',
     output_config: { format: zodOutputFormat(catalogListSchema) },
     messages: [{ role: 'user', content: `Marque : ${params.brand}\n\n<liste>\n${research.text}\n</liste>` }],
@@ -409,7 +411,9 @@ export async function sheetFromResearch(params: { userId: string; brand: string;
   const model = env.anthropicImportModel();
   const response = await client().messages.parse({
     model,
-    max_tokens: 10000,
+    max_tokens: 16000,
+    // Pas de réflexion : elle consommait le budget de sortie et coupait le JSON.
+    thinking: { type: 'disabled' },
     system: WRITE_SYSTEM,
     output_config: { format: zodOutputFormat(sheetContentSchema) },
     messages: [

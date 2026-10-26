@@ -139,6 +139,8 @@ Si aucune ne convient, réponds index = null.`,
   const response = await client().messages.parse({
     model: env.anthropicImportModel(),
     max_tokens: 400,
+    // Pas de réflexion : elle consommait le budget de sortie et coupait le JSON.
+    thinking: { type: 'disabled' },
     output_config: { format: zodOutputFormat(choiceSchema) },
     messages: [{ role: 'user', content }],
   });

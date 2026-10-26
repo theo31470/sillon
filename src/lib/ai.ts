@@ -101,6 +101,8 @@ export async function generateSheet(params: {
   const response = await client().messages.parse({
     model,
     max_tokens: 12000,
+    // Pas de réflexion : elle consommait le budget de sortie et coupait le JSON.
+    thinking: { type: 'disabled' },
     system: SHEET_SYSTEM,
     output_config: { format: zodOutputFormat(sheetContentSchema) },
     messages: [
@@ -137,6 +139,8 @@ export async function reviseSheet(params: {
   const response = await client().messages.parse({
     model,
     max_tokens: 12000,
+    // Pas de réflexion : elle consommait le budget de sortie et coupait le JSON.
+    thinking: { type: 'disabled' },
     system: SHEET_SYSTEM,
     output_config: { format: zodOutputFormat(sheetContentSchema) },
     messages: [
@@ -208,6 +212,8 @@ export async function diagnose(params: {
   const response = await client().messages.parse({
     model,
     max_tokens: 3000,
+    // Pas de réflexion : elle consommait le budget de sortie et coupait le JSON.
+    thinking: { type: 'disabled' },
     system: DIAGNOSIS_SYSTEM,
     output_config: { format: zodOutputFormat(diagnosisSchema) },
     messages: [
