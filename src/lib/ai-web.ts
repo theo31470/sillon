@@ -395,6 +395,7 @@ Règles impératives :
 
 Entretien :
 - Reprends les opérations et intervalles du dossier.
+- N'ajoute JAMAIS un repère "general" pour une opération déjà présente dans le dossier (même sous un autre nom : vidange moteur, filtre à huile…). Si deux sources donnent des intervalles différents pour la même opération, garde une seule ligne avec l'intervalle du constructeur (sinon celui de la presse) et needs_review = true.
 - Si le dossier ne couvre pas les opérations courantes, complète avec les repères habituels pour ce type de tracteur (vidange moteur et filtre, filtres à carburant, filtre à air, huile de transmission et d'hydraulique, ponts, liquide de refroidissement, graissage), avec origin = "general", source = null, needs_review = true. Reste prudent (intervalles usuels du marché) et n'invente JAMAIS une capacité, une référence ou une norme d'huile précise : product = null, capacity = null pour ces repères.
 
 Pannes et tests :
