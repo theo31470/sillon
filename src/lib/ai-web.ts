@@ -95,7 +95,10 @@ function webTools({ searches, fetches, pageTokens = 6000, allowedDomains }: WebT
   const domains = allowedDomains?.length ? { allowed_domains: allowedDomains } : { blocked_domains: BLOCKED_DOMAINS };
   const tools: Anthropic.ToolUnion[] = [{ type: 'web_search_20250305', name: 'web_search', max_uses: searches, ...domains, user_location: USER_LOCATION }];
   if (fetches > 0) {
-    tools.push({ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: fetches, ...domains, max_content_tokens: pageTokens });
+    // La lecture ne peut ouvrir que des adresses déjà apparues dans les résultats de recherche
+    // (donc officielles quand la recherche est limitée) : pas de liste blanche ici, qui
+    // bloquait les sous-domaines (ex. api.fendt.com, où Fendt publie ses fiches techniques).
+    tools.push({ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: fetches, blocked_domains: BLOCKED_DOMAINS, max_content_tokens: pageTokens });
   }
   return tools;
 }
@@ -183,6 +186,9 @@ async function runWithWebTools(params: {
     if (finalText.length > 200) text = finalText;
   }
 
+  for (const b of blocks) {
+    if (b.type === 'web_fetch_tool_result' && b.content.type !== 'web_fetch_result') console.warn('[recherche web] lecture impossible', JSON.stringify(b.content).slice(0, 300));
+  }
   // Pages réellement citées ou lues.
   const sources = new Map<string, string>();
   for (const b of blocks) {
