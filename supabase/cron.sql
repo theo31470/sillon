@@ -3,7 +3,7 @@
 -- dans le SQL Editor de Supabase, après les migrations).
 --
 -- Chaque minute, s'il reste du travail, la base « réveille » le site, qui
--- traite une étape (recherche web ou rédaction). Au plus 3 étapes tournent
+-- traite une étape (recherche web, rédaction, ou nouvelle tentative de photo). Au plus 3 étapes tournent
 -- en parallèle. (Adresse du site : https://tracteursandco.fr.)
 -- =====================================================================
 
@@ -23,6 +23,8 @@ select cron.schedule(
     select 1 from public.catalog_models
     where status in ('queued', 'researched')
        or (status in ('researching', 'writing') and locked_at < now() - interval '8 minutes')
+       -- Photos manquantes à retenter une fois (file au repos).
+       or (status = 'done' and photo_status in ('none', 'error') and photo_retry_at is null and sheet_id is not null)
   );
   $$
 );
