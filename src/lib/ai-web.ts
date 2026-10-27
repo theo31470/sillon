@@ -47,8 +47,9 @@ const EXTRA_BRAND_DOMAINS: Record<string, string[]> = {
   'Massey Ferguson': ['masseyferguson.fr', 'agcocorp.com'],
   Valtra: ['valtra.com', 'agcocorp.com'],
   Claas: ['claas.fr'],
-  'New Holland': ['newholland.fr', 'cnh.com'],
-  'Case IH': ['caseih.fr', 'cnh.com'],
+  // Brochures CNH (New Holland, Case IH) hébergées sur leur plateforme de contenus.
+  'New Holland': ['newholland.fr', 'cnh.com', 'cnhi-p-001-delivery.sitecorecontenthub.cloud'],
+  'Case IH': ['caseih.fr', 'cnh.com', 'cnhi-p-001-delivery.sitecorecontenthub.cloud'],
   Kubota: ['kubota.fr', 'kubota.com'],
 };
 
