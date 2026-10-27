@@ -75,9 +75,33 @@ export async function fetchOfficialPage(url: string, domains: string[]): Promise
   }
 }
 
-/** Classe les adresses : pages de données techniques d'abord. */
+/**
+ * Classe les adresses : pages de données techniques d'abord, en français de préférence.
+ * Une même page dans plusieurs langues (ex. api.fendt.com/techdata/DE/de/… et /FR/fr/…)
+ * n'est gardée qu'une fois : les variantes par pays (pneus, largeurs) se contredisent.
+ */
 export function rankSpecUrls(urls: string[]) {
+  const isFr = (u: string) => /\/fr(\/|$|-)|\/FR\/fr\/|\.fr\//i.test(u);
   const score = (u: string) =>
-    (/techdata|technical-data|technische-daten|donnees-techniques|caracteristiques|specifications?|specs?\b/i.test(u) ? 10 : 0) + (/\.pdf($|\?)/i.test(u) ? -20 : 0);
-  return [...new Set(urls)].sort((a, b) => score(b) - score(a));
+    (/techdata|technical-data|technische-daten|donnees-techniques|caracteristiques|specifications?|specs?\b/i.test(u) ? 10 : 0) +
+    (isFr(u) ? 5 : 0) +
+    (/\.pdf($|\?)/i.test(u) ? -20 : 0);
+  // Clé d'une page sans sa langue : /techdata/XX/xx/1551551 → /techdata/1551551.
+  const key = (u: string) => {
+    try {
+      const { hostname, pathname } = new URL(u);
+      return `${hostname}${pathname.replace(/\/[a-z]{2}\/[a-z]{2}(?=\/)/i, '').replace(/\/(fr|en|de|it|es|nl|pl)(?=\/)/i, '').replace(/\/[^/]*$/, '')}`;
+    } catch {
+      return u;
+    }
+  };
+  const seen = new Set<string>();
+  return [...new Set(urls)]
+    .sort((a, b) => score(b) - score(a))
+    .filter((u) => {
+      const k = key(u);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
 }

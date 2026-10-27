@@ -453,7 +453,8 @@ const WRITE_SYSTEM = `Tu es rédacteur technique pour Tracteurs & Co. Tu remplis
 
 Règles impératives :
 - Caractéristiques et pièces : n'utilise QUE le dossier, rien de tes connaissances générales. Seule exception : les repères d'entretien et de pannes d'origine "general" décrits plus bas, toujours à faire vérifier.
-- Le dossier peut couvrir toute une série : garde les valeurs communes à la série et les valeurs propres à CE modèle ; jamais celles d'un autre modèle.
+- Le dossier couvre souvent toute une série (tableaux avec une colonne par modèle) : ne reprends QUE la colonne de CE modèle (ou « tous modèles »). Une valeur = la valeur de ce modèle seulement, jamais une liste des valeurs des autres modèles entre parenthèses.
+- Si une valeur dépend d'une option ou d'une version (pneus, Power/Profi, vitesse maxi), indique la version de série, puis les options courtes entre parenthèses.
 - Chaque valeur porte sa source : document = titre de la page ou nom du site, url = adresse exacte indiquée dans le dossier pour cette valeur, page = null (ou le numéro de page s'il s'agit d'une brochure PDF et qu'il est indiqué).
 - needs_review = false seulement si la valeur vient du site ou d'une brochure du constructeur, ou de deux sources concordantes. Sinon (source unique non officielle, contradiction, version incertaine) : needs_review = true.
 - Valeur absente : ne crée pas la ligne, sauf si elle est indispensable (puissance, poids) : alors value = null, source = null, needs_review = true.
