@@ -59,7 +59,11 @@ const EXTRA_BRAND_DOMAINS: Record<string, string[]> = {
  */
 const TECHDATA_HINTS: Record<string, string> = {
   Fendt: 'Fendt publie le tableau complet de chaque série sur api.fendt.com/techdata/FR/fr/<numéro>/<nom de la série> (page « Données techniques »). Cherche par exemple « Fendt 700 Vario Gen7 données techniques techdata ».',
-  Claas: 'Claas publie pour chaque série une brochure PDF (claas.com, adresses en …/blueprint/servlet/resource/blob/… .pdf) dont les dernières pages contiennent les caractéristiques techniques. Cherche « Claas <série> brochure pdf caractéristiques techniques ».',
+  Claas: 'Chaque série a une page claas.com/fr-fr/machines-agricoles/tracteurs/<série> qui contient un lien « Brochure » (adresse claas.com/caas/claas/media/…) : le tableau technique complet est à la fin de cette brochure. Donne d’abord l’adresse de la page de la série en français.',
+  'New Holland': 'Chaque série a une page agriculture.newholland.com/fr-fr/europe/produits/tracteurs/<série> avec un lien de téléchargement de la brochure (cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/…) qui contient le tableau des spécifications. Donne d’abord l’adresse de la page de la série.',
+  'Case IH': 'Chaque série a une page caseih.com/fr-fr/france/produits/tracteurs/… (ou caseih.com/en-gb/europe/products/tractors/…) avec un lien de téléchargement de la brochure (cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/…) qui contient le tableau des spécifications. Donne d’abord l’adresse de la page de la série.',
+  Kubota: 'Kubota publie une page par série sur ke.kubota-eu.com/agriculture/fr/products/<série>/ (tableau des caractéristiques) ; les anciennes séries ont aussi une brochure PDF dans ke.kubota-eu.com/agriculture/wp-content/uploads/….',
+  'John Deere': 'John Deere publie une page par modèle sur deere.fr/fr-fr/produits-et-solutions/tracteurs/<catégorie>/<modèle>-tracteur-<code> ; les brochures PDF sont sur deere.com/assets/pdfs/…. Donne les pages des modèles demandés.',
 };
 
 /** Domaines officiels d'une marque (site principal + domaines secondaires connus). */
