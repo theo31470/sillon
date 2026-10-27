@@ -56,6 +56,23 @@ export function htmlToText(html: string) {
 export type OfficialPage = { url: string; title: string; text: string };
 
 /**
+ * Pages construites en JavaScript (ex. John Deere) : le contenu est embarqué dans le HTML
+ * sous forme de données JSON. On en extrait les textes courts (intitulés et valeurs).
+ */
+export function embeddedText(html: string) {
+  const decoded = html.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/\\u0026/g, '&').replace(/\\"/g, '"');
+  const values: string[] = [];
+  const seen = new Set<string>();
+  for (const m of decoded.matchAll(/"(?:text|value|label|name|title|description|unit|key|header|content|specName|specValue|displayValue)"\s*:\s*"([^"<>{}]{1,300})"/g)) {
+    const v = m[1].replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    values.push(v);
+  }
+  return values.join('\n').slice(0, MAX_CHARS);
+}
+
+/**
  * Densité de données techniques : nombre de lignes qui contiennent à la fois un nombre et
  * une unité (kW, ch, Nm, mm, kg, l/min…), où qu'elle soit dans la ligne (les tableaux mettent
  * souvent l'unité dans l'intitulé : « Couple (Nm) | 497 | 536 »). Une vraie page de
@@ -113,6 +130,11 @@ export async function fetchOfficialPage(url: string, domains: string[]): Promise
     if (len > MAX_BYTES) return null;
     const html = (await res.text()).slice(0, MAX_BYTES);
     const { title, text } = htmlToText(html);
+    // Peu de données visibles : contenu peut-être embarqué en JSON (site en JavaScript).
+    if (specDensity(text) < 15) {
+      const embedded = embeddedText(html);
+      if (specDensity(embedded) > specDensity(text)) return { url: finalUrl, title, text: `${text}\n\n## Données de la page\n${embedded}`.slice(0, MAX_CHARS) };
+    }
     return text.length > 300 ? { url: finalUrl, title, text } : null;
   } catch (err) {
     console.warn('[page officielle] lecture impossible', url, err instanceof Error ? err.message : err);

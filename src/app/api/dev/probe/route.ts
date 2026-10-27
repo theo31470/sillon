@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { brandDomains } from '@/lib/ai-web';
-import { htmlToText, isOfficialUrl, specDensity } from '@/lib/official-pages';
+import { embeddedText, htmlToText, isOfficialUrl, specDensity } from '@/lib/official-pages';
 
 /**
  * OUTIL DE MISE AU POINT TEMPORAIRE (import des fiches) : télécharge une page
@@ -48,6 +48,9 @@ export async function GET(request: NextRequest) {
     out.title = title;
     out.density = specDensity(text);
     out.textSample = text.slice(0, 2500);
+    const emb = embeddedText(html);
+    out.embeddedDensity = specDensity(emb);
+    out.embeddedSample = emb.slice(0, 4000);
     const links = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]).filter((h) => /pdf|brochure|media|content|spec|techdata|download|technique/i.test(h));
     out.links = [...new Set(links)].slice(0, 40);
     // Données embarquées (JSON) : contexte autour de mots-clés techniques.
