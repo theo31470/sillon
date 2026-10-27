@@ -62,6 +62,7 @@ const pages: Record<string, LegalPage> = {
           'Votre parc matériel : machines, relevés de compteur, entretiens, dépenses et réglages que vous saisissez.',
           'L’abonnement : historique des paiements et factures. Les numéros de carte bancaire sont traités par Stripe et ne passent jamais par Tracteurs & Co.',
           'La sécurité : journal technique des connexions et actions sensibles (adresse IP comprise), pour détecter les abus.',
+          'Le formulaire de contact : nom, adresse e-mail, et si vous les indiquez téléphone et exploitation, avec votre message, pour vous répondre.',
         ],
       },
       {
@@ -86,6 +87,7 @@ const pages: Record<string, LegalPage> = {
         h: 'Durée de conservation',
         p: [
           'Vos données sont conservées tant que votre compte est actif et supprimées lorsque vous supprimez votre compte, sauf les factures, conservées 10 ans (obligation comptable).',
+          'Les messages envoyés par le formulaire de contact sont conservés 3 ans au plus après notre dernier échange, puis effacés.',
         ],
       },
       {

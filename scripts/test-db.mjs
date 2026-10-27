@@ -174,6 +174,17 @@ ok(tags[0]?.tag === 'cuma', 'étiquettes utilisées : suggestions');
 await c.query(`insert into public.email_log (user_id, to_email, kind, template, subject, status) values ($1, 'a@x.fr', 'message', 'message_admin', 'Bonjour', 'sent')`, [A]);
 ok(true, 'journal des e-mails : type « message » accepté');
 
+// Formulaire de contact
+await c.query(`insert into public.contact_messages (name, email, topic, message) values ('Jean', 'jean@x.fr', 'question', 'Bonjour, une question sur les rappels.')`);
+ok((await as(A, 'aal1', 'select * from public.contact_messages')).rowCount === 0, 'un membre ne lit pas les messages de contact');
+ok((await as(null, null, 'select * from public.contact_messages').catch(() => ({ rowCount: 0 }))).rowCount === 0, 'un visiteur ne lit pas les messages de contact');
+await throws(() => as(null, null, `insert into public.contact_messages (name, email, message) values ('X', 'x@x.fr', 'message de spam direct')`), 'un visiteur ne peut pas écrire directement un message (passage obligé par le serveur)');
+await throws(() => as(A, 'aal1', `insert into public.contact_messages (name, email, message) values ('X', 'x@x.fr', 'message de spam direct')`), 'un membre non plus');
+ok((await as(ADM, 'aal1', 'select * from public.contact_messages')).rowCount === 0, 'admin sans 2FA : messages invisibles');
+ok((await as(ADM, 'aal2', 'select * from public.contact_messages')).rowCount === 1, 'admin avec 2FA : lit les messages');
+ok((await as(ADM, 'aal2', `update public.contact_messages set status = 'traite'`)).rowCount === 0, 'même l’admin ne modifie un message que via le serveur');
+await throws(() => c.query(`insert into public.contact_messages (name, email, topic, message) values ('J', 'j@x.fr', 'spam', 'Un sujet qui n’existe pas.')`), 'sujet de message contrôlé');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

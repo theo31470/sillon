@@ -12,7 +12,10 @@ export const metadata: Metadata = { title: { default: 'Administration', template
 export default async function AdminLayout({ children }: LayoutProps<'/admin'>) {
   const { profile } = await requireAdmin('/admin');
   const supabase = await createClient();
-  const { count } = await supabase.from('tech_sheets').select('id', { count: 'exact', head: true }).eq('status', 'review');
+  const [{ count }, { count: newMessages }] = await Promise.all([
+    supabase.from('tech_sheets').select('id', { count: 'exact', head: true }).eq('status', 'review'),
+    supabase.from('contact_messages').select('id', { count: 'exact', head: true }).eq('status', 'nouveau'),
+  ]);
 
   return (
     <div className="flex min-h-full flex-1 flex-wrap bg-ground">
@@ -24,7 +27,7 @@ export default async function AdminLayout({ children }: LayoutProps<'/admin'>) {
             <ThemeToggle className="border-admin-2 text-panel-muted" />
           </div>
         </div>
-        <AdminNav pendingSheets={count ?? 0} />
+        <AdminNav pendingSheets={count ?? 0} newMessages={newMessages ?? 0} />
         <div className="mt-auto rounded-xl bg-admin-2 p-3.5 text-[13px]">
           <p className="font-semibold text-white">{profile.full_name || profile.email}</p>
           <p className="mb-2 text-panel-muted">Administrateur</p>

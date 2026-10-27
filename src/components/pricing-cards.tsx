@@ -61,7 +61,7 @@ export function PricingCards() {
                 {plan.features.map((f) => <li key={f}>{f}</li>)}
               </ul>
               {key === 'groupement' ? (
-                <a href={`mailto:${SITE.contactEmail}?subject=${encodeURIComponent('Formule CUMA & ETA')}`} className={btn.secondary}>Nous contacter</a>
+                <Link href="/contact?sujet=partenariat" className={btn.secondary}>Nous contacter</Link>
               ) : (
                 <Link href={featured ? `/inscription?formule=complet&periode=${period}` : '/inscription'} className={featured ? btn.primary : btn.secondary}>
                   {featured ? 'Essayer 30 jours gratuits' : 'Commencer'}

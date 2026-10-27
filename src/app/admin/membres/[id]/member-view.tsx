@@ -51,7 +51,7 @@ const SUB_LABELS: Record<string, string> = {
   incomplete: 'Incomplet',
   incomplete_expired: 'Expiré',
 };
-const EMAIL_KINDS: Record<string, string> = { compte: 'Compte', rappel: 'Rappel', annonce: 'Annonce', test: 'Test', facturation: 'Abonnement', message: 'Message' };
+const EMAIL_KINDS: Record<string, string> = { compte: 'Compte', rappel: 'Rappel', annonce: 'Annonce', test: 'Test', facturation: 'Abonnement', message: 'Message', contact: 'Contact' };
 const RUNNING = ['trialing', 'active', 'past_due', 'unpaid'];
 
 const dateTime = (iso: string | null | undefined) => (iso ? formatDate(iso, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');

@@ -18,6 +18,9 @@ export async function POST() {
   if (!rateLimit('rappels-tick', 3, 60 * 60_000).ok) return NextResponse.json({ ok: false }, { status: 429 });
   after(async () => {
     try {
+      // Messages de contact : effacés 3 ans après le dernier échange (politique de confidentialité).
+      const { createServiceClient } = await import('@/lib/supabase/admin');
+      await createServiceClient().from('contact_messages').delete().lt('updated_at', new Date(Date.now() - 3 * 365 * 86400_000).toISOString());
       const expired = await expireComps();
       if (expired) console.info('[formules offertes] expirées :', expired);
       const r = await runReminders();

@@ -9,7 +9,7 @@ import type { BuiltEmail } from '@/lib/email/templates';
  * `email_log` (lisible dans l'admin, rubrique E-mails).
  */
 
-export type EmailKind = 'compte' | 'rappel' | 'annonce' | 'test' | 'facturation' | 'message';
+export type EmailKind = 'compte' | 'rappel' | 'annonce' | 'test' | 'facturation' | 'message' | 'contact';
 export type EmailList = 'rappels' | 'annonces';
 
 export type OutgoingEmail = {
@@ -19,6 +19,8 @@ export type OutgoingEmail = {
   template: string;
   userId?: string | null;
   campaignId?: string | null;
+  /** Adresse de réponse propre à ce message (ex. l'expéditeur d'un message de contact). */
+  replyTo?: string | null;
   /** Ajoute les en-têtes de désinscription en un clic (rappels, annonces). */
   unsubscribe?: { token: string; list: EmailList };
 };
@@ -62,7 +64,7 @@ function payload(m: OutgoingEmail) {
     subject: m.email.subject,
     html: m.email.html,
     text: m.email.text,
-    ...(s.replyTo ? { reply_to: s.replyTo } : {}),
+    ...(m.replyTo || s.replyTo ? { reply_to: m.replyTo || s.replyTo } : {}),
     ...(Object.keys(headers).length ? { headers } : {}),
     tags: [
       { name: 'type', value: m.kind },

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 const main = [
   { href: '/admin', label: 'Vue d’ensemble' },
   { href: '/admin/membres', label: 'Membres' },
+  { href: '/admin/messages', label: 'Messages' },
   { href: '/admin/paiements', label: 'Abonnements & paiements' },
   { href: '/admin/emails', label: 'E-mails' },
   { href: '/admin/blog', label: 'Blog' },
@@ -14,7 +15,7 @@ const main = [
 ];
 const security = [{ href: '/admin/journal', label: 'Journal d’activité' }];
 
-export function AdminNav({ pendingSheets }: { pendingSheets: number }) {
+export function AdminNav({ pendingSheets, newMessages = 0 }: { pendingSheets: number; newMessages?: number }) {
   const pathname = usePathname();
   const item = (l: { href: string; label: string }) => {
     const active =
@@ -27,6 +28,9 @@ export function AdminNav({ pendingSheets }: { pendingSheets: number }) {
         className={`flex justify-between rounded-lg px-3 py-2.5 transition-all duration-200 ${active ? 'bg-brand font-medium text-on-brand' : 'hover:translate-x-0.5 hover:bg-admin-2'}`}
       >
         {l.label}
+        {l.href === '/admin/messages' && newMessages > 0 ? (
+          <span className="rounded-full bg-wheat px-2 text-xs font-bold text-admin">{newMessages}</span>
+        ) : null}
         {l.href === '/admin/fiches' && pendingSheets > 0 ? (
           <span className="rounded-full bg-wheat px-2 text-xs font-bold text-admin">{pendingSheets}</span>
         ) : null}

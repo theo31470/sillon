@@ -318,6 +318,70 @@ export function messageEmail(input: { subject: string; bodyMd: string; name?: st
 }
 
 // ---------------------------------------------------------------------
+// Formulaire de contact
+// ---------------------------------------------------------------------
+
+
+/** Accusé de réception envoyé à la personne qui écrit. */
+export function contactAckEmail(input: { name: string; topic: string; message: string }, siteUrl: string): BuiltEmail {
+  return build(
+    'Nous avons bien reçu votre message',
+    {
+      preheader: 'Nous vous répondons sous 2 jours ouvrés.',
+      heading: 'Message bien reçu',
+      blocks: [
+        { type: 'p', text: hello(input.name) },
+        { type: 'p', text: `Merci pour votre message (**${input.topic}**). Nous vous répondons en général **sous 2 jours ouvrés**, à cette adresse.` },
+        { type: 'note', text: `Votre message :\n${input.message.slice(0, 1500)}` },
+        { type: 'p', text: 'À bientôt,\n**L’équipe Tracteurs & Co**' },
+      ],
+      reason: 'Vous recevez cet e-mail parce que vous nous avez écrit depuis le formulaire de contact de Tracteurs & Co.',
+    },
+    siteUrl,
+  );
+}
+
+/** Alerte aux admins : nouveau message (la réponse directe va à l'expéditeur). */
+export function contactAlertEmail(input: { name: string; email: string; topic: string; message: string; url: string; member: boolean }, siteUrl: string): BuiltEmail {
+  return build(
+    `[Contact] ${input.topic} — ${input.name}`,
+    {
+      preheader: input.message.slice(0, 140),
+      heading: 'Nouveau message de contact',
+      blocks: [
+        { type: 'p', text: `**${input.name}** (${input.email})${input.member ? ', membre du site' : ''} a écrit au sujet de : **${input.topic}**.` },
+        { type: 'note', text: input.message.slice(0, 3000) },
+        { type: 'button', label: 'Ouvrir dans l’admin', url: input.url },
+        { type: 'p', text: 'Vous pouvez aussi répondre directement à cet e-mail : la réponse partira vers l’expéditeur.' },
+      ],
+      reason: 'Alerte envoyée aux administrateurs de Tracteurs & Co à chaque nouveau message de contact.',
+    },
+    siteUrl,
+  );
+}
+
+/** Réponse de l'équipe, écrite dans l'admin (le message d'origine est rappelé). */
+export function contactReplyEmail(input: { name: string; subject: string; bodyMd: string; original: string }, siteUrl: string): BuiltEmail {
+  const site = siteUrl.replace(/\/$/, '');
+  const body = markdownToText(input.bodyMd);
+  return build(
+    input.subject,
+    {
+      preheader: body.split('\n').find((l) => l.trim())?.slice(0, 140) ?? input.subject,
+      heading: input.subject,
+      blocks: [
+        { type: 'p', text: hello(input.name) },
+        { type: 'html', html: markdownToEmailHtml(renderMarkdown(input.bodyMd), site), text: body },
+        { type: 'p', text: 'Bien cordialement,\n**L’équipe Tracteurs & Co**' },
+        { type: 'note', text: `Votre message :\n${input.original.slice(0, 1500)}` },
+      ],
+      reason: 'Vous recevez cette réponse à votre message envoyé depuis le formulaire de contact de Tracteurs & Co. Répondez simplement à cet e-mail pour poursuivre l’échange.',
+    },
+    site,
+  );
+}
+
+// ---------------------------------------------------------------------
 // Abonnement et facturation (déclenchés par le webhook Stripe)
 // ---------------------------------------------------------------------
 
