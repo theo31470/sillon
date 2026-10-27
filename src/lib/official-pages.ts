@@ -1,5 +1,6 @@
 import 'server-only';
 
+
 /**
  * Téléchargement direct d'une page officielle de caractéristiques techniques
  * (ex. api.fendt.com/techdata/…) : le tableau complet, sans passer par les
@@ -12,6 +13,7 @@ import 'server-only';
 
 const UA = 'Mozilla/5.0 (compatible; TracteursEtCoBot/1.0; +https://tracteursandco.fr)';
 const MAX_BYTES = 3 * 1024 * 1024;
+const MAX_PDF_BYTES = 25 * 1024 * 1024;
 const MAX_CHARS = 40_000;
 
 export function isOfficialUrl(raw: string, domains: string[]) {
@@ -53,27 +55,65 @@ export function htmlToText(html: string) {
 
 export type OfficialPage = { url: string; title: string; text: string };
 
-/** Nombre de lignes de tableau (« | ») : une vraie page de données techniques en a beaucoup. */
-export const tableRows = (text: string) => text.split('\n').filter((l) => (l.match(/\|/g) ?? []).length >= 2).length;
+/**
+ * Densité de données techniques : nombre de lignes qui contiennent à la fois un nombre et
+ * une unité (kW, ch, Nm, mm, kg, l/min…), où qu'elle soit dans la ligne (les tableaux mettent
+ * souvent l'unité dans l'intitulé : « Couple (Nm) | 497 | 536 »). Une vraie page de
+ * caractéristiques en a des dizaines, une page de présentation presque aucune.
+ */
+export const specDensity = (text: string) =>
+  text
+    .split('\n')
+    .filter((l) => /\d/.test(l) && /(\bkW\b|\bch\b|\bhp\b|\bPS\b|\bNm\b|\bmm\b|\bkg\b|\bdaN\b|l\/min|tr\/min|\brpm\b|km\/h|cm³|cm3|\bbar\b|\blitres?\b|\(l\)|\bl\b)/i.test(l)).length;
+
+/** Brochure PDF : on ne garde que les pages riches en données (le tableau technique, souvent en fin de brochure). */
+async function pdfToText(buffer: ArrayBuffer) {
+  const { extractText, getDocumentProxy } = await import('unpdf');
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const { text } = await extractText(pdf, { mergePages: false });
+  const pages = (text as string[]).map((t, i) => ({ i, t: t.replace(/[ \t]+/g, ' ').trim(), d: specDensity(t) }));
+  const rich = pages.filter((p) => p.d >= 8).sort((a, b) => b.d - a.d);
+  const kept: typeof pages = [];
+  let total = 0;
+  for (const p of rich) {
+    if (total + p.t.length > MAX_CHARS) break;
+    kept.push(p);
+    total += p.t.length;
+  }
+  return kept
+    .sort((a, b) => a.i - b.i)
+    .map((p) => `## Page ${p.i + 1}\n${p.t}`)
+    .join('\n\n');
+}
 
 export async function fetchOfficialPage(url: string, domains: string[]): Promise<OfficialPage | null> {
   if (!isOfficialUrl(url, domains)) return null;
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml', 'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8' },
+      headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml,application/pdf', 'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8' },
       redirect: 'follow',
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(20_000),
       cache: 'no-store',
     });
     if (!res.ok || !isOfficialUrl(res.url || url, domains)) return null;
     const type = res.headers.get('content-type') ?? '';
-    // Les brochures PDF sont trop longues (et chères) à faire lire : on s'en tient aux pages.
-    if (!/text\/html|application\/xhtml/i.test(type)) return null;
     const len = Number(res.headers.get('content-length') ?? 0);
+    const finalUrl = res.url || url;
+
+    if (/application\/pdf/i.test(type) || /\.pdf($|\?)/i.test(finalUrl)) {
+      if (len > MAX_PDF_BYTES) return null;
+      const buffer = await res.arrayBuffer();
+      if (buffer.byteLength > MAX_PDF_BYTES) return null;
+      const text = await pdfToText(buffer);
+      const title = decodeURIComponent(finalUrl.split('/').pop() ?? 'brochure.pdf').slice(0, 120);
+      return text.length > 300 ? { url: finalUrl, title: `Brochure PDF ${title}`, text } : null;
+    }
+
+    if (!/text\/html|application\/xhtml/i.test(type)) return null;
     if (len > MAX_BYTES) return null;
     const html = (await res.text()).slice(0, MAX_BYTES);
     const { title, text } = htmlToText(html);
-    return text.length > 300 ? { url: res.url || url, title, text } : null;
+    return text.length > 300 ? { url: finalUrl, title, text } : null;
   } catch (err) {
     console.warn('[page officielle] lecture impossible', url, err instanceof Error ? err.message : err);
     return null;
@@ -90,7 +130,8 @@ export function rankSpecUrls(urls: string[]) {
   const score = (u: string) =>
     (/techdata|technical-data|technische-daten|donnees-techniques|caracteristiques|specifications?|specs?\b/i.test(u) ? 10 : 0) +
     (isFr(u) ? 5 : 0) +
-    (/\.pdf($|\?)/i.test(u) ? -20 : 0);
+    // Brochures PDF acceptées (Claas…), mais après une vraie page de données techniques.
+    (/\.pdf($|\?)/i.test(u) ? 3 : 0);
   // Clé d'une page sans sa langue : /techdata/XX/xx/1551551 → /techdata/1551551.
   const key = (u: string) => {
     try {

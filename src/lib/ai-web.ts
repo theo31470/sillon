@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { env } from '@/lib/env';
 import { client, recordUsage } from '@/lib/ai';
 import { sheetContentSchema, type SheetContent } from '@/lib/sheets/schema';
-import { fetchOfficialPage, rankSpecUrls, tableRows, type OfficialPage } from '@/lib/official-pages';
+import { fetchOfficialPage, rankSpecUrls, specDensity, type OfficialPage } from '@/lib/official-pages';
 
 /**
  * Recherche web par Claude pour l'import des tracteurs par marque.
@@ -50,6 +50,15 @@ const EXTRA_BRAND_DOMAINS: Record<string, string[]> = {
   'New Holland': ['newholland.fr', 'cnh.com'],
   'Case IH': ['caseih.fr', 'cnh.com'],
   Kubota: ['kubota.fr', 'kubota.com'],
+};
+
+/**
+ * Où chaque constructeur publie le tableau complet des caractéristiques (constaté le 27/10/2026).
+ * Aide la recherche à viser la bonne page du premier coup. À compléter marque par marque.
+ */
+const TECHDATA_HINTS: Record<string, string> = {
+  Fendt: 'Fendt publie le tableau complet de chaque série sur api.fendt.com/techdata/FR/fr/<numéro>/<nom de la série> (page « Données techniques »). Cherche par exemple « Fendt 700 Vario Gen7 données techniques techdata ».',
+  Claas: 'Claas publie pour chaque série une brochure PDF (claas.com, adresses en …/blueprint/servlet/resource/blob/… .pdf) dont les dernières pages contiennent les caractéristiques techniques. Cherche « Claas <série> brochure pdf caractéristiques techniques ».',
 };
 
 /** Domaines officiels d'une marque (site principal + domaines secondaires connus). */
@@ -306,7 +315,7 @@ Règles impératives :
 - Si tu ne trouves aucune donnée officielle, écris seulement « INTROUVABLE » suivi des adresses consultées.`;
 
 const FIND_SYSTEM = `Tu cherches, sur le site officiel d'un constructeur de tracteurs, la page « caractéristiques techniques / données techniques / technical data » d'une série : celle qui contient le tableau complet, modèle par modèle.
-Fais une ou deux recherches, puis réponds UNIQUEMENT par les adresses trouvées, une par ligne, la plus complète d'abord (pages web plutôt que brochures PDF). Aucun autre texte.`;
+Fais une ou deux recherches, puis réponds UNIQUEMENT par les adresses trouvées, une par ligne, la plus complète d'abord : page web de données techniques, sinon brochure PDF de la série (qui contient le tableau en fin de document). Aucun autre texte.`;
 
 const EXTRACT_SYSTEM = `Tu es documentaliste technique pour Tracteurs & Co. On te donne le texte de pages OFFICIELLES d'un constructeur (tableaux de caractéristiques techniques). Recopie-les fidèlement.
 
@@ -320,10 +329,11 @@ Règles impératives :
 - Si les pages ne contiennent aucune donnée exploitable pour cette série, écris seulement « INTROUVABLE ».`;
 
 /** Pages officielles de la série, téléchargées directement (au plus 2). */
-async function readOfficialPages(params: { userId: string; target: string; domains: string[] }) {
+async function readOfficialPages(params: { userId: string; brand: string; target: string; domains: string[] }) {
+  const hint = TECHDATA_HINTS[params.brand] ?? '';
   const finder = await runWithWebTools({
     system: FIND_SYSTEM,
-    prompt: `${params.target}\nSites officiels : ${params.domains.join(', ')}.`,
+    prompt: `${params.target}\nSites officiels : ${params.domains.join(', ')}.${hint ? `\nIndication : ${hint}` : ''}`,
     searches: 2,
     fetches: 0,
     allowedDomains: params.domains,
@@ -337,11 +347,13 @@ async function readOfficialPages(params: { userId: string; target: string; domai
   for (const url of candidates) {
     const page = await fetchOfficialPage(url, params.domains);
     if (page && !pages.some((p) => p.text === page.text)) pages.push(page);
-    if (pages.length >= 2 || pages.reduce((n, p) => n + p.text.length, 0) > 30_000) break;
+    if (pages.filter((p) => specDensity(p.text) >= 15).length >= 1 && (pages.length >= 2 || pages.reduce((n, p) => n + p.text.length, 0) > 30_000)) break;
+    if (pages.length >= 4) break;
   }
   // Seulement de vrais tableaux de données techniques (pas les pages de présentation) :
   // sinon, la recherche web officielle donne de meilleurs résultats.
-  const tables = pages.filter((p) => tableRows(p.text) >= 15);
+  const tables = pages.filter((p) => specDensity(p.text) >= 15);
+  if (pages.length && !tables.length) console.warn('[pages officielles] lues mais sans tableau exploitable', pages.map((p) => `${p.url} (${specDensity(p.text)})`).join(' ; '));
   return tables;
 }
 
@@ -354,7 +366,7 @@ export async function researchSeries(params: { userId: string; brand: string; se
 
   if (domains.length) {
     // 1. Le tableau officiel complet, téléchargé directement : le meilleur et le moins cher.
-    const pages = await readOfficialPages({ userId: params.userId, target, domains });
+    const pages = await readOfficialPages({ userId: params.userId, brand: params.brand, target, domains });
     if (pages.length) {
       const model = env.anthropicImportModel();
       const response = await client().messages.create({
