@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { env } from '@/lib/env';
 import { client, recordUsage } from '@/lib/ai';
 import { sheetContentSchema, type SheetContent } from '@/lib/sheets/schema';
-import { fetchOfficialPage, rankSpecUrls, type OfficialPage } from '@/lib/official-pages';
+import { fetchOfficialPage, rankSpecUrls, tableRows, type OfficialPage } from '@/lib/official-pages';
 
 /**
  * Recherche web par Claude pour l'import des tracteurs par marque.
@@ -339,7 +339,10 @@ async function readOfficialPages(params: { userId: string; target: string; domai
     if (page && !pages.some((p) => p.text === page.text)) pages.push(page);
     if (pages.length >= 2 || pages.reduce((n, p) => n + p.text.length, 0) > 30_000) break;
   }
-  return pages;
+  // Seulement de vrais tableaux de données techniques (pas les pages de présentation) :
+  // sinon, la recherche web officielle donne de meilleurs résultats.
+  const tables = pages.filter((p) => tableRows(p.text) >= 15);
+  return tables;
 }
 
 export async function researchSeries(params: { userId: string; brand: string; series: string; models: string[]; years: string }) {
