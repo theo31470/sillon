@@ -166,6 +166,8 @@ export function rankSpecUrls(urls: string[]) {
   const score = (u: string) =>
     (/techdata|technical-data|technische-daten|donnees-techniques|caracteristiques|specifications?|specs?\b/i.test(u) ? 10 : 0) +
     (isFr(u) ? 5 : 0) +
+    // Documents hébergés (brochures Claas, CNH…) : souvent le tableau complet.
+    (/\/api\/public\/content\/|\/caas\/[^/]+\/media\//i.test(u) ? 8 : 0) +
     // Brochures PDF acceptées (Claas…), mais après une vraie page de données techniques.
     (/\.pdf($|\?)/i.test(u) ? 3 : 0);
   // Clé d'une page sans sa langue : /techdata/XX/xx/1551551 → /techdata/1551551.
