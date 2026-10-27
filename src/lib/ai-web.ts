@@ -351,8 +351,8 @@ async function readOfficialPages(params: { userId: string; brand: string; target
   const pages: OfficialPage[] = [];
   const tried = new Set<string>();
   const good = () => pages.filter((p) => specDensity(p.text) >= 15);
-  // Au plus 6 téléchargements : pages trouvées, puis brochures liées depuis ces pages.
-  while (queue.length && tried.size < 6) {
+  // Au plus 8 téléchargements : pages trouvées, puis brochures liées depuis ces pages.
+  while (queue.length && tried.size < 8) {
     const url = queue.shift()!;
     if (tried.has(url)) continue;
     tried.add(url);
@@ -361,12 +361,13 @@ async function readOfficialPages(params: { userId: string; brand: string; target
     if (!pages.some((p) => p.text === page.text)) pages.push(page);
     // Page de présentation sans tableau : ses liens « brochure / fiche technique » passent en tête.
     // Page sans vrai tableau complet (présentation, chiffres clés) : ses liens « brochure / fiche technique » passent en tête.
-    if (specDensity(page.text) < 30 && page.links?.length) queue.unshift(...rankSpecUrls(page.links).filter((l) => !tried.has(l)).slice(0, 3));
+    if (specDensity(page.text) < 30 && page.links?.length) queue.unshift(...rankSpecUrls(page.links).filter((l) => !tried.has(l)).slice(0, 4));
     // On s'arrête dès qu'on tient un vrai tableau complet.
     if (good().some((p) => specDensity(p.text) >= 30)) break;
   }
   // Seulement de vrais tableaux de données techniques (pas les pages de présentation) :
   // sinon, la recherche web officielle donne de meilleurs résultats.
+  console.info('[pages officielles]', params.target.slice(0, 80), '→', [...tried].join(' ; '), '| retenues :', pages.map((p) => `${p.url} (${specDensity(p.text)})`).join(' ; '));
   const tables = pages.filter((p) => specDensity(p.text) >= 15);
   if (pages.length && !tables.length) console.warn('[pages officielles] lues mais sans tableau exploitable', pages.map((p) => `${p.url} (${specDensity(p.text)})`).join(' ; '));
   return tables;

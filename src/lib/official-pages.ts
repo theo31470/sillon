@@ -141,7 +141,15 @@ export async function fetchOfficialPage(url: string, domains: string[]): Promise
               return '';
             }
           })
-          .filter((h) => h && h !== finalUrl && /\.pdf($|\?)|\/media\/|\/api\/public\/content\/|brochure|techdata|donnees-techniques|technical-data|technische-daten|specification|caracteristiques/i.test(h) && isOfficialUrl(h, domains)),
+          .filter(
+            (h) =>
+              h &&
+              h !== finalUrl &&
+              /\.pdf($|\?)|\/media\/|\/api\/public\/content\/|brochure|techdata|donnees-techniques|technical-data|technische-daten|specification|caracteristiques/i.test(h) &&
+              // Pas les images (vignettes « t=size… », fichiers image).
+              !/[?&]t=size|\.(jpe?g|png|webp|gif|svg|avif)($|\?)/i.test(h) &&
+              isOfficialUrl(h, domains),
+          ),
       ),
     ].slice(0, 12);
     // Peu de données visibles : contenu peut-être embarqué en JSON (site en JavaScript).
