@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
     const hits = [...html.matchAll(/(kW|Nm|l\/min|Puissance|horsepower|Displacement|Cylindrée)/gi)].slice(0, 6).map((m) => html.slice(Math.max(0, (m.index ?? 0) - 200), (m.index ?? 0) + 200));
     out.rawHits = hits;
     out.scripts = [...html.matchAll(/<script[^>]*src="([^"]+)"/g)].map((m) => m[1]).slice(0, 15);
+    const kw = request.nextUrl.searchParams.get('kw');
+    if (kw) out.kwHits = [...html.matchAll(new RegExp(kw.replace(/[^\w/.-]/g, ''), 'gi'))].slice(0, 12).map((m) => html.slice(Math.max(0, (m.index ?? 0) - 160), (m.index ?? 0) + 220));
   }
   return NextResponse.json(out);
 }
