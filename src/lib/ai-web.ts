@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { env } from '@/lib/env';
 import { client, recordUsage } from '@/lib/ai';
 import { sheetContentSchema, type SheetContent } from '@/lib/sheets/schema';
+import { fetchOfficialPage, rankSpecUrls, type OfficialPage } from '@/lib/official-pages';
 
 /**
  * Recherche web par Claude pour l'import des tracteurs par marque.
@@ -199,7 +200,12 @@ async function runWithWebTools(params: {
       sources.set(b.content.url, b.content.content.title ?? b.content.url);
     }
   }
-  return { text, usage, model, sources: [...sources].map(([url, name]) => ({ url, name })) as WebSource[] };
+  // Toutes les adresses renvoyées par la recherche (pour les ouvrir ensuite nous-mêmes).
+  const searchResults: WebSource[] = [];
+  for (const b of blocks) {
+    if (b.type === 'web_search_tool_result' && Array.isArray(b.content)) for (const r of b.content) searchResults.push({ url: r.url, name: r.title });
+  }
+  return { text, usage, model, sources: [...sources].map(([url, name]) => ({ url, name })) as WebSource[], searchResults };
 }
 
 // ---------------------------------------------------------------------
@@ -299,6 +305,43 @@ Règles impératives :
 - Indique la version ou la génération exacte décrite par le document (et son année). Si le document couvre plusieurs générations, sépare-les.
 - Si tu ne trouves aucune donnée officielle, écris seulement « INTROUVABLE » suivi des adresses consultées.`;
 
+const FIND_SYSTEM = `Tu cherches, sur le site officiel d'un constructeur de tracteurs, la page « caractéristiques techniques / données techniques / technical data » d'une série : celle qui contient le tableau complet, modèle par modèle.
+Fais une ou deux recherches, puis réponds UNIQUEMENT par les adresses trouvées, une par ligne, la plus complète d'abord (pages web plutôt que brochures PDF). Aucun autre texte.`;
+
+const EXTRACT_SYSTEM = `Tu es documentaliste technique pour Tracteurs & Co. On te donne le texte de pages OFFICIELLES d'un constructeur (tableaux de caractéristiques techniques). Recopie-les fidèlement.
+
+Règles impératives :
+- Uniquement ce qui est écrit dans les pages fournies. Jamais de valeur de mémoire, jamais d'estimation.
+- Format : tableaux markdown, une colonne par modèle, une ligne par caractéristique, unités métriques. Sous chaque tableau : « Source : URL » (l'adresse de la page dont viennent les valeurs).
+- Rubriques, dans cet ordre, avec TOUT ce que les pages donnent : Moteur ; Transmission et prise de force ; Hydraulique et relevage ; Pneumatiques ; Dimensions ; Masses ; Capacités (carburant, AdBlue, huiles, refroidissement) ; Entretien (intervalles, s'ils sont indiqués).
+- Les valeurs communes à tous les modèles peuvent être regroupées dans une colonne « Tous modèles ».
+- Les options et variantes (pneus, versions Power/Profi, avant/arrière) : indique-les comme dans la page.
+- Indique la génération ou la version décrite par la page. Si une page ne concerne pas la série demandée, ignore-la.
+- Si les pages ne contiennent aucune donnée exploitable pour cette série, écris seulement « INTROUVABLE ».`;
+
+/** Pages officielles de la série, téléchargées directement (au plus 2). */
+async function readOfficialPages(params: { userId: string; target: string; domains: string[] }) {
+  const finder = await runWithWebTools({
+    system: FIND_SYSTEM,
+    prompt: `${params.target}\nSites officiels : ${params.domains.join(', ')}.`,
+    searches: 2,
+    fetches: 0,
+    allowedDomains: params.domains,
+    maxTokens: 800,
+    deadlineMs: 60_000,
+  });
+  await recordUsage(params.userId, 'sheet_research', finder.usage, finder.model);
+  const proposed = finder.text.match(/https:\/\/[^\s<>()"'\]]+/g) ?? [];
+  const candidates = rankSpecUrls([...proposed, ...finder.searchResults.map((r) => r.url)]).slice(0, 6);
+  const pages: OfficialPage[] = [];
+  for (const url of candidates) {
+    const page = await fetchOfficialPage(url, params.domains);
+    if (page && !pages.some((p) => p.text === page.text)) pages.push(page);
+    if (pages.length >= 2 || pages.reduce((n, p) => n + p.text.length, 0) > 30_000) break;
+  }
+  return pages;
+}
+
 export async function researchSeries(params: { userId: string; brand: string; series: string; models: string[]; years: string }) {
   const domains = brandDomains(params.brand);
   const target = params.series
@@ -306,10 +349,36 @@ export async function researchSeries(params: { userId: string; brand: string; se
     : `Tracteur : ${params.brand} ${params.models[0]}.`;
   const years = params.years ? ` Années : ${params.years}.` : '';
 
-  // 1. Documentation officielle du constructeur.
-  let official: Awaited<ReturnType<typeof runWithWebTools>> | null = null;
   if (domains.length) {
-    official = await runWithWebTools({
+    // 1. Le tableau officiel complet, téléchargé directement : le meilleur et le moins cher.
+    const pages = await readOfficialPages({ userId: params.userId, target, domains });
+    if (pages.length) {
+      const model = env.anthropicImportModel();
+      const response = await client().messages.create({
+        model,
+        max_tokens: 8000,
+        thinking: { type: 'disabled' },
+        system: EXTRACT_SYSTEM,
+        messages: [
+          {
+            role: 'user',
+            content: `${target}${years}\n\n${pages.map((p, i) => `<page numero="${i + 1}" url="${p.url}" titre="${p.title.replace(/"/g, "'")}">\n${p.text}\n</page>`).join('\n\n')}\n\nRecopie les caractéristiques techniques officielles de cette série.`,
+          },
+        ],
+      });
+      await recordUsage(params.userId, 'sheet_research', response.usage, model);
+      const text = response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+        .map((b) => b.text)
+        .join('')
+        .trim();
+      if (text.length > 800 && !/^\s*INTROUVABLE/i.test(text)) {
+        return { notes: `${text}\n\n(Pages officielles lues en entier : ${pages.map((p) => p.url).join(' ; ')})`, sources: pages.map((p) => ({ url: p.url, name: p.title || p.url })) };
+      }
+    }
+
+    // 2. Page non téléchargeable (site protégé, brochure PDF…) : extraits de la recherche web officielle.
+    const official = await runWithWebTools({
       system: OFFICIAL_SYSTEM,
       prompt: `${target}${years}\nSites officiels : ${domains.join(', ')}.\nRecopie les caractéristiques techniques officielles.`,
       searches: 2,
@@ -320,11 +389,10 @@ export async function researchSeries(params: { userId: string; brand: string; se
       deadlineMs: 120_000,
     });
     await recordUsage(params.userId, 'sheet_research', official.usage, official.model);
+    if (official.text.length > 1200 && !/^\s*INTROUVABLE/i.test(official.text)) return { notes: official.text, sources: official.sources };
   }
-  const officialOk = Boolean(official && official.text.length > 1200 && !/^\s*INTROUVABLE/i.test(official.text));
-  if (official && officialOk) return { notes: official.text, sources: official.sources };
 
-  // 2. Rien d'exploitable chez le constructeur : recherche élargie (presse spécialisée).
+  // 3. Rien d'exploitable chez le constructeur : recherche élargie (presse spécialisée).
   const result = await runWithWebTools({
     system: RESEARCH_SYSTEM,
     prompt: `${target}${years}
@@ -337,7 +405,7 @@ Prépare le dossier.`,
   });
   await recordUsage(params.userId, 'sheet_research', result.usage, result.model);
   if (result.text.length < 200) throw new Error('Dossier de recherche trop maigre : modèle introuvable ?');
-  return { notes: result.text, sources: [...(official?.sources ?? []), ...result.sources] };
+  return { notes: result.text, sources: result.sources };
 }
 
 // ---------------------------------------------------------------------
