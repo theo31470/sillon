@@ -53,7 +53,7 @@ export function htmlToText(html: string) {
   return { title: title.replace(/\s+/g, ' ').slice(0, 200), text: text.slice(0, MAX_CHARS) };
 }
 
-export type OfficialPage = { url: string; title: string; text: string };
+export type OfficialPage = { url: string; title: string; text: string; links?: string[] };
 
 /**
  * Pages construites en JavaScript (ex. John Deere) : le contenu est embarqué dans le HTML
@@ -130,12 +130,26 @@ export async function fetchOfficialPage(url: string, domains: string[]): Promise
     if (len > MAX_BYTES) return null;
     const html = (await res.text()).slice(0, MAX_BYTES);
     const { title, text } = htmlToText(html);
+    // Liens vers les brochures et fiches techniques (Claas, New Holland, Case IH…) : suivis ensuite.
+    const links = [
+      ...new Set(
+        [...html.matchAll(/href="([^"#]+)"/g)]
+          .map((m) => {
+            try {
+              return new URL(m[1].replace(/&amp;/g, '&'), finalUrl).toString();
+            } catch {
+              return '';
+            }
+          })
+          .filter((h) => h && h !== finalUrl && /\.pdf($|\?)|\/media\/|\/api\/public\/content\/|brochure|techdata|donnees-techniques|technical-data|technische-daten|specification|caracteristiques/i.test(h) && isOfficialUrl(h, domains)),
+      ),
+    ].slice(0, 12);
     // Peu de données visibles : contenu peut-être embarqué en JSON (site en JavaScript).
     if (specDensity(text) < 15) {
       const embedded = embeddedText(html);
-      if (specDensity(embedded) > specDensity(text)) return { url: finalUrl, title, text: `${text}\n\n## Données de la page\n${embedded}`.slice(0, MAX_CHARS) };
+      if (specDensity(embedded) > specDensity(text)) return { url: finalUrl, title, text: `${text}\n\n## Données de la page\n${embedded}`.slice(0, MAX_CHARS), links };
     }
-    return text.length > 300 ? { url: finalUrl, title, text } : null;
+    return text.length > 300 || links.length ? { url: finalUrl, title, text, links } : null;
   } catch (err) {
     console.warn('[page officielle] lecture impossible', url, err instanceof Error ? err.message : err);
     return null;
@@ -158,7 +172,9 @@ export function rankSpecUrls(urls: string[]) {
   const key = (u: string) => {
     try {
       const { hostname, pathname } = new URL(u);
-      return `${hostname}${pathname.replace(/\/[a-z]{2}\/[a-z]{2}(?=\/)/i, '').replace(/\/(fr|en|de|it|es|nl|pl)(?=\/)/i, '').replace(/\/[^/]*$/, '')}`;
+      const path = pathname.replace(/\/[a-z]{2}\/[a-z]{2}(?=\/)/i, '').replace(/\/(fr|en|de|it|es|nl|pl)(?=\/)/i, '');
+      // Pages techdata : le dernier segment est le nom de la série, traduit selon la langue.
+      return `${hostname}${/techdata/i.test(path) ? path.replace(/\/[^/]*$/, '') : path}${new URL(u).search}`;
     } catch {
       return u;
     }

@@ -343,13 +343,21 @@ async function readOfficialPages(params: { userId: string; brand: string; target
   });
   await recordUsage(params.userId, 'sheet_research', finder.usage, finder.model);
   const proposed = finder.text.match(/https:\/\/[^\s<>()"'\]]+/g) ?? [];
-  const candidates = rankSpecUrls([...proposed, ...finder.searchResults.map((r) => r.url)]).slice(0, 6);
+  const queue = rankSpecUrls([...proposed, ...finder.searchResults.map((r) => r.url)]).slice(0, 6);
   const pages: OfficialPage[] = [];
-  for (const url of candidates) {
+  const tried = new Set<string>();
+  const good = () => pages.filter((p) => specDensity(p.text) >= 15);
+  // Au plus 6 téléchargements : pages trouvées, puis brochures liées depuis ces pages.
+  while (queue.length && tried.size < 6) {
+    const url = queue.shift()!;
+    if (tried.has(url)) continue;
+    tried.add(url);
     const page = await fetchOfficialPage(url, params.domains);
-    if (page && !pages.some((p) => p.text === page.text)) pages.push(page);
-    if (pages.filter((p) => specDensity(p.text) >= 15).length >= 1 && (pages.length >= 2 || pages.reduce((n, p) => n + p.text.length, 0) > 30_000)) break;
-    if (pages.length >= 4) break;
+    if (!page) continue;
+    if (!pages.some((p) => p.text === page.text)) pages.push(page);
+    // Page de présentation sans tableau : ses liens « brochure / fiche technique » passent en tête.
+    if (specDensity(page.text) < 15 && page.links?.length) queue.unshift(...rankSpecUrls(page.links).filter((l) => !tried.has(l)).slice(0, 3));
+    if (good().length >= 2 || good().some((p) => specDensity(p.text) >= 30) || good().reduce((n, p) => n + p.text.length, 0) > 30_000) break;
   }
   // Seulement de vrais tableaux de données techniques (pas les pages de présentation) :
   // sinon, la recherche web officielle donne de meilleurs résultats.
