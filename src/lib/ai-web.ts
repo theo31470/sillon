@@ -60,8 +60,8 @@ const EXTRA_BRAND_DOMAINS: Record<string, string[]> = {
 const TECHDATA_HINTS: Record<string, string> = {
   Fendt: 'Fendt publie le tableau complet de chaque série sur api.fendt.com/techdata/FR/fr/<numéro>/<nom de la série> (page « Données techniques »). Cherche par exemple « Fendt 700 Vario Gen7 données techniques techdata ».',
   Claas: 'Chaque série a une page claas.com/fr-fr/machines-agricoles/tracteurs/<série> qui contient un lien « Brochure » (adresse claas.com/caas/claas/media/…) : le tableau technique complet est à la fin de cette brochure. Donne d’abord l’adresse de la page de la série en français.',
-  'New Holland': 'Chaque série a une page agriculture.newholland.com/fr-fr/europe/produits/tracteurs/<série> avec un lien de téléchargement de la brochure (cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/…) qui contient le tableau des spécifications. Donne d’abord l’adresse de la page de la série.',
-  'Case IH': 'Chaque série a une page caseih.com/fr-fr/france/produits/tracteurs/… (ou caseih.com/en-gb/europe/products/tractors/…) avec un lien de téléchargement de la brochure (cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/…) qui contient le tableau des spécifications. Donne d’abord l’adresse de la page de la série.',
+  'New Holland': 'Chaque série a une page agriculture.newholland.com/fr-fr/europe/produits/tracteurs/<série> avec un lien de téléchargement de la brochure (cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/…) qui contient le tableau complet des spécifications. Donne d’abord l’adresse de la page de la série (pas les actualités).',
+  'Case IH': 'Chaque série a une page caseih.com/en-gb/europe/products/tractors/<gamme>/<série> qui contient le lien de téléchargement de la brochure (cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/…) avec le tableau complet des spécifications ; la page française caseih.com/fr-fr/france/produits/tracteurs/… n’a pas ce lien. Donne d’abord la page en-gb/europe de la série, puis la page française.',
   Kubota: 'Kubota publie une page par série sur ke.kubota-eu.com/agriculture/fr/products/<série>/ (tableau des caractéristiques) ; les anciennes séries ont aussi une brochure PDF dans ke.kubota-eu.com/agriculture/wp-content/uploads/….',
   'John Deere': 'John Deere publie une page par modèle sur deere.fr/fr-fr/produits-et-solutions/tracteurs/<catégorie>/<modèle>-tracteur-<code> ; les brochures PDF sont sur deere.com/assets/pdfs/…. Donne les pages des modèles demandés.',
 };
@@ -363,7 +363,7 @@ async function readOfficialPages(params: { userId: string; brand: string; target
     // Page sans vrai tableau complet (présentation, chiffres clés) : ses liens « brochure / fiche technique » passent en tête.
     if (specDensity(page.text) < 30 && page.links?.length) queue.unshift(...rankSpecUrls(page.links).filter((l) => !tried.has(l)).slice(0, 3));
     // On s'arrête dès qu'on tient un vrai tableau complet.
-    if (good().some((p) => specDensity(p.text) >= 30) || good().reduce((n, p) => n + p.text.length, 0) > 30_000) break;
+    if (good().some((p) => specDensity(p.text) >= 30)) break;
   }
   // Seulement de vrais tableaux de données techniques (pas les pages de présentation) :
   // sinon, la recherche web officielle donne de meilleurs résultats.
