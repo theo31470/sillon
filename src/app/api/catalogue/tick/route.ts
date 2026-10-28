@@ -20,11 +20,19 @@ export async function POST() {
   if (!rateLimit('catalogue-tick', 20, 60_000).ok) return NextResponse.json({ ok: false }, { status: 429 });
   // On répond tout de suite ; le travail continue en arrière-plan (jusqu'à maxDuration).
   after(async () => {
-    try {
-      await processNextJob();
-    } catch (err) {
-      console.error('[catalogue] tick', err);
-    }
+    // Jusqu'à 3 étapes par réveil (la base limite le nombre d'étapes en parallèle
+    // et empêche deux recherches simultanées sur une même série).
+    await Promise.all(
+      [0, 1, 2].map(async (i) => {
+        // Léger décalage : chaque appel réserve sa propre étape.
+        await new Promise((r) => setTimeout(r, i * 400));
+        try {
+          await processNextJob();
+        } catch (err) {
+          console.error('[catalogue] tick', err);
+        }
+      }),
+    );
   });
   return NextResponse.json({ ok: true });
 }
