@@ -23,7 +23,7 @@ export function isOfficialUrl(raw: string, domains: string[]) {
     const host = u.hostname.toLowerCase();
     if (/^[\d.]+$/.test(host) || host.includes(':')) return false;
     // Sites de test ou de préproduction des constructeurs : jamais.
-    if (/^(test|staging|stage|preprod|dev|qa|uat)[.-]/.test(host)) return false;
+    if (/^(test|staging|stage|preprod|dev|qa|uat|shop|store|boutique)[.-]/.test(host)) return false;
     return domains.some((d) => host === d || host.endsWith(`.${d}`));
   } catch {
     return false;

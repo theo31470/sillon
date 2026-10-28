@@ -316,6 +316,14 @@ Le plus simple : [Vercel](https://vercel.com).
   si rien d'exploitable n'est trouvé. Bases de données tierces bloquées (droit des bases de données) : agridonnees,
   tractorbook ajoutés. Réflexion désactivée pendant la recherche (sinon dossier vide). Constat du 26/10 avant ce
   changement : ~0,16 $ par recherche (palier > 100 000 tokens de Haiku), fiches 900 Vario sans puissance par modèle.
+- **Import : sources officielles par marque** (27–28/10/2026). Le site télécharge lui-même le tableau officiel
+  (`src/lib/official-pages.ts`), suit les liens « brochure » des pages de série (PDF : seules les pages riches en
+  données sont gardées, via `unpdf`), essaie la même page dans un autre pays (hreflang) si la brochure n'y est pas liée,
+  et lit les données JSON des sites en JavaScript. Indications par marque : `TECHDATA_HINTS` (src/lib/ai-web.ts).
+  Résultats : Fendt (api.fendt.com/techdata) et Claas (brochure PDF) 28 à 40 caractéristiques ; Case IH et New Holland
+  (brochure sur cnhi-p-001-delivery.sitecorecontenthub.cloud) 25 à 37 ; Kubota (page de série partielle) 15 à 19 ;
+  **John Deere : caractéristiques chargées en JavaScript depuis un service interne, inaccessibles** → recherche web en
+  secours. Outil de mise au point temporaire : `/api/dev/probe` (jeton `PROBE_TOKEN`), à supprimer à la fin.
 - Si la qualité des fiches rédigées par Haiku déçoit : repasser Sonnet pour la seule étape de rédaction (peu coûteuse).
 
 ## Choix techniques
