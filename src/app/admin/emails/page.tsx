@@ -57,7 +57,7 @@ export default async function AdminEmailsPage() {
         <Link href="/admin/emails/modeles" className={btn.secondary}>Voir les modèles</Link>
       </div>
 
-      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 md:[grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
         {[
           ['E-mails de compte', byKind.compte],
           ['Rappels d’entretien', byKind.rappel],

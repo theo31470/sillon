@@ -78,7 +78,7 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
         </p>
       </div>
 
-      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
         {(['todo', 'queued', 'researching', 'writing', 'done', 'error'] as const).map((s) => {
           const n = s === 'researching' ? (counts.researching ?? 0) + (counts.researched ?? 0) : counts[s] ?? 0;
           return (
@@ -154,11 +154,11 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
         ) : (
           <ActionForm action={updateSelection} resetOnSuccess className="flex flex-col" id="catalog">
             <div className="overflow-x-auto">
-              <table className="mt-3 w-full min-w-[720px] border-collapse text-sm">
+              <table className="mt-3 w-full border-collapse text-sm sm:min-w-[720px]">
                 <thead>
                   <tr className="text-left text-[13px] text-muted">
                     <th className="w-10 border-b border-line px-4 py-2.5"><SelectAll formId="catalog" /></th>
-                    {['Modèle', 'Années', 'Puissance', 'Statut', ''].map((h) => <th key={h} className="border-b border-line px-3 py-2.5 font-medium">{h}</th>)}
+                    {['Modèle', 'Années', 'Puissance', 'Statut', ''].map((h) => <th key={h} className={`border-b border-line px-3 py-2.5 font-medium ${h === 'Années' || h === 'Puissance' ? 'hidden sm:table-cell' : ''}`}>{h}</th>)}
                   </tr>
                 </thead>
                 {[...groups].map(([group, rows]) => (
@@ -176,15 +176,16 @@ export default async function CatalogPage(props: PageProps<'/admin/fiches/catalo
                           <td className="border-b border-line-soft px-3 py-2.5 font-semibold">
                             {m.model}
                             {m.source_url ? <a href={m.source_url} target="_blank" rel="noopener noreferrer" className="ml-2 text-xs font-normal text-muted hover:text-brand">source ↗</a> : null}
+                            {m.power_hp || m.years ? <span className="block text-xs font-normal text-muted sm:hidden">{[m.power_hp ? `${m.power_hp} ch` : null, m.years].filter(Boolean).join(' · ')}</span> : null}
                           </td>
-                          <td className="border-b border-line-soft px-3 py-2.5 text-muted">{m.years || '—'}</td>
-                          <td className="border-b border-line-soft px-3 py-2.5 tabular-nums">{m.power_hp ? `${m.power_hp} ch` : '—'}</td>
+                          <td className="hidden border-b border-line-soft px-3 py-2.5 text-muted sm:table-cell">{m.years || '—'}</td>
+                          <td className="hidden border-b border-line-soft px-3 py-2.5 tabular-nums sm:table-cell">{m.power_hp ? `${m.power_hp} ch` : '—'}</td>
                           <td className="border-b border-line-soft px-3 py-2.5">
                             <Badge tone={tone[m.status]}>{busy && m.status !== 'queued' ? <span className="spinner mr-1.5 size-3" aria-hidden="true" /> : null}{CATALOG_STATUSES[m.status]}</Badge>
                             {m.error ? <p className="mt-1 max-w-xs text-xs text-danger">{m.error}</p> : null}
                           </td>
                           <td className="border-b border-line-soft px-3 py-2.5 text-right">
-                            {m.photo_status === 'found' ? <span className="mr-3 text-xs text-muted" title="Photo libre trouvée">📷 photo</span> : m.photo_status === 'none' ? <span className="mr-3 text-xs text-muted" title="Aucune photo libre : illustration affichée">sans photo</span> : null}
+                            {m.photo_status === 'found' ? <span className="mr-3 hidden text-xs text-muted sm:inline" title="Photo libre trouvée">📷 photo</span> : m.photo_status === 'none' ? <span className="mr-3 hidden text-xs text-muted sm:inline" title="Aucune photo libre : illustration affichée">sans photo</span> : null}
                             {m.sheet_id ? <Link href={`/admin/fiches/${m.sheet_id}`} className="font-semibold text-brand hover:text-brand-dark">Relire →</Link> : null}
                           </td>
                         </tr>

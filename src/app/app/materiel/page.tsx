@@ -39,7 +39,7 @@ export default async function FleetPage() {
           {fleet.length === 0 ? (
             <Card><p className="text-muted">Aucune machine pour le moment : ajoutez la première avec le formulaire.</p></Card>
           ) : (
-            <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
+            <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(250px,100%),1fr))]">
               {fleet.map((m) => <MachineCard key={m.id} m={m} />)}
             </div>
           )}

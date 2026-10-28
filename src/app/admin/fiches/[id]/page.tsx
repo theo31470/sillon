@@ -59,7 +59,8 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
   if (!sheet) notFound();
   const content = parseSheetContent(sheet.content);
   const pending = countPendingReview(content);
-  const row = 'grid items-center gap-3 border-b border-line-soft px-4 py-2.5 text-sm [grid-template-columns:minmax(120px,180px)_1fr_auto_auto] last:border-0';
+  // Téléphone : intitulé, puis valeur sur toute la largeur, puis source et case « Vérifié ».
+  const row = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-line-soft px-4 py-2.5 text-sm last:border-0 sm:[grid-template-columns:minmax(120px,180px)_minmax(0,1fr)_auto_auto] [&>*:nth-child(-n+2)]:col-span-2 sm:[&>*:nth-child(-n+2)]:col-span-1';
   const field = 'min-w-0 rounded-md border border-line px-2 py-1.5';
 
   return (
@@ -68,7 +69,7 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[13px] font-semibold text-warn">{SHEET_STATUSES[sheet.status]} · mis à jour le {formatDate(sheet.updated_at, { hour: '2-digit', minute: '2-digit' })}{sheet.ai_model ? ` · rédigé par ${sheet.ai_model}` : ''}</p>
-          <h1 className="text-2xl font-bold tracking-tight">{sheet.title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight [overflow-wrap:anywhere]">{sheet.title}</h1>
         </div>
         <p className="text-sm text-muted">{pending ? <strong className="text-warn">{pending} champ(s) à vérifier</strong> : <strong className="text-brand">Tout est vérifié</strong>}</p>
       </div>
@@ -174,10 +175,10 @@ export default async function ReviewSheetPage(props: PageProps<'/admin/fiches/[i
             </section>
           ) : null}
 
-          <div className="sticky bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 shadow-lg">
-            <p className="text-sm text-muted">Cochez « Vérifié » après avoir contrôlé chaque valeur dans la source.</p>
+          <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface p-3 shadow-lg sm:gap-3 sm:p-4">
+            <p className="hidden text-sm text-muted sm:block">Cochez « Vérifié » après avoir contrôlé chaque valeur dans la source.</p>
             <CheckSourced formId="review" />
-            <SubmitButton pendingLabel="Enregistrement…">Enregistrer la relecture</SubmitButton>
+            <SubmitButton pendingLabel="Enregistrement…"><span className="sm:hidden">Enregistrer</span><span className="hidden sm:inline">Enregistrer la relecture</span></SubmitButton>
           </div>
         </ActionForm>
 

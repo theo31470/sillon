@@ -16,9 +16,14 @@ export const metadata: Metadata = {
   description:
     'Tracteurs & Co, machinisme agricole : entretiens, compteurs, coût de revient à l’heure, fiches techniques et aide au diagnostic de votre matériel.',
   applicationName: 'Tracteurs & Co',
+  // Ajoutée à l’écran d’accueil d’un iPhone : s’ouvre comme une application.
+  appleWebApp: { capable: true, title: 'Tracteurs & Co', statusBarStyle: 'black-translucent' },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
+  // Plein écran sur les téléphones à encoche (marges gérées avec env(safe-area-inset-*)).
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: dark)', color: '#12110f' },
     { media: '(prefers-color-scheme: light)', color: '#12110f' },

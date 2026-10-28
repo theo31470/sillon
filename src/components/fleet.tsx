@@ -77,12 +77,12 @@ export function MachineCard({ m }: { m: FleetMachine }) {
 
 export function Kpi({ icon, label, value, sub }: { icon: Parameters<typeof Icon>[0]['name']; label: string; value: string; sub?: string }) {
   return (
-    <div className="lift-card flex items-center gap-3.5 rounded-2xl border border-line bg-surface p-4">
-      <span className="flex size-11 flex-none items-center justify-center rounded-full bg-wheat-soft text-soil">
-        <Icon name={icon} size={22} />
+    <div className="lift-card flex flex-col items-start gap-2 rounded-2xl border border-line bg-surface p-3.5 sm:flex-row sm:items-center sm:gap-3.5 sm:p-4">
+      <span className="flex size-9 flex-none items-center justify-center rounded-full bg-wheat-soft text-soil sm:size-11">
+        <Icon name={icon} size={20} />
       </span>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted">{label}</p>
+      <div className="min-w-0 max-w-full">
+        <p className="text-[11px] font-semibold uppercase leading-tight tracking-wider text-muted sm:text-xs">{label}</p>
         <p className="text-2xl font-bold leading-tight tabular-nums">{value}</p>
         {sub ? <p className="truncate text-sm text-muted">{sub}</p> : null}
       </div>

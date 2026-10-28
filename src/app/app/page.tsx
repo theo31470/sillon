@@ -21,10 +21,10 @@ export default async function DashboardPage() {
     return (
       <>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Bienvenue{firstName ? ` ${firstName}` : ''} !</h1>
+          <h1 className="text-[28px] font-bold tracking-tight sm:text-3xl">Bienvenue{firstName ? ` ${firstName}` : ''} !</h1>
           <p className="text-muted">Votre carnet de santé du matériel agricole commence ici.</p>
         </div>
-        <Card className="flex flex-col gap-6 border-brand/30 bg-brand-tint p-8">
+        <Card className="flex flex-col gap-6 border-brand/30 bg-brand-tint p-5 sm:p-8">
           <ol className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
             {[
               ['tag', 'Ajoutez votre première machine', 'Choisissez son modèle : le plan d’entretien est repris de la fiche technique.'],
@@ -78,14 +78,14 @@ export default async function DashboardPage() {
         <Link href="/app/materiel#ajouter" className={btn.primary}>+ Ajouter une machine</Link>
       </div>
 
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:[grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
         <Kpi icon="warning" label="Entretiens à prévoir" value={String(dues.length)} sub={lateCount ? `dont ${lateCount} en retard` : 'aucun en retard'} />
         <Kpi icon="clock" label="Heures sur 12 mois" value={`${formatNumber(hoursYear, 0)} h`} sub="d’après vos relevés" />
         <Kpi icon="can" label="Dépenses sur 12 mois" value={euros(spent)} sub="HT, tout le parc" />
         <Kpi icon="tag" label="Machines" value={String(fleet.length)} sub={profile.plan === 'free' ? 'formule gratuite' : 'parc illimité'} />
       </div>
 
-      <div className="flex flex-wrap items-start gap-6">
+      <div className="flex flex-wrap items-start gap-5 md:gap-6">
         <Card className="min-w-0 flex-[1_1_520px]">
           <h2 className="mb-4 text-xl font-semibold">À faire</h2>
           {dues.length === 0 && staleReadings.length === 0 ? (
@@ -94,7 +94,7 @@ export default async function DashboardPage() {
             <ul className="flex flex-col gap-2.5">
               {dues.slice(0, 8).map((d) => (
                 <li key={`${d.machine.id}-${d.operation}`}>
-                  <Link href={`/app/materiel/${d.machine.id}#entretien`} className={`flex items-center gap-4 rounded-xl px-4 py-3 transition-transform hover:translate-x-0.5 ${STATUS_STYLE[d.status].bg}`}>
+                  <Link href={`/app/materiel/${d.machine.id}#entretien`} className={`flex items-center gap-3 rounded-xl px-3.5 py-3 sm:gap-4 sm:px-4 transition-transform hover:translate-x-0.5 ${STATUS_STYLE[d.status].bg}`}>
                     <Icon name={d.status === 'retard' ? 'warning' : 'clock'} size={20} className={STATUS_STYLE[d.status].text} />
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">{d.operation}</p>
@@ -106,7 +106,7 @@ export default async function DashboardPage() {
               ))}
               {staleReadings.slice(0, 4).map((m) => (
                 <li key={`releve-${m.id}`}>
-                  <Link href={`/app/materiel/${m.id}#compteur`} className="flex items-center gap-4 rounded-xl bg-ground px-4 py-3 transition-transform hover:translate-x-0.5">
+                  <Link href={`/app/materiel/${m.id}#compteur`} className="flex items-center gap-3 rounded-xl bg-ground px-3.5 py-3 sm:gap-4 sm:px-4 transition-transform hover:translate-x-0.5">
                     <Icon name="clock" size={20} className="text-muted" />
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">Relever le compteur</p>
@@ -146,7 +146,7 @@ export default async function DashboardPage() {
           <h2 className="text-xl font-semibold">Mon parc</h2>
           <Link href="/app/materiel" className="font-semibold text-brand">Tout le parc →</Link>
         </div>
-        <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
+        <div className="grid gap-4 sm:gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]">
           {fleet.map((m) => <MachineCard key={m.id} m={m} />)}
         </div>
       </section>

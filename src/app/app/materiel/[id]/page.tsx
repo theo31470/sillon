@@ -53,9 +53,9 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
 
       {/* En-tête de la machine */}
       <section className="overflow-hidden rounded-3xl border border-line bg-surface">
-        <div className="grid md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-          <MachinePicture m={m} className="h-52 md:h-full" />
-          <div className="flex flex-col gap-4 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+          <MachinePicture m={m} className="h-44 sm:h-52 md:h-full" />
+          <div className="flex flex-col gap-4 p-4 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-brand">{MACHINE_KINDS[m.kind]}</p>
@@ -72,18 +72,18 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
                 <p className="font-mono text-3xl font-bold tabular-nums">{formatNumber(hoursNow, 1)} h</p>
               </div>
             </div>
-            <ActionForm action={recordHours} resetOnSuccess={false} className="flex flex-wrap items-end gap-2.5 rounded-xl bg-ground p-3">
+            <ActionForm action={recordHours} resetOnSuccess={false} className="grid grid-cols-2 items-end gap-2.5 rounded-xl bg-ground p-3 sm:flex sm:flex-wrap">
               <input type="hidden" name="machine_id" value={m.id} />
-              <Field label="Nouveau relevé (h)" htmlFor="hours"><Input id="hours" name="hours" inputMode="decimal" required placeholder={String(hoursNow)} className="w-36" /></Field>
-              <Field label="Date" htmlFor="read_on"><Input id="read_on" name="read_on" type="date" defaultValue={today} max={today} className="w-44" /></Field>
-              <SubmitButton pendingLabel="…">Relever</SubmitButton>
+              <Field label="Nouveau relevé (h)" htmlFor="hours"><Input id="hours" name="hours" inputMode="decimal" required placeholder={String(hoursNow)} className="sm:w-36" /></Field>
+              <Field label="Date" htmlFor="read_on"><Input id="read_on" name="read_on" type="date" defaultValue={today} max={today} className="sm:w-44" /></Field>
+              <div className="col-span-2 grid sm:block"><SubmitButton pendingLabel="…">Relever le compteur</SubmitButton></div>
             </ActionForm>
-            <nav aria-label="Sections" className="flex flex-wrap gap-1.5">
+            <nav aria-label="Sections" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:flex-none">
               {nav.map(([anchor, label]) => (
                 <a key={anchor} href={`#${anchor}`} className="rounded-full border border-field px-3 py-1.5 text-sm font-medium transition-colors hover:border-brand hover:text-brand-dark">{label}</a>
               ))}
               {paid ? (
-                <Link href={`/app/materiel/${m.id}/rapport`} className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-dark">
+                <Link href={`/app/materiel/${m.id}/rapport`} className="inline-flex items-center gap-1.5 rounded-full bg-brand sm:ml-auto px-3 py-1.5 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-dark">
                   <Icon name="print" size={15} /> Rapport pour la revente
                 </Link>
               ) : null}
@@ -103,7 +103,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           {m.due.length === 0 ? (
             <p className="rounded-xl bg-ground p-4 text-muted">Aucune opération avec un intervalle pour le moment.</p>
           ) : (
-            <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+            <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr))]">
               {m.due.map((d) => (
                 <li key={d.operation} className={`rounded-xl border border-line p-4 ${d.status !== 'ok' ? STATUS_STYLE[d.status].bg : 'bg-surface'}`}>
                   <div className="mb-2 flex items-start justify-between gap-2">
@@ -125,7 +125,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
         </Card>
 
         <div className="flex flex-wrap items-start gap-5">
-          <Card className="min-w-0 flex-[1_1_360px]">
+          <Card className="min-w-0 flex-[1_1_min(360px,100%)]">
             <h3 className="mb-3 text-lg font-semibold">Noter un entretien</h3>
             <ActionForm action={logMaintenance}>
               <input type="hidden" name="machine_id" value={m.id} />
@@ -148,7 +148,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
             </ActionForm>
           </Card>
 
-          <Card className="min-w-0 flex-[1_1_320px]">
+          <Card className="min-w-0 flex-[1_1_min(320px,100%)]">
             <h3 className="mb-1 text-lg font-semibold">Mon plan d’entretien</h3>
             <p className="mb-3 text-sm text-muted">Vos propres opérations. Une opération du même nom remplace celle de la fiche.</p>
             {m.tasks.length ? (
@@ -182,11 +182,11 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
             <h3 className="mb-2 text-lg font-semibold">Historique des entretiens ({m.logs.length})</h3>
             <ul className="divide-y divide-line-soft text-sm">
               {m.logs.map((l) => (
-                <li key={l.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
-                  <span className="w-24 flex-none text-muted">{formatDate(l.done_on)}</span>
-                  <span className="w-20 flex-none font-mono tabular-nums">{formatNumber(Number(l.done_at_hours), 0)} h</span>
-                  <span className="min-w-0 flex-1 font-medium">{l.operation}{l.notes ? <span className="font-normal text-muted"> · {l.notes}</span> : null}</span>
-                  <form action={deleteLog}>
+                <li key={l.id} className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-0.5 py-2.5 sm:flex sm:flex-wrap">
+                  <span className="col-span-2 font-medium sm:order-3 sm:min-w-0 sm:flex-1">{l.operation}{l.notes ? <span className="font-normal text-muted"> · {l.notes}</span> : null}</span>
+                  <span className="text-muted sm:order-1 sm:w-24 sm:flex-none">{formatDate(l.done_on)}<span className="font-mono tabular-nums text-ink sm:hidden"> · {formatNumber(Number(l.done_at_hours), 0)} h</span></span>
+                  <span className="hidden w-20 flex-none font-mono tabular-nums sm:order-2 sm:inline">{formatNumber(Number(l.done_at_hours), 0)} h</span>
+                  <form action={deleteLog} className="sm:order-4">
                     <input type="hidden" name="id" value={l.id} />
                     <input type="hidden" name="machine_id" value={m.id} />
                     <button type="submit" className="text-xs text-danger hover:underline">Supprimer</button>
@@ -200,7 +200,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
 
       {/* Dépenses */}
       <section id="depenses" className="scroll-mt-6 flex flex-wrap items-start gap-5">
-        <Card className="min-w-0 flex-[1_1_340px]">
+        <Card className="min-w-0 flex-[1_1_min(340px,100%)]">
           <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold"><Icon name="can" size={20} className="text-brand" /> Ajouter une dépense</h2>
           <ActionForm action={addCost}>
             <input type="hidden" name="machine_id" value={m.id} />
@@ -224,7 +224,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           </ActionForm>
         </Card>
 
-        <Card className="min-w-0 flex-[2_1_480px]">
+        <Card className="min-w-0 flex-[2_1_min(480px,100%)]">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-xl font-semibold">Dépenses</h2>
             <p className="text-sm text-muted">12 derniers mois : <strong className="text-ink">{euros(e.variable.total + e.fixed.insurance)}</strong> HT</p>
@@ -239,11 +239,11 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           ) : (
             <ul className="divide-y divide-line-soft text-sm">
               {m.costs.slice(0, 40).map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
-                  <span className="w-24 flex-none text-muted">{formatDate(c.spent_on)}</span>
-                  <span className="min-w-0 flex-1"><strong>{COST_KINDS[c.kind]}</strong>{c.label ? ` · ${c.label}` : ''}{c.liters ? <span className="text-muted"> · {formatNumber(Number(c.liters), 0)} L</span> : null}</span>
-                  <span className="font-semibold tabular-nums">{euros(Number(c.amount), 2)}</span>
-                  <form action={deleteCost}>
+                <li key={c.id} className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-0.5 py-2.5 sm:flex sm:flex-wrap">
+                  <span className="min-w-0 sm:order-2 sm:flex-1"><strong>{COST_KINDS[c.kind]}</strong>{c.label ? ` · ${c.label}` : ''}{c.liters ? <span className="text-muted"> · {formatNumber(Number(c.liters), 0)} L</span> : null}</span>
+                  <span className="text-right font-semibold tabular-nums sm:order-3">{euros(Number(c.amount), 2)}</span>
+                  <span className="text-muted sm:order-1 sm:w-24 sm:flex-none">{formatDate(c.spent_on)}</span>
+                  <form action={deleteCost} className="text-right sm:order-4">
                     <input type="hidden" name="id" value={c.id} />
                     <input type="hidden" name="machine_id" value={m.id} />
                     <button type="submit" className="text-xs text-danger hover:underline">Supprimer</button>
@@ -258,25 +258,25 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
       {/* Coût de revient */}
       <section id="cout" className="scroll-mt-6">
         <Card className="overflow-hidden p-0">
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line p-4 sm:p-6">
             <div>
               <h2 className="flex items-center gap-2 text-xl font-semibold"><Icon name="power" size={20} className="text-brand" /> Coût de revient à l’heure</h2>
               <p className="text-sm text-muted">Charges fixes (amortissement, frais financiers, assurance) + charges variables des {since} derniers jours, en € HT.</p>
             </div>
             {paid && e.perHour ? (
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="text-4xl font-bold tabular-nums text-brand-dark">{euros(e.perHour.total, 2)}</p>
                 <p className="text-sm text-muted">par heure de travail</p>
               </div>
             ) : null}
           </div>
           {!paid ? (
-            <div className="flex flex-wrap items-center justify-between gap-4 bg-brand-tint p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-brand-tint p-4 sm:p-6">
               <p className="max-w-xl">Le coût de revient machine par machine (et la marge si vous facturez à l’heure) est inclus dans la formule Complet.</p>
               <Link href="/app/abonnement" className={btn.primary}>Découvrir la formule Complet</Link>
             </div>
           ) : (
-            <div className="grid gap-6 p-6 md:grid-cols-2">
+            <div className="grid gap-6 p-4 sm:p-6 md:grid-cols-2">
               <div>
                 <h3 className="mb-3 font-semibold">Détail sur un an</h3>
                 <dl className="text-sm">
@@ -339,7 +339,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           {m.readings.length === 0 ? (
             <p className="text-muted">Aucun relevé.</p>
           ) : (
-            <ul className="grid gap-2 text-sm [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
+            <ul className="grid gap-2 text-sm [grid-template-columns:repeat(auto-fill,minmax(min(180px,100%),1fr))]">
               {m.readings.slice(0, 24).map((r) => (
                 <li key={r.id} className="flex justify-between rounded-lg bg-ground px-3 py-2">
                   <span className="text-muted">{formatDate(r.read_on)}</span>
@@ -353,11 +353,11 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
 
       {/* Informations */}
       <section id="infos" className="scroll-mt-6 flex flex-wrap items-start gap-5">
-        <Card className="min-w-0 flex-[2_1_520px]">
+        <Card className="min-w-0 flex-[2_1_min(520px,100%)]">
           <h2 className="mb-4 text-xl font-semibold">Informations</h2>
           <ActionForm action={updateMachine} resetOnSuccess={false}>
             <input type="hidden" name="id" value={m.id} />
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
               <Field label="Nom" htmlFor="i-name"><Input id="i-name" name="name" defaultValue={m.name} required maxLength={80} /></Field>
               <Field label="Type" htmlFor="i-kind">
                 <Select id="i-kind" name="kind" defaultValue={m.kind}>
@@ -376,7 +376,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
               <Field label="N° de série" htmlFor="i-serial"><Input id="i-serial" name="serial_number" defaultValue={m.serial_number} maxLength={60} /></Field>
               <Field label="Immatriculation" htmlFor="i-reg"><Input id="i-reg" name="registration" defaultValue={m.registration} maxLength={20} /></Field>
             </div>
-            <fieldset className="mt-2 grid gap-3 rounded-xl bg-ground p-4 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
+            <fieldset className="mt-2 grid gap-3 rounded-xl bg-ground p-3 sm:p-4 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
               <legend className="mb-1 font-semibold">Données pour le coût de revient (€ HT)</legend>
               <Field label="Date d’achat" htmlFor="i-pdate"><Input id="i-pdate" name="purchase_date" type="date" defaultValue={m.purchase_date ?? ''} max={today} /></Field>
               <Field label="Prix d’achat" htmlFor="i-price"><Input id="i-price" name="purchase_price" inputMode="decimal" defaultValue={m.purchase_price ?? ''} /></Field>
@@ -390,7 +390,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
             <SubmitButton pendingLabel="Enregistrement…">Enregistrer</SubmitButton>
           </ActionForm>
         </Card>
-        <Card className="min-w-0 flex-[1_1_280px] border-danger/40">
+        <Card className="min-w-0 flex-[1_1_min(280px,100%)] border-danger/40">
           <h2 className="mb-2 text-lg font-semibold text-danger">Retirer du parc</h2>
           <p className="mb-3 text-sm text-muted">Supprime la machine et tout son historique (entretiens, relevés, dépenses). Pensez à imprimer le rapport avant une vente.</p>
           <ActionForm action={deleteMachine}>

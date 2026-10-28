@@ -15,7 +15,7 @@ export function ContactForm({ defaults }: { defaults: { name: string; email: str
 
   if (state?.ok) {
     return (
-      <div role="status" className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-8 text-center">
+      <div role="status" className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-6 text-center sm:p-8">
         <p className="text-2xl font-bold">Merci, message envoyé !</p>
         <p className="text-muted">Nous vous répondons en général sous 2 jours ouvrés. Un e-mail de confirmation vient de vous être envoyé.</p>
         <p>

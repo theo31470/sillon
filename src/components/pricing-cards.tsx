@@ -31,14 +31,14 @@ export function PricingCards() {
         ))}
       </div>
 
-      <div className="grid w-full gap-6 [grid-template-columns:repeat(auto-fit,minmax(270px,1fr))]">
+      <div className="grid w-full gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(270px,100%),1fr))]">
         {order.map((key) => {
           const plan = PLANS[key];
           const featured = key === 'complet';
           return (
             <div
               key={key}
-              className={`lift-card reveal flex flex-col gap-5 rounded-2xl bg-surface p-8 ${featured ? 'border-2 border-brand' : 'border border-line'}`}
+              className={`lift-card reveal flex flex-col gap-5 rounded-2xl bg-surface p-6 sm:p-8 ${featured ? 'border-2 border-brand' : 'border border-line'}`}
             >
               <h3 className="flex items-center justify-between text-xl font-semibold">
                 {plan.name}

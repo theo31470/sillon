@@ -13,9 +13,10 @@ export function CheckSourced({ formId }: { formId: string }) {
           box.checked = true;
         });
       }}
-      className="btn inline-flex min-h-12 items-center rounded-[10px] border border-field bg-surface px-4 font-semibold text-ink hover:border-brand hover:text-brand-dark"
+      className="btn inline-flex min-h-12 items-center rounded-[10px] border border-field bg-surface px-3.5 font-semibold text-ink hover:border-brand hover:text-brand-dark sm:px-4"
     >
-      Cocher les valeurs sourcées
+      <span className="sm:hidden">Cocher les sourcées</span>
+      <span className="hidden sm:inline">Cocher les valeurs sourcées</span>
     </button>
   );
 }

@@ -11,7 +11,7 @@ export async function LatestPosts() {
         <h2 className="text-[clamp(30px,3.4vw,40px)] font-bold tracking-tight">Nos derniers conseils</h2>
         <Link href="/blog" className="font-semibold text-brand">Voir tous les articles</Link>
       </div>
-      <div className="grid gap-7 [grid-template-columns:repeat(auto-fit,minmax(290px,1fr))]">
+      <div className="grid gap-7 [grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))]">
         {posts.map((p) => <PostCard key={p.id} post={p} />)}
       </div>
     </section>

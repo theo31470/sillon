@@ -58,9 +58,9 @@ export default async function PaymentsPage() {
         <p className="text-muted">Données synchronisées automatiquement depuis Stripe.</p>
       </div>
 
-      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 md:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
         {kpis.map((k) => (
-          <div key={k.label} className="rounded-2xl border border-line bg-surface p-5">
+          <div key={k.label} className="rounded-2xl border border-line bg-surface p-3.5 sm:p-5">
             <p className="mb-1.5 text-sm text-muted">{k.label}</p>
             <p className="text-[26px] font-bold">{k.value}</p>
           </div>
@@ -81,7 +81,7 @@ export default async function PaymentsPage() {
 
       <Card>
         <h2 className="mb-3.5 text-lg font-semibold">Formules</h2>
-        <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
           {(['free', 'complet', 'groupement'] as const).map((k) => (
             <div key={k} className={`rounded-xl p-4 ${k === 'complet' ? 'border-2 border-brand' : 'border border-line'}`}>
               <p className="font-semibold">{PLANS[k].name}</p>

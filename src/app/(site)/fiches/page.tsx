@@ -28,7 +28,7 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
     <div className="bg-ground">
       <div className="mx-auto flex max-w-6xl flex-col gap-7 px-6 py-10">
         <section className="relative overflow-hidden rounded-3xl border border-line bg-surface">
-          <div className="flex flex-wrap items-center gap-8 p-8 pb-10">
+          <div className="flex flex-wrap items-center gap-8 p-5 pb-8 sm:p-8 sm:pb-10">
             <div className="min-w-0 flex-[1_1_460px]">
               <p className="mb-2 text-sm font-bold uppercase tracking-[0.18em] text-brand">Base technique</p>
               <h1 className="mb-2 text-[clamp(30px,3.4vw,40px)] font-bold tracking-tight">Fiches techniques</h1>
@@ -70,7 +70,7 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
                 Aucune fiche publiée pour le moment dans cette catégorie.
               </div>
             ) : (
-              <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(270px,1fr))]">
+              <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr))]">
                 {sheets.map((s, i) => {
                   const kind = machineKind(s);
                   const figures = keyFigures(parseSheetContent(s.content), 2);

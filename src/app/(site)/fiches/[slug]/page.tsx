@@ -60,7 +60,7 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
         </nav>
 
         <section className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_1px_0_rgba(0,0,0,0.08)]">
-          <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
             <div className="relative min-h-[260px] overflow-hidden bg-photo sm:min-h-[340px]">
               {sheet.cover_url ? (
                 <>
@@ -133,7 +133,7 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
           <section className="rounded-2xl border border-line bg-surface p-6">
             <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold"><Icon name="book" size={18} className="text-brand" /> Sources consultées</h2>
             <p className="mb-3 text-sm text-muted">Fiche établie à partir des pages ci-dessous, puis relue par l’équipe Tracteurs & Co. En cas de doute, le manuel du constructeur fait foi.</p>
-            <ul className="grid gap-x-6 gap-y-1.5 text-sm [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+            <ul className="grid gap-x-6 gap-y-1.5 text-sm [grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr))]">
               {webSources.map((s) => (
                 <li key={s.url} className="min-w-0 truncate">
                   <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" className="link-underline text-brand-dark">

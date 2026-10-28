@@ -161,7 +161,7 @@ export function SheetView({
                   <Icon name={b.hours ? 'clock' : b.months ? 'calendar' : 'book'} size={17} className={b.hours || b.months ? 'text-brand' : 'text-muted'} />
                   {b.label}
                 </p>
-                <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
+                <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]">
                   {b.items.map((m) => (
                     <div key={m.operation} className="lift-card rounded-xl border border-line bg-ground/60 p-3.5">
                       <p className="flex items-start justify-between gap-2 font-medium leading-snug">
@@ -216,7 +216,7 @@ export function SheetView({
                   </span>
                   <Icon name="chevron" size={20} className="flex-none text-muted transition-transform duration-300 group-open:rotate-180" />
                 </summary>
-                <div className="grid gap-6 border-t border-line px-4 pb-5 pt-4 sm:px-5 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+                <div className="grid gap-6 border-t border-line px-4 pb-5 pt-4 sm:px-5 [grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))]">
                   <div>
                     <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted">Causes possibles</p>
                     <ul className="flex flex-col gap-2">
@@ -257,7 +257,7 @@ export function SheetView({
       {content.parts.length > 0 ? (
         <section id="pieces" className="reveal scroll-mt-24 rounded-2xl border border-line bg-surface p-4 sm:p-7">
           <SectionTitle icon="tag" title="Pièces d’entretien" subtitle="À commander chez votre concessionnaire avec la référence d’origine" />
-          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr))]">
             {content.parts.map((p) => (
               <div key={p.name} className="part-tag lift-card relative rounded-xl border border-line bg-surface py-4 pl-9 pr-4">
                 <span className="absolute left-3.5 top-5 size-2.5 rounded-full border-2 border-field bg-ground" aria-hidden="true" />

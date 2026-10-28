@@ -68,11 +68,11 @@ export default async function AdminHome() {
         <p className="text-muted">{formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
 
-      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 md:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
         {kpis.map((k) => (
-          <div key={k.label} className={`rounded-2xl border p-5 ${k.warn ? 'border-warn-line bg-warn-soft' : 'border-line bg-surface'}`}>
+          <div key={k.label} className={`rounded-2xl border p-3.5 sm:p-5 ${k.warn ? 'border-warn-line bg-warn-soft' : 'border-line bg-surface'}`}>
             <p className="mb-1.5 text-sm text-muted">{k.label}</p>
-            <p className={`text-[28px] font-bold ${k.warn ? 'text-warn' : ''}`}>{k.value}</p>
+            <p className={`text-[22px] font-bold sm:text-[28px] ${k.warn ? 'text-warn' : ''}`}>{k.value}</p>
             <p className="mt-1 text-[13px] text-muted">{k.sub}</p>
           </div>
         ))}

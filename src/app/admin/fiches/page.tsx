@@ -38,7 +38,7 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
         <Link href="/admin/fiches/catalogue" className={btn.primary}>✦ Importer les tracteurs d’une marque</Link>
       </div>
 
-      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
         {(['generating', 'review', 'published', 'rejected'] as const).map((s) => (
           <Link key={s} href={`/admin/fiches?statut=${s}`} className={`rounded-xl border p-4 text-ink ${s === 'review' && counts[s] ? 'border-warn-line bg-warn-soft' : 'border-line bg-surface'} ${filter === s ? 'ring-2 ring-brand' : ''}`}>
             <p className="text-sm text-muted">{SHEET_STATUSES[s]}</p>
@@ -58,10 +58,10 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
             <h2 className="text-lg font-semibold">{filter ? SHEET_STATUSES[filter] : 'Toutes les fiches'}</h2>
             {filter ? <Link href="/admin/fiches" className="text-sm font-semibold text-brand">Tout afficher</Link> : null}
           </div>
-          <table className="mt-3 w-full min-w-[620px] border-collapse text-sm">
+          <table className="mt-3 w-full border-collapse text-sm sm:min-w-[620px]">
             <thead>
               <tr className="text-left text-[13px] text-muted">
-                {['Fiche', 'Type', 'Statut', 'À vérifier', 'Mise à jour'].map((h) => <th key={h} className="border-b border-line px-4 py-2.5 font-medium">{h}</th>)}
+                {['Fiche', 'Type', 'Statut', 'À vérifier', 'Mise à jour'].map((h) => <th key={h} className={`border-b border-line px-3 py-2.5 font-medium sm:px-4 ${h === 'Fiche' || h === 'Statut' ? '' : 'hidden sm:table-cell'}`}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -69,11 +69,11 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
                 const pending = countPendingReview(parseSheetContent(s.content));
                 return (
                   <tr key={s.id}>
-                    <td className="border-b border-line-soft px-4 py-3 font-semibold"><Link href={`/admin/fiches/${s.id}`} className="text-ink hover:text-brand">{s.title}</Link></td>
-                    <td className="border-b border-line-soft px-4 py-3">{SHEET_CATEGORIES[s.category]}</td>
-                    <td className="border-b border-line-soft px-4 py-3"><Badge tone={tone[s.status]}>{SHEET_STATUSES[s.status]}</Badge></td>
-                    <td className="border-b border-line-soft px-4 py-3">{pending ? <span className="font-semibold text-warn">{pending}</span> : '—'}</td>
-                    <td className="border-b border-line-soft px-4 py-3">{formatDate(s.updated_at)}</td>
+                    <td className="border-b border-line-soft px-3 py-3 font-semibold sm:px-4"><Link href={`/admin/fiches/${s.id}`} className="text-ink hover:text-brand">{s.title}</Link></td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 sm:table-cell">{SHEET_CATEGORIES[s.category]}</td>
+                    <td className="border-b border-line-soft px-3 py-3 sm:px-4"><Badge tone={tone[s.status]}>{SHEET_STATUSES[s.status]}</Badge></td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 sm:table-cell">{pending ? <span className="font-semibold text-warn">{pending}</span> : '—'}</td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 sm:table-cell">{formatDate(s.updated_at)}</td>
                   </tr>
                 );
               })}

@@ -115,7 +115,7 @@ export function MembersListView({
       {deleted ? <Notice tone="green">Compte et données supprimés.</Notice> : null}
 
       {/* Compteurs cliquables */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 xl:grid-cols-6">
         {COUNTED.map((k) => {
           const active = filtre === k && !q && !etiquette;
           const warn = k === 'echec' && (counts[k] ?? 0) > 0;
@@ -124,20 +124,20 @@ export function MembersListView({
               key={k}
               href={link({ filtre: k === 'tous' ? undefined : k, q: undefined, etiquette: undefined, page: undefined })}
               aria-current={active ? 'page' : undefined}
-              className={`flex flex-col gap-1 rounded-xl border px-4 py-3.5 transition-colors ${
+              className={`flex flex-col gap-0.5 rounded-xl border px-3 py-2.5 transition-colors sm:gap-1 sm:px-4 sm:py-3.5 ${
                 active ? 'border-brand bg-brand-tint' : warn ? 'border-warn-line bg-warn-soft hover:border-warn' : 'border-line bg-surface hover:border-brand'
               }`}
             >
-              <span className="text-[13px] text-muted">{k === 'tous' ? 'Tous' : FILTERS[k].replace(' depuis 30 jours', ' (30 j)')}</span>
-              <span className={`text-2xl font-bold tabular-nums ${warn ? 'text-warn' : ''}`}>{counts[k] ?? 0}</span>
+              <span className="text-[12px] leading-tight text-muted sm:text-[13px]">{k === 'tous' ? 'Tous' : FILTERS[k].replace(' depuis 30 jours', ' (30 j)')}</span>
+              <span className={`text-xl font-bold tabular-nums sm:text-2xl ${warn ? 'text-warn' : ''}`}>{counts[k] ?? 0}</span>
             </Link>
           );
         })}
       </div>
 
       {/* Recherche et filtres */}
-      <form action="/admin/membres" className="grid gap-3 rounded-2xl border border-line bg-surface p-4 md:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
-        <div>
+      <form action="/admin/membres" className="grid grid-cols-2 gap-3 rounded-2xl border border-line bg-surface p-4 md:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+        <div className="col-span-2 md:col-span-1">
           <label htmlFor="q" className="mb-1.5 block text-sm font-semibold">Rechercher</label>
           <input id="q" name="q" type="search" defaultValue={q} placeholder="Nom, exploitation, e-mail…" className={inputClass} />
         </div>
@@ -154,7 +154,7 @@ export function MembersListView({
             {tags.map((t) => <option key={t.tag} value={t.tag}>{t.tag} ({t.n})</option>)}
           </AutoSubmitSelect>
         </div>
-        <div>
+        <div className="col-span-2 md:col-span-1">
           <label htmlFor="tri" className="mb-1.5 block text-sm font-semibold">Trier par</label>
           <AutoSubmitSelect id="tri" name="tri" defaultValue={tri}>
             {Object.entries(SORTS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
@@ -173,7 +173,32 @@ export function MembersListView({
           </p>
           {filtered ? <Link href="/admin/membres" className="text-sm font-semibold text-brand">Effacer les filtres</Link> : null}
         </div>
-        <div className="overflow-x-auto">
+        {/* Téléphone : une carte par membre */}
+        <ul className="divide-y divide-line-soft md:hidden">
+          {rows.map((m) => {
+            const label = m.farm_name || m.full_name || m.email;
+            return (
+              <li key={m.id} className="flex gap-3 px-4 py-3.5">
+                <span className="pt-0.5"><RowCheckbox id={m.id} label={label} /></span>
+                <Link href={`/admin/membres/${m.id}`} className="min-w-0 flex-1">
+                  <span className="flex items-start justify-between gap-2">
+                    <span className="min-w-0 truncate font-semibold text-ink">{label}</span>
+                    <Situation r={m} />
+                  </span>
+                  <span className="block truncate text-sm text-muted">{m.full_name && m.full_name !== label ? `${m.full_name} · ` : ''}{maskEmail(m.email)}</span>
+                  <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
+                    <span>{PLANS[m.plan].name}{m.role === 'admin' ? ' · admin' : ''}</span>
+                    <span>{m.machine_count} machine{m.machine_count > 1 ? 's' : ''}</span>
+                    <span>{m.last_seen_at ? `vu ${ago(m.last_seen_at)}` : "jamais vu"}</span>
+                    {m.tags.map((t) => <span key={t}>#{t}</span>)}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+          {rows.length === 0 ? <li className="px-4 py-10 text-center text-muted">Aucun membre ne correspond.</li> : null}
+        </ul>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[860px] border-collapse text-sm">
             <thead>
               <tr className="bg-surface-2 text-left text-[13px] text-muted">

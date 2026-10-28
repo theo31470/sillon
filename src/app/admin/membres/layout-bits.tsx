@@ -45,7 +45,7 @@ export function Panel({ children }: { children: ReactNode }) {
 /** Ligne de réglage : intitulé et explication à gauche, contenu à droite. */
 export function SettingRow({ title, description, children, danger }: { title: string; description?: ReactNode; children: ReactNode; danger?: boolean }) {
   return (
-    <div className="grid gap-4 p-6 md:grid-cols-[minmax(0,260px)_minmax(0,1fr)] md:gap-8">
+    <div className="grid gap-4 p-4 sm:p-6 md:grid-cols-[minmax(0,260px)_minmax(0,1fr)] md:gap-8">
       <div>
         <h3 className={`font-semibold ${danger ? 'text-danger' : ''}`}>{title}</h3>
         {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
@@ -58,11 +58,11 @@ export function SettingRow({ title, description, children, danger }: { title: st
 /** Liste « intitulé : valeur » alignée. */
 export function Facts({ rows }: { rows: [string, ReactNode][] }) {
   return (
-    <dl className="grid grid-cols-[minmax(0,180px)_minmax(0,1fr)] gap-x-6 gap-y-2.5 text-sm">
+    <dl className="grid grid-cols-[minmax(0,120px)_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-sm sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)] sm:gap-x-6">
       {rows.map(([k, v]) => (
         <div key={k} className="contents">
           <dt className="text-muted">{k}</dt>
-          <dd className="min-w-0">{v}</dd>
+          <dd className="min-w-0 [overflow-wrap:anywhere]">{v}</dd>
         </div>
       ))}
     </dl>

@@ -483,6 +483,21 @@ details[open] > :not(summary) {
   }
 }
 
+/* ───────────── Petits écrans ───────────── */
+
+/* Menu latéral (src/components/mobile-menu.tsx) */
+.menu-panel { animation: menu-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.menu-backdrop { animation: fade-in 200ms ease; }
+@keyframes menu-in { from { translate: 100% 0; } }
+@keyframes fade-in { from { opacity: 0; } }
+
+/* Pas de flash gris au toucher sur mobile ; les tableaux larges défilent du doigt. */
+html { -webkit-tap-highlight-color: transparent; text-size-adjust: 100%; }
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+
+/* Barre d'onglets de l'espace membre : laisse la place au-dessus de la barre d'accueil iOS. */
+.tabbar { padding-bottom: env(safe-area-inset-bottom); }
+
 /* ───────────── Mouvement réduit ───────────── */
 
 @media (prefers-reduced-motion: reduce) {

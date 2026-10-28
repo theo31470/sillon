@@ -12,7 +12,7 @@ export function PageLoader({ label = 'Chargement…', skeleton = true }: { label
         <p className="text-sm font-medium text-muted">{label}</p>
       </div>
       {skeleton ? (
-        <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]" aria-hidden="true">
+        <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]" aria-hidden="true">
           {[0, 1, 2].map((i) => (
             <div key={i} className="overflow-hidden rounded-2xl border border-line bg-surface">
               <div className="loader-skeleton h-36" />

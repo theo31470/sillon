@@ -43,7 +43,7 @@ export default async function BlogPage(props: PageProps<'/blog'>) {
         {posts.length === 0 ? (
           <p className="rounded-2xl bg-ground p-10 text-center text-muted">Aucun article pour le moment. Revenez bientôt !</p>
         ) : (
-          <div className="grid gap-x-7 gap-y-10 [grid-template-columns:repeat(auto-fit,minmax(290px,1fr))]">
+          <div className="grid gap-x-7 gap-y-10 [grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))]">
             {posts.map((p) => <PostCard key={p.id} post={p} />)}
           </div>
         )}

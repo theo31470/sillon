@@ -7,7 +7,9 @@ import { Field, Input, Select, Textarea } from '@/components/ui';
 import { bulkMembers } from './actions';
 
 const FORM_ID = 'bulk-form';
-const boxes = () => Array.from(document.querySelectorAll<HTMLInputElement>(`input[name="ids"][form="${FORM_ID}"]`));
+// Cases visibles seulement : la liste existe en deux versions (cartes sur téléphone, tableau sinon).
+const boxes = () =>
+  Array.from(document.querySelectorAll<HTMLInputElement>(`input[name="ids"][form="${FORM_ID}"]`)).filter((b) => b.getClientRects().length > 0);
 
 /** Case « tout sélectionner » de l'en-tête du tableau. */
 export function SelectAll() {

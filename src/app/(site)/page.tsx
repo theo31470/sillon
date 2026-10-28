@@ -107,7 +107,7 @@ export default async function HomePage() {
 
       {/* Pour qui */}
       <section className="bg-ground">
-        <div className="mx-auto grid max-w-6xl gap-5 px-6 py-14 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+        <div className="mx-auto grid max-w-6xl gap-5 px-6 py-14 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
           {audiences.map((a) => (
             <article key={a.title} className="lift-card reveal group overflow-hidden rounded-2xl border border-line bg-surface">
               <div className="relative h-44 overflow-hidden bg-photo">
@@ -135,7 +135,7 @@ export default async function HomePage() {
       <section id="fonctions" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-20">
         <h2 className="mb-3 text-center text-[clamp(30px,3.4vw,40px)] font-bold tracking-tight">Tout votre matériel, bien suivi</h2>
         <p className="mx-auto mb-12 max-w-xl text-center text-muted">Moins de pannes, des entretiens faits à temps, et enfin le vrai coût de chaque machine.</p>
-        <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+        <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))]">
           {features.map((f) => (
             <article key={f.title} className="lift-card reveal group rounded-2xl border border-line bg-surface p-6">
               <span className="mb-4 flex size-12 items-center justify-center rounded-xl bg-brand-tint text-brand transition-colors duration-300 group-hover:bg-brand group-hover:text-on-brand">
@@ -191,7 +191,7 @@ export default async function HomePage() {
       {/* En trois étapes */}
       <section className="mx-auto max-w-6xl px-6 py-20">
         <h2 className="mb-10 text-center text-[clamp(30px,3.4vw,40px)] font-bold tracking-tight">Prêt en trois étapes</h2>
-        <ol className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+        <ol className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
           {[
             ['Ajoutez vos machines', 'Choisissez le modèle dans la base : le plan d’entretien est repris automatiquement.'],
             ['Relevez les compteurs', 'De temps en temps, en dix secondes. Tracteurs & Co calcule vos heures de travail.'],
@@ -220,7 +220,7 @@ export default async function HomePage() {
             <Link href="/fiches" className={btn.primary}>Toutes les fiches</Link>
           </div>
           {sheets.length ? (
-            <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
+            <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr))]">
               {sheets.map((s) => {
                 const figures = keyFigures(parseSheetContent(s.content), 2);
                 return (

@@ -20,7 +20,7 @@ export default async function MfaPage(props: PageProps<'/securite/2fa'>) {
         <Logo variant="vertical" tone="dark" height={110} />
         <span className="rounded-full bg-admin-2 px-2.5 py-1 text-xs font-semibold text-panel">Sécurité</span>
       </Link>
-      <main className="w-full max-w-md rounded-2xl bg-surface p-8">
+      <main className="w-full max-w-md rounded-2xl bg-surface p-6 sm:p-8">
         <h1 className="mb-4 text-2xl font-bold tracking-tight">Double authentification</h1>
         <MfaFlow next={next} force={forcer === '1'} />
       </main>

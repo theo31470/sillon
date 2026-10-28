@@ -53,11 +53,11 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
         </div>
       </div>
 
-      <article className="mx-auto w-full max-w-3xl rounded-2xl border border-line bg-surface p-8 print:border-0 print:p-0">
+      <article className="mx-auto w-full max-w-3xl rounded-2xl border border-line bg-surface p-5 sm:p-8 print:border-0 print:p-0">
         <header className="mb-6 flex items-start justify-between gap-4 border-b border-line pb-5">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-brand">Historique d’entretien</p>
-            <h1 className="text-3xl font-bold tracking-tight">{m.name}</h1>
+            <h1 className="text-[28px] font-bold tracking-tight sm:text-3xl">{m.name}</h1>
             <p className="text-muted">{profile.farm_name || profile.full_name} · établi le {formatDate(new Date())}</p>
           </div>
           <Logo />
@@ -69,7 +69,7 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
             {identity.map(([k, v]) => (
               <div key={k} className="border-b border-line-soft py-2">
                 <dt className="text-muted">{k}</dt>
-                <dd className="font-semibold">{v}</dd>
+                <dd className="font-semibold [overflow-wrap:anywhere]">{v}</dd>
               </div>
             ))}
           </dl>
@@ -116,7 +116,8 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
         {withCosts && byYear.size ? (
           <section className="mb-6">
             <h2 className="mb-2 text-lg font-semibold">Dépenses par année (€ HT)</h2>
-            <table className="w-full border-collapse text-sm">
+            <div className="scroll-x -mx-1 px-1">
+            <table className="w-full min-w-[560px] border-collapse text-sm print:min-w-0">
               <thead>
                 <tr className="text-left text-muted">
                   <th className="border-b border-line py-2 pr-3 font-medium">Année</th>
@@ -132,6 +133,7 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
                 ))}
               </tbody>
             </table>
+            </div>
           </section>
         ) : null}
 

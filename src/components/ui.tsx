@@ -67,7 +67,9 @@ export function Badge({ tone = 'gray', children }: { tone?: keyof typeof badgeTo
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-2xl border border-line bg-surface p-6 ${className}`}>{children}</section>;
+  // Marges intérieures réduites sur téléphone, sauf si la carte fixe les siennes.
+  const pad = /(^|\s)p-\d/.test(className) ? '' : 'p-4 sm:p-6';
+  return <section className={`rounded-2xl border border-line bg-surface ${pad} ${className}`}>{children}</section>;
 }
 
 export function Notice({ tone = 'amber', children }: { tone?: 'amber' | 'green' | 'red' | 'gray'; children: ReactNode }) {
