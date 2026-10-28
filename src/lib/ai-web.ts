@@ -362,6 +362,8 @@ async function readOfficialPages(params: { userId: string; brand: string; target
     // Page de présentation sans tableau : ses liens « brochure / fiche technique » passent en tête.
     // Page sans vrai tableau complet (présentation, chiffres clés) : ses liens « brochure / fiche technique » passent en tête.
     if ((page.embedded || specDensity(page.text) < 30) && page.links?.length) queue.unshift(...rankSpecUrls(page.links).filter((l) => !tried.has(l)).slice(0, 4));
+    // Aucun lien de brochure sur cette page : la même page dans un autre pays en a peut-être un.
+    else if ((page.embedded || specDensity(page.text) < 30) && !page.links?.length && page.alternates?.length) queue.push(...page.alternates.filter((l) => !tried.has(l)).slice(0, 2));
     // On s'arrête dès qu'on tient un vrai tableau complet (pas des données JSON de page, qui comptent aussi les menus).
     if (good().some((p) => !p.embedded && specDensity(p.text) >= 30)) break;
   }

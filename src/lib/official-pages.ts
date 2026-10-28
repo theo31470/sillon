@@ -53,7 +53,7 @@ export function htmlToText(html: string) {
   return { title: title.replace(/\s+/g, ' ').slice(0, 200), text: text.slice(0, MAX_CHARS) };
 }
 
-export type OfficialPage = { url: string; title: string; text: string; links?: string[]; /** Texte tiré des données JSON de la page (menus compris) : moins fiable. */ embedded?: boolean };
+export type OfficialPage = { url: string; title: string; text: string; links?: string[]; /** Même page dans d'autres langues (hreflang). */ alternates?: string[]; /** Texte tiré des données JSON de la page (menus compris) : moins fiable. */ embedded?: boolean };
 
 /**
  * Pages construites en JavaScript (ex. John Deere) : le contenu est embarqué dans le HTML
@@ -152,12 +152,19 @@ export async function fetchOfficialPage(url: string, domains: string[]): Promise
           ),
       ),
     ].slice(0, 12);
+    // Versions de la même page dans d'autres pays (la brochure n'est parfois liée que sur l'une d'elles).
+    const alternates = [...html.matchAll(/<link[^>]+rel="alternate"[^>]*>/gi)]
+      .map((m) => ({ lang: /hreflang="([^"]+)"/i.exec(m[0])?.[1]?.toLowerCase() ?? '', href: /href="([^"]+)"/i.exec(m[0])?.[1]?.replace(/&amp;/g, '&') ?? '' }))
+      .filter((a) => a.href && a.href !== finalUrl && isOfficialUrl(a.href, domains))
+      .sort((a, b) => ['en-gb', 'en', 'en-ie', 'de-de', 'de'].indexOf(a.lang) + 100 * Number(!['en-gb', 'en', 'en-ie', 'de-de', 'de'].includes(a.lang)) - (['en-gb', 'en', 'en-ie', 'de-de', 'de'].indexOf(b.lang) + 100 * Number(!['en-gb', 'en', 'en-ie', 'de-de', 'de'].includes(b.lang))))
+      .map((a) => a.href)
+      .slice(0, 3);
     // Peu de données visibles : contenu peut-être embarqué en JSON (site en JavaScript).
     if (specDensity(text) < 15) {
       const embedded = embeddedText(html);
-      if (specDensity(embedded) > specDensity(text)) return { url: finalUrl, title, text: `${text}\n\n## Données de la page\n${embedded}`.slice(0, MAX_CHARS), links, embedded: true };
+      if (specDensity(embedded) > specDensity(text)) return { url: finalUrl, title, text: `${text}\n\n## Données de la page\n${embedded}`.slice(0, MAX_CHARS), links, alternates, embedded: true };
     }
-    return text.length > 300 || links.length ? { url: finalUrl, title, text, links } : null;
+    return text.length > 300 || links.length ? { url: finalUrl, title, text, links, alternates } : null;
   } catch (err) {
     console.warn('[page officielle] lecture impossible', url, err instanceof Error ? err.message : err);
     return null;
