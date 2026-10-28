@@ -53,7 +53,7 @@ export function htmlToText(html: string) {
   return { title: title.replace(/\s+/g, ' ').slice(0, 200), text: text.slice(0, MAX_CHARS) };
 }
 
-export type OfficialPage = { url: string; title: string; text: string; links?: string[] };
+export type OfficialPage = { url: string; title: string; text: string; links?: string[]; /** Texte tiré des données JSON de la page (menus compris) : moins fiable. */ embedded?: boolean };
 
 /**
  * Pages construites en JavaScript (ex. John Deere) : le contenu est embarqué dans le HTML
@@ -155,7 +155,7 @@ export async function fetchOfficialPage(url: string, domains: string[]): Promise
     // Peu de données visibles : contenu peut-être embarqué en JSON (site en JavaScript).
     if (specDensity(text) < 15) {
       const embedded = embeddedText(html);
-      if (specDensity(embedded) > specDensity(text)) return { url: finalUrl, title, text: `${text}\n\n## Données de la page\n${embedded}`.slice(0, MAX_CHARS), links };
+      if (specDensity(embedded) > specDensity(text)) return { url: finalUrl, title, text: `${text}\n\n## Données de la page\n${embedded}`.slice(0, MAX_CHARS), links, embedded: true };
     }
     return text.length > 300 || links.length ? { url: finalUrl, title, text, links } : null;
   } catch (err) {

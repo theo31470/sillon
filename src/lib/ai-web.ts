@@ -361,9 +361,9 @@ async function readOfficialPages(params: { userId: string; brand: string; target
     if (!pages.some((p) => p.text === page.text)) pages.push(page);
     // Page de présentation sans tableau : ses liens « brochure / fiche technique » passent en tête.
     // Page sans vrai tableau complet (présentation, chiffres clés) : ses liens « brochure / fiche technique » passent en tête.
-    if (specDensity(page.text) < 30 && page.links?.length) queue.unshift(...rankSpecUrls(page.links).filter((l) => !tried.has(l)).slice(0, 4));
-    // On s'arrête dès qu'on tient un vrai tableau complet.
-    if (good().some((p) => specDensity(p.text) >= 30)) break;
+    if ((page.embedded || specDensity(page.text) < 30) && page.links?.length) queue.unshift(...rankSpecUrls(page.links).filter((l) => !tried.has(l)).slice(0, 4));
+    // On s'arrête dès qu'on tient un vrai tableau complet (pas des données JSON de page, qui comptent aussi les menus).
+    if (good().some((p) => !p.embedded && specDensity(p.text) >= 30)) break;
   }
   // Seulement de vrais tableaux de données techniques (pas les pages de présentation) :
   // sinon, la recherche web officielle donne de meilleurs résultats.
