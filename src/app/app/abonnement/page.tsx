@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { cookies } from 'next/headers';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/format';
@@ -16,6 +17,8 @@ import { cancelSubscription, changePeriod, resumeSubscription, updateBilling } f
 import { BillingFields } from './billing-fields';
 import { CardUpdate, StripeReturn } from './card-update';
 import { CheckoutForm } from './checkout-form';
+import { ReferralShare } from './referral-share';
+import { REFERRAL_COOKIE, REFERRAL_REWARD_CENTS, referralStats, type ReferralStats } from '@/lib/referrals';
 
 export const metadata: Metadata = { title: 'Abonnement' };
 
@@ -46,6 +49,13 @@ export default async function SubscriptionPage(props: PageProps<'/app/abonnement
       : Promise.resolve(null),
   ]);
   const invoices = (invoiceRows ?? []) as InvoiceListRow[];
+  const referral: ReferralStats | null = await referralStats(session.userId, profile.stripe_customer_id).catch((err) => {
+    console.error('[parrainage]', err);
+    return null;
+  });
+  // Code de parrainage retenu par le lien d'invitation : proposé d'office au premier abonnement.
+  const invitedBy = (await cookies()).get(REFERRAL_COOKIE)?.value ?? '';
+  const initialPromo = !subCount && /^[A-Z0-9]{4,12}$/.test(invitedBy) && invitedBy !== referral?.code ? invitedBy : '';
   const defaults = billing ?? { ...EMPTY_BILLING, name: profile.farm_name || profile.full_name };
   const annualAvailable = Boolean(env.stripePriceCompletAnnuel());
   const sub = view && view !== 'erreur' ? view : null;
@@ -174,12 +184,46 @@ export default async function SubscriptionPage(props: PageProps<'/app/abonnement
                   {subCount ? '' : ` ${TRIAL_DAYS} jours d’essai offerts.`}
                 </p>
               )}
-              <CheckoutForm trial={!subCount} annualAvailable={annualAvailable} billing={defaults} vatMention={SITE.vatMention} />
+              <CheckoutForm trial={!subCount} annualAvailable={annualAvailable} billing={defaults} vatMention={SITE.vatMention} initialPromo={initialPromo} />
             </Card>
           ) : null}
         </div>
 
         <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
+          {referral ? (
+            <Card className="scroll-mt-24">
+              <h2 className="mb-1 text-xl font-semibold" id="parrainage">
+                Parrainez un voisin
+              </h2>
+              <p className="mb-4 text-sm text-muted">
+                La personne que vous invitez a <strong className="text-ink">un mois offert</strong> en plus de l’essai. Vous, vous gagnez{' '}
+                <strong className="text-ink">un mois d’abonnement ({formatCents(REFERRAL_REWARD_CENTS)})</strong> dès son premier paiement. Sans limite.
+              </p>
+              <ReferralShare link={referral.link} code={referral.code} />
+              {referral.pending || referral.rewarded || referral.creditCents ? (
+                <dl className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-ground p-3 text-center">
+                  <div>
+                    <dt className="text-xs text-muted">Invités abonnés</dt>
+                    <dd className="text-lg font-bold tabular-nums">{referral.pending + referral.rewarded}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted">Mois gagnés</dt>
+                    <dd className="text-lg font-bold tabular-nums">{referral.rewarded}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted">Crédit à déduire</dt>
+                    <dd className="text-lg font-bold tabular-nums">{formatCents(referral.creditCents)}</dd>
+                  </div>
+                </dl>
+              ) : null}
+              {referral.pending ? (
+                <p className="mt-2 text-xs text-muted">
+                  {referral.pending} invité{referral.pending > 1 ? 's' : ''} en période d’essai : votre mois sera crédité à leur premier paiement.
+                </p>
+              ) : null}
+            </Card>
+          ) : null}
+
           <Card className="scroll-mt-24">
             <h2 className="mb-1 text-xl font-semibold" id="factures">Factures</h2>
             <p className="mb-3 text-sm text-muted">Émises par {SITE.name} à chaque paiement, aussi envoyées par e-mail.</p>

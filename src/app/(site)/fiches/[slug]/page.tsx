@@ -2,7 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getPublishedSheet } from '@/lib/content';
+import { getPublishedSheet, listBrandSheets } from '@/lib/content';
+import { SheetCard } from '@/components/sheets/sheet-card';
 import { parseSheetContent } from '@/lib/sheets/schema';
 import { keyFigures, machineKind, MACHINE_KIND_LABELS } from '@/lib/sheets/insights';
 import { SheetView } from '@/components/sheet-view';
@@ -15,13 +16,24 @@ import { formatDate } from '@/lib/format';
 import { SHEET_CATEGORIES } from '@/lib/types';
 import { getSession } from '@/lib/auth';
 import { addMachineFromSheet } from '@/app/app/materiel/actions';
+import { JsonLd } from '@/components/json-ld';
+import { env } from '@/lib/env';
+import { slugify } from '@/lib/format';
+import { SITE } from '@/lib/site';
 
 const FIGURE_COLS: Record<number, string> = { 1: 'lg:grid-cols-1', 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4' };
 
 export async function generateMetadata(props: PageProps<'/fiches/[slug]'>): Promise<Metadata> {
   const { slug } = await props.params;
   const sheet = await getPublishedSheet(slug);
-  return sheet ? { title: sheet.title, description: sheet.summary } : { title: 'Fiche introuvable' };
+  if (!sheet) return { title: 'Fiche introuvable' };
+  const title = sheet.category === 'machine' ? `${sheet.title} : fiche technique, entretien et pannes` : sheet.title;
+  return {
+    title,
+    description: sheet.summary || undefined,
+    alternates: { canonical: `/fiches/${sheet.slug}` },
+    openGraph: { title, description: sheet.summary || undefined, type: 'article', url: `/fiches/${sheet.slug}`, ...(sheet.cover_url ? { images: [{ url: sheet.cover_url, alt: sheet.title }] } : {}) },
+  };
 }
 
 export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
@@ -48,13 +60,50 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
     )
   ) : null;
 
+  // Maillage : autres modèles de la même série (sinon de la même marque).
+  const siblings = sheet.brand ? await listBrandSheets(sheet.brand) : [];
+  const mine = siblings.find((x) => x.id === sheet.id);
+  const related = siblings
+    .filter((x) => x.id !== sheet.id)
+    .sort((a, b) => Number(b.series === mine?.series) - Number(a.series === mine?.series) || (a.power ?? 9999) - (b.power ?? 9999))
+    .slice(0, 3);
+  const site = env.siteUrl().replace(/\/$/, '');
+  const pageUrl = `${site}/fiches/${sheet.slug}`;
+  const crumbs = [
+    { name: 'Fiches techniques', item: `${site}/fiches` },
+    ...(sheet.brand ? [{ name: sheet.brand, item: `${site}/fiches/marque/${slugify(sheet.brand)}` }] : []),
+    { name: sheet.title, item: pageUrl },
+  ];
+
   return (
     <div className="bg-ground">
+      <JsonLd
+        data={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'TechArticle',
+            headline: sheet.title,
+            description: content.summary || sheet.summary,
+            url: pageUrl,
+            inLanguage: 'fr-FR',
+            ...(sheet.cover_url ? { image: sheet.cover_url } : {}),
+            ...(sheet.published_at ? { datePublished: sheet.published_at } : {}),
+            dateModified: sheet.updated_at,
+            ...(sheet.brand ? { about: { '@type': 'Product', name: sheet.title, brand: { '@type': 'Brand', name: sheet.brand }, ...(sheet.model ? { model: sheet.model } : {}), category: 'Tracteur agricole' } } : {}),
+            publisher: { '@type': 'Organization', name: SITE.name, url: site, logo: { '@type': 'ImageObject', url: `${site}/icon.png` } },
+          },
+          { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, ...c })) },
+        ]}
+      />
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
         <nav aria-label="Fil d’Ariane" className="no-print flex flex-wrap items-center gap-2 text-sm text-muted">
           <Link href="/fiches" className="link-underline text-brand" transitionTypes={['nav-back']}>Fiches techniques</Link>
           <span aria-hidden="true">›</span>
-          <Link href={`/fiches?categorie=${sheet.category}`} className="link-underline text-brand" transitionTypes={['nav-back']}>{SHEET_CATEGORIES[sheet.category]}</Link>
+          {sheet.brand ? (
+            <Link href={`/fiches/marque/${slugify(sheet.brand)}`} className="link-underline text-brand" transitionTypes={['nav-back']}>{sheet.brand}</Link>
+          ) : (
+            <Link href={`/fiches?categorie=${sheet.category}`} className="link-underline text-brand" transitionTypes={['nav-back']}>{SHEET_CATEGORIES[sheet.category]}</Link>
+          )}
           <span aria-hidden="true">›</span>
           <span className="text-ink">{sheet.title}</span>
         </nav>
@@ -142,6 +191,24 @@ export default async function SheetPage(props: PageProps<'/fiches/[slug]'>) {
                 </li>
               ))}
             </ul>
+          </section>
+        ) : null}
+
+        {related.length ? (
+          <section className="no-print flex flex-col gap-4" aria-labelledby="autres-modeles">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="autres-modeles" className="text-xl font-semibold">
+                {mine?.series && related.some((r) => r.series === mine.series) ? `Autres ${sheet.brand} ${mine.series}` : `Autres tracteurs ${sheet.brand}`}
+              </h2>
+              <Link href={`/fiches/marque/${slugify(sheet.brand)}`} className="link-underline text-sm font-semibold text-brand-dark">
+                Toutes les fiches {sheet.brand} →
+              </Link>
+            </div>
+            <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr))]">
+              {related.map((r, i) => (
+                <SheetCard key={r.id} sheet={r} index={i} headingLevel="h3" />
+              ))}
+            </div>
           </section>
         ) : null}
 

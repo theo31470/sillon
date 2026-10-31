@@ -96,18 +96,21 @@ export function invoiceLines(inv: Stripe.Invoice): InvoiceLine[] {
     });
   }
   const discount = (inv.total_discount_amounts ?? []).reduce((s, d) => s + d.amount, 0);
-  if (discount > 0) lines.push({ label: 'Remise (code promotionnel)', quantity: 1, unit_cents: -discount, total_cents: -discount });
+  if (discount > 0) lines.push({ label: 'Remise (code promotionnel ou parrainage)', quantity: 1, unit_cents: -discount, total_cents: -discount });
   // Écart restant (crédit du compte client appliqué, arrondis) : ligne explicite pour que le total soit juste.
   const sum = lines.reduce((s, l) => s + l.total_cents, 0);
   const gap = inv.amount_paid - sum;
-  if (gap !== 0) lines.push({ label: gap < 0 ? 'Crédit déduit (avoir ou solde du compte)' : 'Solde antérieur', quantity: 1, unit_cents: gap, total_cents: gap });
+  if (gap !== 0) lines.push({ label: gap < 0 ? 'Crédit déduit (parrainage ou solde du compte)' : 'Solde antérieur', quantity: 1, unit_cents: gap, total_cents: gap });
   return lines;
 }
 
-/** Facture entièrement couverte par une remise (code à 100 %) : elle reste due au client, à 0 €. */
+/**
+ * Échéance réglée sans paiement : entièrement couverte par une remise (code à 100 %,
+ * parrainage) ou par le crédit du compte. Elle reste due au client, à 0 €.
+ * Le début d'un essai gratuit (sous-total à 0 €) n'est pas concerné.
+ */
 export function isFullyDiscounted(inv: Stripe.Invoice) {
-  const discount = (inv.total_discount_amounts ?? []).reduce((s, d) => s + d.amount, 0);
-  return inv.amount_paid === 0 && inv.subtotal > 0 && discount >= inv.subtotal;
+  return inv.amount_paid === 0 && inv.subtotal > 0;
 }
 
 /**

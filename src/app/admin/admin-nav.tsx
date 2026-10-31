@@ -9,19 +9,21 @@ const main = [
   { href: '/admin/messages', label: 'Messages' },
   { href: '/admin/paiements', label: 'Abonnements & paiements' },
   { href: '/admin/factures', label: '↳ Factures' },
-  { href: '/admin/codes-promo', label: '↳ Codes promo' },
+  { href: '/admin/codes-promo', label: '↳ Promos et parrainage' },
   { href: '/admin/emails', label: 'E-mails' },
   { href: '/admin/blog', label: 'Blog' },
   { href: '/admin/fiches', label: 'Fiches techniques' },
+  { href: '/admin/fiches/series', label: '↳ Relecture par série' },
   { href: '/admin/fiches/catalogue', label: '↳ Import par marque' },
+  { href: '/admin/fiches/demandes', label: '↳ Fiches demandées' },
 ];
 const security = [{ href: '/admin/journal', label: 'Journal d’activité' }];
 
-export function AdminNav({ pendingSheets, newMessages = 0 }: { pendingSheets: number; newMessages?: number }) {
+export function AdminNav({ pendingSheets, newMessages = 0, newRequests = 0 }: { pendingSheets: number; newMessages?: number; newRequests?: number }) {
   const pathname = usePathname();
   const item = (l: { href: string; label: string }) => {
     const active =
-      l.href === '/admin' ? pathname === '/admin' : l.href === '/admin/fiches' ? pathname.startsWith(l.href) && !pathname.startsWith('/admin/fiches/catalogue') : pathname.startsWith(l.href);
+      l.href === '/admin' ? pathname === '/admin' : l.href === '/admin/fiches' ? pathname.startsWith(l.href) && !/^\/admin\/fiches\/(catalogue|series|demandes)/.test(pathname) : pathname.startsWith(l.href);
     return (
       <Link
         key={l.href}
@@ -31,10 +33,13 @@ export function AdminNav({ pendingSheets, newMessages = 0 }: { pendingSheets: nu
       >
         {l.label}
         {l.href === '/admin/messages' && newMessages > 0 ? (
-          <span className="rounded-full bg-wheat px-2 text-xs font-bold text-admin">{newMessages}</span>
+          <span className="self-center rounded-full bg-wheat px-2 text-xs font-bold text-admin">{newMessages}</span>
+        ) : null}
+        {l.href === '/admin/fiches/demandes' && newRequests > 0 ? (
+          <span className="self-center rounded-full bg-wheat px-2 text-xs font-bold text-admin">{newRequests}</span>
         ) : null}
         {l.href === '/admin/fiches' && pendingSheets > 0 ? (
-          <span className="rounded-full bg-wheat px-2 text-xs font-bold text-admin">{pendingSheets}</span>
+          <span className="self-center rounded-full bg-wheat px-2 text-xs font-bold text-admin">{pendingSheets}</span>
         ) : null}
       </Link>
     );

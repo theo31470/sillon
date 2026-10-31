@@ -5,10 +5,17 @@ import { SignUpForm } from '../forms';
 export const metadata: Metadata = { title: 'Créer un compte' };
 
 export default async function SignUpPage(props: PageProps<'/inscription'>) {
-  const { formule, periode } = await props.searchParams;
-  const next = formule === 'complet' ? `/app/abonnement${periode === 'annuel' ? '?periode=annuel' : ''}` : '/app';
+  const { formule, periode, parrain } = await props.searchParams;
+  const invited = typeof parrain === 'string' && /^[A-Z0-9]{4,12}$/.test(parrain);
+  const next = formule === 'complet' || invited ? `/app/abonnement${periode === 'annuel' ? '?periode=annuel' : ''}` : '/app';
   return (
     <>
+      {invited ? (
+        <p className="mb-5 rounded-xl bg-success-soft px-4 py-3 text-sm text-success">
+          <strong>Un membre vous invite.</strong> Avec son code <strong>{parrain}</strong>, vous avez un mois offert sur votre premier paiement, en plus des 30 jours d’essai de la
+          formule Complet.
+        </p>
+      ) : null}
       <h1 className="mb-2 text-2xl font-bold tracking-tight">Créer votre compte</h1>
       <p className="mb-6 text-muted">
         {formule === 'complet'

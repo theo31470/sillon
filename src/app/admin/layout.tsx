@@ -13,9 +13,10 @@ export const metadata: Metadata = { title: { default: 'Administration', template
 export default async function AdminLayout({ children }: LayoutProps<'/admin'>) {
   const { profile } = await requireAdmin('/admin');
   const supabase = await createClient();
-  const [{ count }, { count: newMessages }] = await Promise.all([
+  const [{ count }, { count: newMessages }, { count: newRequests }] = await Promise.all([
     supabase.from('tech_sheets').select('id', { count: 'exact', head: true }).eq('status', 'review'),
     supabase.from('contact_messages').select('id', { count: 'exact', head: true }).eq('status', 'nouveau'),
+    supabase.from('sheet_requests').select('id', { count: 'exact', head: true }).eq('status', 'nouvelle'),
   ]);
 
   return (
@@ -29,7 +30,7 @@ export default async function AdminLayout({ children }: LayoutProps<'/admin'>) {
           <span className="rounded-full bg-wheat px-2 text-xs font-bold text-admin" title="Messages nouveaux et fiches à relire">{(newMessages ?? 0) + (count ?? 0)}</span>
         ) : null}
         <MobileMenu label="Menu de l’administration" tone="admin">
-          <AdminNav pendingSheets={count ?? 0} newMessages={newMessages ?? 0} />
+          <AdminNav pendingSheets={count ?? 0} newMessages={newMessages ?? 0} newRequests={newRequests ?? 0} />
           <div className="mt-auto flex flex-col gap-3 pt-4">
             <div className="flex items-center justify-between rounded-xl bg-admin-2 p-3.5 text-[13px]">
               <div>
@@ -50,7 +51,7 @@ export default async function AdminLayout({ children }: LayoutProps<'/admin'>) {
             <ThemeToggle className="border-admin-2 text-panel-muted" />
           </div>
         </div>
-        <AdminNav pendingSheets={count ?? 0} newMessages={newMessages ?? 0} />
+        <AdminNav pendingSheets={count ?? 0} newMessages={newMessages ?? 0} newRequests={newRequests ?? 0} />
         <div className="mt-auto rounded-xl bg-admin-2 p-3.5 text-[13px]">
           <p className="font-semibold text-white">{profile.full_name || profile.email}</p>
           <p className="mb-2 text-panel-muted">Administrateur</p>

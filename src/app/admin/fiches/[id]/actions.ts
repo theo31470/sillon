@@ -15,6 +15,7 @@ import type { FormState } from '@/components/form-bits';
 import type { PhotoCredit, TechSheet } from '@/lib/types';
 import { attachCommonsPhoto } from '@/lib/photos';
 import { createServiceClient } from '@/lib/supabase/admin';
+import { notifySheetRequesters } from '@/lib/sheet-requests';
 
 async function loadSheet(id: unknown) {
   const parsed = z.string().uuid().safeParse(id);
@@ -163,6 +164,7 @@ export async function publishSheet(_prev: FormState, formData: FormData): Promis
     .update({ status: 'published', validated_by: session.userId, validated_at: now, published_at: sheet.published_at ?? now })
     .eq('id', sheet.id);
   await logAudit(session, 'fiche.publiee', { type: 'tech_sheet', id: sheet.id }, { titre: sheet.title });
+  await notifySheetRequesters(sheet.id).catch((err) => console.error('[demandes de fiche]', err));
   revalidatePath('/fiches', 'layout');
   revalidatePath(`/admin/fiches/${sheet.id}`);
   return { ok: true, message: 'Fiche publiée sur le site.' };

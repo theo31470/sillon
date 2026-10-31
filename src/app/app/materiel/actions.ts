@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { COST_KINDS, MACHINE_KINDS } from '@/lib/types';
+import { after } from 'next/server';
+import { nudgeMachineLimit } from '@/lib/nudges';
 import { FREE_MACHINE_LIMIT } from '@/lib/plans';
 import type { FormState } from '@/components/form-bits';
 
@@ -65,7 +67,7 @@ const newMachineSchema = z.object({
 });
 
 export async function addMachine(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireUser('/app/materiel');
+  const { session } = await requireUser('/app/materiel');
   const parsed = newMachineSchema.safeParse({
     name: get(formData, 'name'),
     kind: get(formData, 'kind') || 'tracteur',
@@ -79,6 +81,7 @@ export async function addMachine(_prev: FormState, formData: FormData): Promise<
 
   const supabase = await createClient();
   const { data, error } = await supabase.from('machines').insert(parsed.data).select('id').single();
+  if (!error || error.code === 'P0001') after(() => nudgeMachineLimit(session.userId).catch((err) => console.error('[relances]', err)));
   if (error || !data) return { error: error?.code === 'P0001' ? LIMIT_MESSAGE : 'Impossible d’ajouter la machine.' };
   // Premier relevé : point de départ du calcul des heures de travail.
   await supabase.from('hour_readings').insert({ machine_id: data.id, hours: parsed.data.hours });
@@ -88,7 +91,7 @@ export async function addMachine(_prev: FormState, formData: FormData): Promise<
 
 /** Depuis une fiche technique publique : « Ajouter à mon parc ». */
 export async function addMachineFromSheet(formData: FormData) {
-  await requireUser('/fiches');
+  const { session } = await requireUser('/fiches');
   const sheetId = uuid.safeParse(formData.get('sheet_id'));
   if (!sheetId.success) redirect('/app/materiel');
   const supabase = await createClient();
@@ -100,6 +103,7 @@ export async function addMachineFromSheet(formData: FormData) {
     .insert({ name: sheet.title.slice(0, 80), sheet_id: sheet.id, brand: sheet.brand ?? '', model: sheet.model ?? '', hours: 0 })
     .select('id')
     .single();
+  if (!error || error.code === 'P0001') after(() => nudgeMachineLimit(session.userId).catch((err) => console.error('[relances]', err)));
   if (error || !data) redirect(error?.code === 'P0001' ? '/app/abonnement?raison=limite' : '/app/materiel');
   await supabase.from('hour_readings').insert({ machine_id: data.id, hours: 0 });
   refresh();

@@ -211,6 +211,29 @@ ok((await as(ADM, 'aal2', 'select * from public.invoices')).rowCount === 3, 'l�
 await c.query(`update public.invoices set user_id = null where user_id = '${A}'`);
 ok((await c.query(`select count(*)::int n from public.invoices where user_id is null`)).rows[0].n === 3, 'compte supprimé : les factures restent (obligation légale), sans lien vers le compte');
 
+// --- Parrainage, demandes de fiches, relances ---
+await throws(() => as(A, 'aal1', `update public.profiles set referral_code = 'TRICHE' where id = $1`, [A]), 'un membre ne choisit pas son code de parrainage');
+await c.query(`update public.profiles set referral_code = 'ABC234' where id = '${A}'`);
+await throws(() => c.query(`update public.profiles set referral_code = 'ABC234' where id = '${B}'`), 'code de parrainage unique');
+await throws(() => c.query(`update public.profiles set referral_code = 'abc' where id = '${B}'`), 'code de parrainage : format vérifié');
+await c.query(`insert into public.referrals (referrer_id, referee_id) values ('${A}', '${B}')`);
+await throws(() => c.query(`insert into public.referrals (referrer_id, referee_id) values ('${ADM}', '${B}')`), 'un compte n’est parrainé qu’une fois');
+await throws(() => c.query(`insert into public.referrals (referrer_id, referee_id) values ('${A}', '${A}')`), 'pas d’auto-parrainage');
+ok((await as(A, 'aal1', 'select * from public.referrals')).rowCount === 1, 'le parrain voit ses filleuls');
+ok((await as(B, 'aal1', 'select * from public.referrals')).rowCount === 0, 'le filleul ne voit pas la fiche de parrainage');
+await throws(() => as(A, 'aal1', `insert into public.referrals (referrer_id, referee_id) values ('${A}', '${ADM}')`), 'un membre ne crée pas de parrainage lui-même');
+ok((await as(A, 'aal1', `update public.referrals set status = 'recompense'`)).rowCount === 0, 'un membre ne se crédite pas une récompense');
+await throws(() => as(A, 'aal1', `insert into public.sheet_requests (user_id, brand, model) values ('${A}', 'Fendt', '312')`), 'une demande de fiche passe par le serveur');
+await c.query(`insert into public.sheet_requests (user_id, brand, model) values ('${A}', 'Fendt', '312')`);
+await throws(() => c.query(`insert into public.sheet_requests (user_id, brand, model) values ('${A}', 'FENDT', '312')`), 'une seule demande par membre et par modèle');
+ok((await as(A, 'aal1', 'select * from public.sheet_requests')).rowCount === 1, 'A voit ses demandes de fiches');
+ok((await as(B, 'aal1', 'select * from public.sheet_requests')).rowCount === 0, 'B ne voit pas les demandes de A');
+ok((await as(ADM, 'aal2', 'select * from public.sheet_requests')).rowCount === 1, 'l’admin (2FA) voit les demandes');
+ok((await as(A, 'aal1', `update public.sheet_requests set status = 'publiee'`)).rowCount === 0, 'un membre ne change pas le statut de sa demande');
+await c.query(`insert into public.member_nudges (user_id, kind) values ('${A}', 'inactif')`);
+await throws(() => c.query(`insert into public.member_nudges (user_id, kind) values ('${A}', 'inactif')`), 'une relance n’est envoyée qu’une fois');
+ok((await as(A, 'aal1', 'select * from public.member_nudges')).rowCount === 0, 'un membre ne lit pas le suivi des relances');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

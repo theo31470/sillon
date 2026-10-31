@@ -12,6 +12,7 @@ import { billingFromForm, saveBillingDetails } from '@/lib/billing-details';
 import { upsertSubscription } from '@/lib/stripe-sync';
 import { currentStripeSubscription, priceOfPeriod } from '@/lib/subscription-view';
 import { applyPeriodChange } from '@/lib/subscription-ops';
+import { recordReferral, referralCoupon, referrerForCode, REFERRAL_COUPON_ID } from '@/lib/referrals';
 import type { FormState } from '@/components/form-bits';
 
 /**
@@ -51,12 +52,25 @@ async function ensureCustomer(profile: Profile, userId: string) {
   return (data?.stripe_customer_id as string) ?? customer.id;
 }
 
-type PromoLookup = { id: null } | { id: string; code: string; coupon: Stripe.Coupon } | { error: string };
+type Discount = { promotion_code: string } | { coupon: string };
+type PromoLookup =
+  | { id: null }
+  | { id: string; code: string; coupon: Stripe.Coupon; discount: Discount; referrerId?: string }
+  | { error: string };
 
-/** Code promotionnel actif et sa remise (le coupon Stripe). */
-async function lookupPromo(code: string): Promise<PromoLookup> {
+/**
+ * Code saisi au paiement : code de parrainage d'un membre (un mois offert sur le
+ * premier paiement), sinon code promotionnel Stripe actif.
+ */
+async function lookupPromo(code: string, userId: string): Promise<PromoLookup> {
   const clean = code.trim();
   if (!clean) return { id: null };
+  const referral = await referrerForCode(clean, userId);
+  if (referral && 'error' in referral) return referral;
+  if (referral) {
+    const coupon = await referralCoupon();
+    return { id: coupon.id, code: clean.toUpperCase(), coupon, discount: { coupon: coupon.id }, referrerId: referral.referrerId };
+  }
   const list = await stripe().promotionCodes.list({ code: clean, active: true, limit: 1, expand: ['data.promotion.coupon'] });
   const promo = list.data[0];
   const coupon = promo?.promotion?.coupon;
@@ -65,7 +79,7 @@ async function lookupPromo(code: string): Promise<PromoLookup> {
   if (!c.valid) return { error: 'Ce code promotionnel n’est plus valable.' };
   if (promo.expires_at && promo.expires_at * 1000 < Date.now()) return { error: 'Ce code promotionnel a expiré.' };
   if (promo.max_redemptions && promo.times_redeemed >= promo.max_redemptions) return { error: 'Ce code promotionnel a déjà été utilisé.' };
-  return { id: promo.id, code: promo.code, coupon: c };
+  return { id: promo.id, code: promo.code, coupon: c, discount: { promotion_code: promo.id } };
 }
 
 const euroLabel = (cents: number) => `${(cents / 100).toFixed(2).replace('.', ',')} €`;
@@ -81,7 +95,7 @@ export type PromoPreview = {
   free: boolean;
 };
 
-function describePromo(code: string, coupon: Stripe.Coupon, period: BillingPeriod): PromoPreview {
+function describePromo(code: string, coupon: Stripe.Coupon, period: BillingPeriod, referral = false): PromoPreview {
   const price = Math.round(COMPLET_PRICES[period].amount * 100);
   const off = coupon.percent_off ? Math.round((price * coupon.percent_off) / 100) : Math.min(price, coupon.amount_off ?? 0);
   const first = Math.max(0, price - off);
@@ -92,7 +106,8 @@ function describePromo(code: string, coupon: Stripe.Coupon, period: BillingPerio
       : coupon.duration === 'repeating'
         ? `pendant ${coupon.duration_in_months} mois`
         : 'sur le 1er paiement';
-  return { code, summary: `${what} ${when}`, firstCents: first, firstLabel: euroLabel(first), free: first === 0 && coupon.duration === 'forever' };
+  const summary = referral ? `parrainage, ${what} ${when}` : `${what} ${when}`;
+  return { code, summary, firstCents: first, firstLabel: euroLabel(first), free: first === 0 && coupon.duration === 'forever' };
 }
 
 /** Vérifie un code saisi sur la page de paiement et montre la remise avant de payer. */
@@ -101,10 +116,10 @@ export async function checkPromo(code: string, periode: string): Promise<{ ok: P
   if (!rateLimit(`promo:${session.userId}`, 10, 60_000).ok) return { error: 'Trop d’essais : patientez une minute.' };
   if (code.trim().length > 40) return { error: 'Code promotionnel inconnu ou expiré.' };
   try {
-    const found = await lookupPromo(code);
+    const found = await lookupPromo(code, session.userId);
     if ('error' in found) return { error: found.error };
     if (!found.id) return { error: 'Saisissez un code.' };
-    return { ok: describePromo(found.code, found.coupon, periodOf(periode)) };
+    return { ok: describePromo(found.code, found.coupon, periodOf(periode), Boolean(found.referrerId)) };
   } catch (err) {
     return { error: stripeMessage(err) };
   }
@@ -143,14 +158,21 @@ export async function startSubscription(formData: FormData): Promise<StartResult
     await saveBillingDetails(session.userId, billing.data, customer);
     if (await currentStripeSubscription(customer)) return { error: 'Un abonnement est déjà en cours sur ce compte : rechargez la page.' };
 
-    const promo = await lookupPromo(String(formData.get('promo') ?? ''));
+    const promo = await lookupPromo(String(formData.get('promo') ?? ''), session.userId);
     if ('error' in promo) return { error: promo.error, field: 'promo' };
 
     // Tentatives de paiement abandonnées : on les annule avant d'en créer une nouvelle.
     const stale = await stripe().subscriptions.list({ customer, status: 'incomplete', limit: 10 });
     await Promise.all(stale.data.map((s) => stripe().subscriptions.cancel(s.id).catch(() => null)));
 
-    const metadata = { user_id: session.userId, plan: 'complet', periode: period, promo: promo.id ?? '' };
+    const metadata = {
+      user_id: session.userId,
+      plan: 'complet',
+      periode: period,
+      promo: promo.id && 'promotion_code' in promo.discount ? promo.id : '',
+      coupon: promo.id && 'coupon' in promo.discount ? promo.discount.coupon : '',
+      parrain: promo.id ? (promo.referrerId ?? '') : '',
+    };
 
     // Code qui rend l'abonnement gratuit pour toujours : activation immédiate, sans carte ni essai.
     // Stripe émet une facture à 0 € (remise de 100 %), que nous reprenons à notre nom.
@@ -159,7 +181,7 @@ export async function startSubscription(formData: FormData): Promise<StartResult
         {
           customer,
           items: [{ price: priceOfPeriod(period) }],
-          discounts: [{ promotion_code: promo.id }],
+          discounts: [promo.discount],
           payment_behavior: 'default_incomplete',
           metadata,
         },
@@ -183,7 +205,7 @@ export async function startSubscription(formData: FormData): Promise<StartResult
       items: [{ price: priceOfPeriod(period) }],
       payment_behavior: 'default_incomplete',
       payment_settings: { save_default_payment_method: 'on_subscription', payment_method_types: ['card'] },
-      ...(promo.id ? { discounts: [{ promotion_code: promo.id }] } : {}),
+      ...(promo.id ? { discounts: [promo.discount] } : {}),
       metadata,
       expand: ['latest_invoice.confirmation_secret'],
     });
@@ -227,11 +249,16 @@ export async function activateTrial(setupIntentId: string): Promise<{ ok: true }
         trial_period_days: TRIAL_DAYS,
         default_payment_method: own.pm,
         payment_settings: { payment_method_types: ['card'] },
-        ...(own.si.metadata?.promo ? { discounts: [{ promotion_code: own.si.metadata.promo }] } : {}),
-        metadata: { user_id: session.userId, plan: 'complet', periode: period },
+        ...(own.si.metadata?.promo
+          ? { discounts: [{ promotion_code: own.si.metadata.promo }] }
+          : own.si.metadata?.coupon === REFERRAL_COUPON_ID
+            ? { discounts: [{ coupon: REFERRAL_COUPON_ID }] }
+            : {}),
+        metadata: { user_id: session.userId, plan: 'complet', periode: period, ...(own.si.metadata?.parrain ? { parrain: own.si.metadata.parrain } : {}) },
       },
       { idempotencyKey: `essai-${own.si.id}` },
     );
+    if (own.si.metadata?.parrain) await recordReferral(own.si.metadata.parrain, session.userId);
     await upsertSubscription(sub, session.userId);
     revalidatePath('/app', 'layout');
     return { ok: true };

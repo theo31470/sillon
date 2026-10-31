@@ -12,7 +12,19 @@ import { getStripe, publishableKey, stripeAppearance } from './stripe-elements';
 const AMOUNTS: Record<BillingPeriod, number> = { mensuel: Math.round(COMPLET_PRICES.mensuel.amount * 100), annuel: Math.round(COMPLET_PRICES.annuel.amount * 100) };
 
 /** Souscription à la formule Complet, entièrement dans la page. */
-export function CheckoutForm({ trial, annualAvailable, billing, vatMention }: { trial: boolean; annualAvailable: boolean; billing: BillingDefaults; vatMention: string }) {
+export function CheckoutForm({
+  trial,
+  annualAvailable,
+  billing,
+  vatMention,
+  initialPromo = '',
+}: {
+  trial: boolean;
+  annualAvailable: boolean;
+  billing: BillingDefaults;
+  vatMention: string;
+  initialPromo?: string;
+}) {
   const [period, setPeriod] = useState<BillingPeriod>(annualAvailable ? 'annuel' : 'mensuel');
   const stripePromise = useMemo(() => getStripe(), []);
   const appearance = useMemo(() => stripeAppearance(), []);
@@ -31,7 +43,7 @@ export function CheckoutForm({ trial, annualAvailable, billing, vatMention }: { 
         fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap' }],
       }}
     >
-      <Form trial={trial} annualAvailable={annualAvailable} billing={billing} vatMention={vatMention} period={period} setPeriod={setPeriod} />
+      <Form trial={trial} annualAvailable={annualAvailable} billing={billing} vatMention={vatMention} period={period} setPeriod={setPeriod} initialPromo={initialPromo} />
     </Elements>
   );
 }
@@ -43,6 +55,7 @@ function Form({
   vatMention,
   period,
   setPeriod,
+  initialPromo,
 }: {
   trial: boolean;
   annualAvailable: boolean;
@@ -50,6 +63,7 @@ function Form({
   vatMention: string;
   period: BillingPeriod;
   setPeriod: (p: BillingPeriod) => void;
+  initialPromo: string;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -59,11 +73,11 @@ function Form({
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [slow, setSlow] = useState(false);
-  const [promoInput, setPromoInput] = useState('');
+  const [promoInput, setPromoInput] = useState(initialPromo);
   const [promo, setPromo] = useState<PromoPreview | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
-  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(Boolean(initialPromo));
   const price = COMPLET_PRICES[period];
   const free = Boolean(promo?.free);
 
@@ -95,6 +109,15 @@ function Form({
     if (!trial && res.ok.firstCents > 0) elements?.update({ amount: res.ok.firstCents });
     return res.ok;
   }
+
+  // Lien d'invitation : le code du parrain est vérifié et appliqué d'office.
+  const autoApplied = useRef(false);
+  useEffect(() => {
+    if (!initialPromo || autoApplied.current || (!trial && !elements)) return;
+    autoApplied.current = true;
+    void applyPromo(initialPromo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPromo, elements]);
 
   function choose(p: BillingPeriod) {
     setPeriod(p);

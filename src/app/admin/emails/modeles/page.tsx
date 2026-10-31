@@ -11,7 +11,9 @@ import {
   authEmail,
   billingEmail,
   campaignEmail,
+  nudgeEmail,
   reminderEmail,
+  sheetReadyEmail,
   type AuthTemplate,
   type BillingTemplate,
   type BuiltEmail,
@@ -19,7 +21,7 @@ import {
 
 export const metadata: Metadata = { title: 'Modèles d’e-mails' };
 
-type Key = AuthTemplate | BillingTemplate | 'rappel' | 'annonce';
+type Key = AuthTemplate | BillingTemplate | 'rappel' | 'annonce' | 'fiche_prete' | 'relance_limite' | 'relance_inactif';
 
 const SAMPLE_MD = `La saison des moissons approche : c’est le bon moment pour faire le point sur vos machines.
 
@@ -54,6 +56,10 @@ function sample(key: Key, site: string, name: string): BuiltEmail {
       site,
     );
   }
+  if (key === 'fiche_prete') return sheetReadyEmail({ name, title: 'Fendt 724 Vario', url: `${site}/fiches/fendt-724-vario` }, site);
+  if (key === 'relance_limite' || key === 'relance_inactif') {
+    return nudgeEmail(key === 'relance_limite' ? 'limite_machines' : 'inactif', { name, machines: 2, limit: 3, priceLabel: '6,99 € par mois', trialDays: 30, preferencesUrl: `${site}/preferences-e-mail` }, site);
+  }
   if (key === 'annonce') return campaignEmail({ subject: 'Préparez la moisson avec Tracteurs & Co', bodyMd: SAMPLE_MD, name, preferencesUrl: `${site}/preferences-e-mail` }, site);
   return authEmail(key as AuthTemplate, { name, url, code: '482915', newEmail: 'nouvelle.adresse@exemple.fr' }, site);
 }
@@ -62,9 +68,10 @@ const GROUPS: { title: string; keys: Key[] }[] = [
   { title: 'Compte', keys: ['signup', 'recovery', 'magiclink', 'invite', 'email_change_current', 'email_change_new', 'reauthentication'] },
   { title: 'Alertes de sécurité', keys: AUTH_TEMPLATES.filter((t) => t.endsWith('_notification')) },
   { title: 'Abonnement', keys: [...BILLING_TEMPLATES] },
-  { title: 'Parc matériel', keys: ['rappel', 'annonce'] },
+  { title: 'Parc matériel', keys: ['rappel', 'annonce', 'fiche_prete'] },
+  { title: 'Relances des comptes gratuits', keys: ['relance_limite', 'relance_inactif'] },
 ];
-const LABELS: Record<Key, string> = { ...AUTH_TEMPLATE_LABELS, ...BILLING_TEMPLATE_LABELS, rappel: 'Rappel d’entretien', annonce: 'Annonce (exemple)' };
+const LABELS: Record<Key, string> = { ...AUTH_TEMPLATE_LABELS, ...BILLING_TEMPLATE_LABELS, rappel: 'Rappel d’entretien', annonce: 'Annonce (exemple)', fiche_prete: 'Fiche demandée en ligne', relance_limite: 'Limite de machines atteinte', relance_inactif: 'Compte inactif depuis 14 jours' };
 
 export default async function EmailTemplatesPage(props: PageProps<'/admin/emails/modeles'>) {
   const { profile } = await requireAdmin('/admin/emails/modeles');

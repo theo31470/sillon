@@ -1,5 +1,6 @@
 import { after, NextResponse } from 'next/server';
 import { runReminders } from '@/lib/email/reminders';
+import { runInactiveNudges } from '@/lib/nudges';
 import { expireComps } from '@/lib/membership';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -25,6 +26,8 @@ export async function POST() {
       if (expired) console.info('[formules offertes] expirées :', expired);
       const r = await runReminders();
       console.info('[rappels]', r);
+      // Relance unique des comptes gratuits restés sans visite depuis 14 jours.
+      if (!r.skipped) console.info('[relances] inactifs :', await runInactiveNudges());
     } catch (err) {
       console.error('[rappels]', err);
     }

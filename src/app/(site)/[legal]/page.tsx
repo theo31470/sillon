@@ -14,7 +14,7 @@ type Section = { h: string; p: string[] };
 type LegalPage = { title: string; intro?: string; sections: Section[] };
 
 const E = SITE.editor;
-const UPDATED = '25 octobre 2026';
+const UPDATED = '1er novembre 2026';
 const CONTACT = SITE.contactEmail;
 
 const pages: Record<string, LegalPage> = {
@@ -93,13 +93,14 @@ const pages: Record<string, LegalPage> = {
       {
         h: 'E-mails',
         p: [
-          'Les e-mails de compte (confirmation, mot de passe) sont toujours envoyés. Les rappels d’entretien et les nouveautés se désactivent à tout moment : lien « Gérer mes e-mails » en bas de chaque message, ou rubrique « Mon compte ».',
+          'Les e-mails de compte (confirmation, mot de passe), de facturation et de suivi de vos demandes (fiche technique demandée mise en ligne) sont toujours envoyés. Les rappels d’entretien et les nouveautés se désactivent à tout moment : lien « Gérer mes e-mails » en bas de chaque message, ou rubrique « Mon compte ».',
+          'Les nouveautés comprennent au plus deux messages de conseil aux comptes gratuits : quand la limite de machines est atteinte, et après deux semaines sans visite. Chacun n’est envoyé qu’une fois.',
         ],
       },
       {
         h: 'Cookies',
         p: [
-          'Le site n’utilise que des cookies indispensables (maintien de votre connexion) et mémorise votre choix de thème clair ou sombre sur votre appareil. Aucun cookie publicitaire ni de mesure d’audience : aucun consentement n’est donc demandé.',
+          'Le site n’utilise que des cookies indispensables (maintien de votre connexion) et mémorise votre choix de thème clair ou sombre sur votre appareil. Si vous arrivez par le lien d’invitation d’un membre, le code de parrainage est retenu 60 jours pour vous être proposé au moment de vous abonner. Aucun cookie publicitaire ni de mesure d’audience : aucun consentement n’est donc demandé.',
         ],
       },
       {
@@ -141,6 +142,7 @@ const pages: Record<string, LegalPage> = {
           `Une facture ${SITE.name} est émise à chaque paiement et envoyée par e-mail ; toutes les factures sont téléchargeables depuis la page « Abonnement ». Un remboursement donne lieu à un avoir.`,
           'Le passage du mensuel à l’annuel (ou l’inverse) s’applique à la prochaine échéance, sans double paiement ; pendant l’essai gratuit, il s’applique dès la fin de l’essai.',
           'Toute évolution de prix vous est annoncée par e-mail au moins 30 jours avant de s’appliquer, et vous pouvez résilier avant.',
+          `Parrainage : chaque membre dispose d’un code personnel. La personne invitée bénéficie d’une remise de ${COMPLET_PRICES.mensuel.label} sur son premier paiement, en plus de l’essai gratuit, à condition qu’il s’agisse de son premier abonnement. Le parrain reçoit un crédit de ${COMPLET_PRICES.mensuel.label} après le premier paiement effectif de la personne invitée ; ce crédit est déduit de ses prochains paiements de la formule Complet et n’est ni remboursable ni convertible en argent. Un compte ne peut être parrainé qu’une fois, et un abus (comptes fictifs, auto-parrainage) entraîne l’annulation des crédits.`,
         ],
       },
       {

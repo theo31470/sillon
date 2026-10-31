@@ -385,7 +385,7 @@ export function contactReplyEmail(input: { name: string; subject: string; bodyMd
 // Abonnement et facturation (déclenchés par le webhook Stripe)
 // ---------------------------------------------------------------------
 
-export const BILLING_TEMPLATES = ['abonnement_active', 'essai_fin_proche', 'paiement_recu', 'paiement_refuse', 'resiliation_programmee', 'abonnement_termine', 'remboursement'] as const;
+export const BILLING_TEMPLATES = ['abonnement_active', 'essai_fin_proche', 'paiement_recu', 'paiement_refuse', 'resiliation_programmee', 'abonnement_termine', 'remboursement', 'parrainage'] as const;
 export type BillingTemplate = (typeof BILLING_TEMPLATES)[number];
 
 export const BILLING_TEMPLATE_LABELS: Record<BillingTemplate, string> = {
@@ -396,6 +396,7 @@ export const BILLING_TEMPLATE_LABELS: Record<BillingTemplate, string> = {
   resiliation_programmee: 'Résiliation confirmée',
   abonnement_termine: 'Abonnement terminé',
   remboursement: 'Remboursement (avoir)',
+  parrainage: 'Parrainage : mois offert',
 };
 
 export type BillingEmailInput = {
@@ -459,16 +460,33 @@ export function billingEmail(template: BillingTemplate, input: BillingEmailInput
         },
         site,
       );
+    case 'parrainage':
+      return build(
+        `Merci ! ${input.amount ?? 'Un mois'} offert sur votre abonnement`,
+        {
+          preheader: 'Une personne que vous avez parrainée vient de s’abonner.',
+          heading: 'Votre parrainage a fonctionné',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: `Une personne que vous avez invitée vient de régler son premier paiement sur Tracteurs & Co. Pour vous remercier, **${input.amount ?? 'un mois d’abonnement'}** est crédité sur votre compte.` },
+            { type: 'p', text: 'Ce crédit est déduit automatiquement de votre prochain paiement de la formule Complet : vous n’avez rien à faire. Il apparaîtra sur la facture correspondante.' },
+            { type: 'button', label: 'Voir mon parrainage', url: `${site}/app/abonnement#parrainage` },
+            { type: 'note', text: 'Pas de limite : chaque nouvelle personne abonnée grâce à votre lien vous rapporte un mois.' },
+          ],
+          reason: BILLING_REASON,
+        },
+        site,
+      );
     case 'paiement_recu':
       if (input.offered)
         return build(
           input.invoiceNumber ? `Votre facture n° ${input.invoiceNumber}` : 'Votre facture Tracteurs & Co',
           {
-            preheader: 'Votre formule Complet vous est offerte : rien n’a été débité.',
+            preheader: 'Rien n’a été débité pour cette échéance.',
             heading: 'Votre facture',
             blocks: [
               { type: 'p', text: hello(input.name) },
-              { type: 'p', text: `Votre formule Complet vous est offerte grâce à votre code promotionnel : le montant de cette échéance est de **0,00 €**, rien n’a été débité.${input.date ? ` Prochaine échéance : ${input.date}.` : ''}` },
+              { type: 'p', text: `Cette échéance de votre formule Complet est entièrement couverte par votre remise ou votre crédit de parrainage : son montant est de **0,00 €**, rien n’a été débité.${input.date ? ` Prochaine échéance : ${input.date}.` : ''}` },
               ...(input.invoiceNumber ? [{ type: 'p' as const, text: `Votre facture **n° ${input.invoiceNumber}** est jointe à cet e-mail, au format PDF.` }] : []),
               ...(input.invoiceUrl ? [{ type: 'button' as const, label: 'Télécharger la facture', url: input.invoiceUrl }] : []),
               { type: 'note', text: 'Toutes vos factures restent disponibles à tout moment dans la page « Abonnement » de votre compte.' },
@@ -561,4 +579,76 @@ export function billingEmail(template: BillingTemplate, input: BillingEmailInput
         site,
       );
   }
+}
+
+// ---------------------------------------------------------------------
+// Fiches demandées et relances des comptes gratuits
+// ---------------------------------------------------------------------
+
+/** La fiche qu'un membre avait demandée est en ligne. */
+export function sheetReadyEmail(input: { name?: string | null; title: string; url: string }, siteUrl: string): BuiltEmail {
+  const site = siteUrl.replace(/\/$/, '');
+  return build(
+    `Votre fiche ${input.title} est en ligne`,
+    {
+      preheader: 'La fiche technique que vous avez demandée est disponible.',
+      heading: 'Votre fiche est prête',
+      blocks: [
+        { type: 'p', text: hello(input.name) },
+        { type: 'p', text: `Vous nous aviez demandé la fiche technique du **${input.title}** : elle est en ligne, relue par l’équipe. Caractéristiques, entretien, pannes fréquentes et pièces.` },
+        { type: 'button', label: 'Ouvrir la fiche', url: input.url },
+        { type: 'note', text: 'Vous avez ce tracteur ? Ajoutez-le à votre parc depuis la fiche : vous recevrez les rappels d’entretien au bon moment.' },
+      ],
+      reason: 'Vous recevez cet e-mail parce que vous avez demandé cette fiche sur Tracteurs & Co.',
+    },
+    site,
+  );
+}
+
+export type NudgeKind = 'limite_machines' | 'inactif';
+
+/** Relances des comptes gratuits (une seule fois chacune, désinscription possible). */
+export function nudgeEmail(
+  kind: NudgeKind,
+  input: { name?: string | null; machines: number; limit: number; priceLabel: string; trialDays: number; preferencesUrl: string },
+  siteUrl: string,
+): BuiltEmail {
+  const site = siteUrl.replace(/\/$/, '');
+  if (kind === 'limite_machines') {
+    return build(
+      `Vos ${input.limit} machines sont suivies : et la suite ?`,
+      {
+        preheader: `Passez à la formule Complet pour suivre tout votre parc. ${input.trialDays} jours d’essai gratuit.`,
+        heading: 'Votre parc grandit',
+        blocks: [
+          { type: 'p', text: hello(input.name) },
+          { type: 'p', text: `Vous suivez maintenant **${input.limit} machines** sur Tracteurs & Co, le maximum de la formule Gratuit. Bravo, votre carnet d’entretien prend forme.` },
+          { type: 'p', text: `Avec la formule Complet (${input.priceLabel}), vous suivez **autant de machines que vous voulez**, avec l’aide au diagnostic des pannes et le rapport pour la revente.` },
+          { type: 'button', label: `Essayer ${input.trialDays} jours gratuitement`, url: `${site}/app/abonnement` },
+          { type: 'note', text: 'Rien n’est débité pendant l’essai, et vous pouvez résilier en un clic depuis votre compte.' },
+        ],
+        reason: 'Vous recevez cet e-mail parce que vous êtes membre de Tracteurs & Co et que les annonces sont activées sur votre compte.',
+        preferencesUrl: input.preferencesUrl,
+      },
+      site,
+    );
+  }
+  return build(
+    input.machines ? 'Vos machines vous attendent sur Tracteurs & Co' : 'Ajoutez votre premier tracteur en 1 minute',
+    {
+      preheader: input.machines ? 'Mettez à jour les compteurs pour recevoir les rappels d’entretien au bon moment.' : 'Le carnet d’entretien et les rappels se mettent en place tout seuls.',
+      heading: input.machines ? 'Un compteur à mettre à jour ?' : 'Votre parc est encore vide',
+      blocks: [
+        { type: 'p', text: hello(input.name) },
+        input.machines
+          ? { type: 'p', text: `Vous suivez **${input.machines} machine${input.machines > 1 ? 's' : ''}** sur Tracteurs & Co. Notez les heures moteur de temps en temps : c’est ce qui permet de vous prévenir avant chaque vidange, filtre ou graissage.` }
+          : { type: 'p', text: 'Vous avez créé votre compte, mais votre parc est encore vide. Choisissez votre tracteur dans nos fiches techniques : les intervalles d’entretien du constructeur sont repris automatiquement.' },
+        { type: 'button', label: input.machines ? 'Mettre à jour mes compteurs' : 'Ajouter ma première machine', url: `${site}/app/materiel` },
+        { type: 'note', text: 'Une panne ? L’aide au diagnostic vous indique les causes possibles et quoi vérifier, dans l’ordre.' },
+      ],
+      reason: 'Vous recevez cet e-mail parce que vous êtes membre de Tracteurs & Co et que les annonces sont activées sur votre compte.',
+      preferencesUrl: input.preferencesUrl,
+    },
+    site,
+  );
 }

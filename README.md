@@ -263,6 +263,17 @@ même valeur par valeur (droit *sui generis* des bases de données). Les sites d
 0,50 $ par million de tokens (entrée / sortie, sous 100 000 tokens par requête) ; Sonnet 5.5 2 $ / 10 $. Les prix
 utilisés pour l’estimation sont dans `src/lib/ai.ts` (`PRICES`).
 
+### Relecture par série et fiches demandées
+
+- **Admin → Fiches techniques → Relecture par série** : les modèles d’une même série côte à côte (caractéristiques, entretien, pannes). Les informations incertaines sont surlignées, les lignes dont les valeurs diffèrent sont marquées ◆. On publie (ou rejette) les fiches cochées en une fois ; la publication vaut validation de chaque information.
+- **Fiches demandées** : depuis la page publique Fiches techniques, un membre connecté demande un modèle absent (5 demandes en cours au plus). L’admin vérifie marque et modèle puis lance la préparation (file d’import). À la publication, chaque membre qui l’attendait reçoit un e-mail.
+
+## Croissance
+
+- **Référencement** : `sitemap.xml` et `robots.txt` générés, pages par marque (`/fiches/marque/fendt`), données structurées (TechArticle, fil d’Ariane), liens entre modèles d’une même série.
+- **Parrainage** : code personnel par membre (page Abonnement), lien `/p/CODE` (cookie 60 jours). Le filleul a 6,99 € de remise sur son premier paiement (coupon Stripe `parrainage-1-mois`, créé automatiquement), le parrain reçoit 6,99 € de crédit (solde client Stripe) au premier vrai paiement du filleul. Suivi dans Admin → Promos et parrainage.
+- **Relances des comptes gratuits** : un e-mail quand la limite de machines est atteinte, un autre après 14 jours sans visite (tournée quotidienne des rappels). Une seule fois chacun, uniquement si les annonces sont activées.
+
 ## Tests et vérifications
 
 ```bash

@@ -6,6 +6,7 @@ import { env } from '@/lib/env';
 import { createServiceClient } from '@/lib/supabase/admin';
 import { euros, frDate, notifyBilling, priceLabelOf } from '@/lib/email/billing';
 import { isFullyDiscounted, issueInvoiceForStripeInvoice } from '@/lib/invoices/issue';
+import { rewardReferrer } from '@/lib/referrals';
 import { invoiceAttachment, onChargeRefunded } from '@/lib/invoices/notify';
 
 /**
@@ -39,6 +40,8 @@ export async function POST(request: NextRequest) {
         await recordInvoice(event.data.object, 'paid');
         // Facture Tracteurs & Co (numérotée, figée) : en cas d'échec, Stripe réessaiera.
         await issueInvoiceForStripeInvoice(event.data.object);
+        // Premier vrai paiement d'un filleul : un mois de crédit pour son parrain.
+        if (event.data.object.amount_paid > 0) await rewardReferrer(await userIdForCustomer(customerId(event.data.object.customer)));
         break;
       case 'charge.refunded':
         await onChargeRefunded(event.data.object, event.id);

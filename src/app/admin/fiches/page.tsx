@@ -35,7 +35,10 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
           <h1 className="text-[28px] font-bold tracking-tight">Fiches techniques</h1>
           <p className="text-muted">Rédigées par Claude à partir de vos documents ou du web, validées par un humain avant publication.</p>
         </div>
-        <Link href="/admin/fiches/catalogue" className={btn.primary}>✦ Importer les tracteurs d’une marque</Link>
+        <div className="flex flex-wrap gap-2.5">
+          {counts.review ? <Link href="/admin/fiches/series" className={btn.primary}>Relire par série ({counts.review})</Link> : null}
+          <Link href="/admin/fiches/catalogue" className={counts.review ? btn.secondary : btn.primary}>✦ Importer les tracteurs d’une marque</Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:[grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">

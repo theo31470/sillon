@@ -1,13 +1,17 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { listPublishedSheets } from '@/lib/content';
-import { parseSheetContent } from '@/lib/sheets/schema';
-import { keyFigures, machineKind, MACHINE_KIND_LABELS } from '@/lib/sheets/insights';
+import { listPublishedBrands, listPublishedSheets } from '@/lib/content';
+import { slugify } from '@/lib/format';
 import { MachineScene, FurrowBand } from '@/components/sheets/machine-art';
-import { FIGURE_ICONS, Icon } from '@/components/sheets/icons';
-import { PhotoCreditLine } from '@/components/sheets/photo-credit';
-import { btn, inputClass } from '@/components/ui';
+import { Icon } from '@/components/sheets/icons';
+import { SheetCard } from '@/components/sheets/sheet-card';
+import { Badge, btn, Field, Input, inputClass } from '@/components/ui';
+import { ActionForm } from '@/components/action-form';
+import { SubmitButton } from '@/components/form-bits';
+import { getSession } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
+import { REQUEST_STATUSES, type SheetRequest } from '@/lib/sheet-requests';
+import { requestSheet } from './demande-actions';
 import { SHEET_CATEGORIES } from '@/lib/types';
 
 export const metadata: Metadata = {
@@ -19,7 +23,18 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
   const { categorie, q } = await props.searchParams;
   const category = typeof categorie === 'string' && categorie in SHEET_CATEGORIES ? categorie : undefined;
   const search = typeof q === 'string' ? q.slice(0, 80) : undefined;
-  const sheets = await listPublishedSheets({ category, search });
+  const [sheets, brands] = await Promise.all([listPublishedSheets({ category, search }), listPublishedBrands()]);
+  let loggedIn = false;
+  let myRequests: Pick<SheetRequest, 'id' | 'brand' | 'model' | 'status' | 'admin_note' | 'sheet_id'>[] = [];
+  try {
+    loggedIn = Boolean(await getSession());
+    if (loggedIn) {
+      const { data } = await (await createClient()).from('sheet_requests').select('id, brand, model, status, admin_note, sheet_id').order('created_at', { ascending: false }).limit(10);
+      myRequests = (data ?? []) as typeof myRequests;
+    }
+  } catch {
+    /* base non configurée */
+  }
 
   const pill = (active: boolean) =>
     `rounded-full px-4 py-2 font-medium transition-all duration-200 ${active ? 'bg-brand text-on-brand shadow-[0_6px_16px_-8px_color-mix(in_srgb,var(--color-brand)_80%,transparent)]' : 'border border-field bg-surface text-ink hover:-translate-y-0.5 hover:border-brand hover:text-brand-dark'}`;
@@ -56,6 +71,17 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
           ))}
         </nav>
 
+        {brands.length > 0 ? (
+          <nav aria-label="Fiches par marque" className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="mr-1 font-semibold text-muted">Par marque :</span>
+            {brands.map((b) => (
+              <Link key={b.brand} href={`/fiches/marque/${slugify(b.brand)}`} className="rounded-full border border-line bg-surface px-3 py-1.5 font-medium text-ink hover:border-brand hover:text-brand-dark">
+                {b.brand} <span className="text-muted">{b.count}</span>
+              </Link>
+            ))}
+          </nav>
+        ) : null}
+
         <div className="flex flex-wrap items-start gap-6">
           <section className="min-w-0 flex-[3_1_600px]">
             {search ? (
@@ -67,55 +93,14 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
             {sheets.length === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-field bg-surface p-10 text-center text-muted">
                 <Icon name="blade" size={32} className="text-wheat" />
-                Aucune fiche publiée pour le moment dans cette catégorie.
+                {search ? `Aucune fiche ne correspond à « ${search} ».` : 'Aucune fiche publiée pour le moment dans cette catégorie.'}
+                <a href="#demande" className="link-underline font-semibold text-brand-dark">Demander une fiche</a>
               </div>
             ) : (
               <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr))]">
-                {sheets.map((s, i) => {
-                  const kind = machineKind(s);
-                  const figures = keyFigures(parseSheetContent(s.content), 2);
-                  return (
-                    <Link
-                      key={s.id}
-                      href={`/fiches/${s.slug}`}
-                      transitionTypes={['nav-forward']}
-                      className="sheet-card reveal group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface text-ink"
-                      style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}
-                    >
-                      <div className="relative h-44 overflow-hidden bg-photo">
-                        {s.cover_url ? (
-                          <>
-                            <Image src={s.cover_url} alt="" fill sizes="(min-width: 768px) 320px, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                            <PhotoCreditLine credit={s.cover_credit} compact />
-                          </>
-                        ) : (
-                          <MachineScene kind={kind} uid={s.id} label="" className="size-full" />
-                        )}
-                        <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-semibold text-brand-dark backdrop-blur">
-                          {MACHINE_KIND_LABELS[kind]}
-                        </span>
-                      </div>
-                      <div className="flex flex-1 flex-col gap-1.5 p-4">
-                        {s.brand ? <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">{s.brand}</p> : null}
-                        <h2 className="text-lg font-semibold leading-snug">{s.title}</h2>
-                        {figures.length > 0 ? (
-                          <ul className="mt-1 flex flex-wrap gap-1.5">
-                            {figures.map((f) => (
-                              <li key={f.key} className="inline-flex items-center gap-1 rounded-full bg-wheat-soft px-2.5 py-1 text-[13px] font-semibold text-soil">
-                                <Icon name={FIGURE_ICONS[f.key] ?? 'gear'} size={14} /> {f.main}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="line-clamp-2 text-sm text-muted">{s.summary}</p>
-                        )}
-                        <p className="mt-auto flex items-center gap-1 pt-3 text-sm font-semibold text-brand">
-                          Ouvrir la fiche <span className="transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true">→</span>
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
+                {sheets.map((s, i) => (
+                  <SheetCard key={s.id} sheet={s} index={i} />
+                ))}
               </div>
             )}
           </section>
@@ -146,6 +131,59 @@ export default async function SheetsPage(props: PageProps<'/fiches'>) {
             </section>
           </aside>
         </div>
+        <section id="demande" className="scroll-mt-24 rounded-2xl border border-line bg-surface p-5 sm:p-7">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            <div>
+              <h2 className="mb-2 text-xl font-semibold">Il manque votre tracteur ?</h2>
+              <p className="text-[15px] text-muted">
+                Dites-nous la marque et le modèle : nous préparons sa fiche (caractéristiques, entretien, pannes, pièces) à partir de la documentation du constructeur et de la presse
+                spécialisée, la relisons, puis vous prévenons par e-mail dès qu’elle est en ligne.
+              </p>
+              {myRequests.length ? (
+                <div className="mt-4">
+                  <p className="mb-2 text-sm font-semibold">Vos demandes</p>
+                  <ul className="flex flex-col gap-1.5 text-sm">
+                    {myRequests.map((r) => (
+                      <li key={r.id} className="flex items-center justify-between gap-3 rounded-lg bg-ground px-3 py-2">
+                        <span className="min-w-0">
+                          <span className="block truncate">
+                            {r.brand} {r.model}
+                          </span>
+                          {r.status === 'refusee' && r.admin_note ? <span className="block text-xs text-muted">{r.admin_note}</span> : null}
+                        </span>
+                        <Badge tone={r.status === 'publiee' ? 'green' : r.status === 'refusee' ? 'gray' : r.status === 'lancee' ? 'blue' : 'amber'}>{REQUEST_STATUSES[r.status]}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+            {loggedIn ? (
+              <ActionForm action={requestSheet} className="flex flex-col gap-3.5">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Marque" htmlFor="req-brand">
+                    <Input id="req-brand" name="brand" required maxLength={60} placeholder="Ex. : Massey Ferguson" autoComplete="off" />
+                  </Field>
+                  <Field label="Modèle" htmlFor="req-model">
+                    <Input id="req-model" name="model" required maxLength={120} placeholder="Ex. : 5713 S" autoComplete="off" />
+                  </Field>
+                </div>
+                <Field label="Précisions (facultatif)" htmlFor="req-details" hint="Année, puissance, version : tout ce qui aide à trouver le bon modèle.">
+                  <Input id="req-details" name="details" maxLength={300} placeholder="Ex. : 2016, 130 ch, Dyna-6" />
+                </Field>
+                <SubmitButton pendingLabel="Envoi…">Demander cette fiche</SubmitButton>
+              </ActionForm>
+            ) : (
+              <div className="flex flex-col items-start justify-center gap-3 rounded-xl bg-ground p-5">
+                <p className="text-[15px]">Créez un compte gratuit pour demander une fiche : nous vous écrivons dès qu’elle est prête.</p>
+                <div className="flex flex-wrap gap-2.5">
+                  <Link href="/inscription" className={btn.primary}>Créer un compte gratuit</Link>
+                  <Link href="/connexion?suite=/fiches%23demande" className={btn.secondary}>Se connecter</Link>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

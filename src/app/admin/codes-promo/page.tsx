@@ -6,6 +6,10 @@ import { frenchDate } from '@/lib/invoices/types';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
 import { Badge, Card, Field, Input, Notice, Select } from '@/components/ui';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import { formatCents } from '@/lib/invoices/types';
+import { REFERRAL_REWARD_CENTS } from '@/lib/referrals';
 import { createPromoCode, setPromoCodeActive } from '../factures/actions';
 
 export const metadata: Metadata = { title: 'Codes promo' };
@@ -34,12 +38,22 @@ export default async function PromoCodesPage() {
     console.error('[codes promo]', err);
     failed = true;
   }
+  const supabase = await createClient();
+  const { data: refRows } = await supabase
+    .from('referrals')
+    .select('id, status, created_at, rewarded_at, referrer:profiles!referrals_referrer_id_fkey(id, full_name, farm_name, email), referee:profiles!referrals_referee_id_fkey(id, full_name, farm_name, email)')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  type Person = { id: string; full_name: string; farm_name: string; email: string } | null;
+  const referrals = (refRows ?? []) as unknown as { id: string; status: string; created_at: string; rewarded_at: string | null; referrer: Person; referee: Person }[];
+  const who = (p: Person) => (p ? p.farm_name || p.full_name || p.email : 'Compte supprimé');
+  const rewarded = referrals.filter((r) => r.status === 'recompense').length;
 
   return (
     <>
       <div>
         <h1 className="text-[28px] font-bold tracking-tight">Codes promo</h1>
-        <p className="text-muted">Les membres les saisissent sur la page Abonnement, au moment de souscrire. La remise apparaît sur leurs factures.</p>
+        <p className="text-muted">Les membres les saisissent sur la page Abonnement, au moment de souscrire. La remise apparaît sur leurs factures. Le parrainage est en bas de page.</p>
       </div>
       {failed ? <Notice tone="red">Stripe ne répond pas : la liste des codes est momentanément indisponible.</Notice> : null}
 
@@ -131,6 +145,38 @@ export default async function PromoCodesPage() {
           </ActionForm>
         </Card>
       </div>
+
+      <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
+          <div>
+            <h2 className="text-lg font-semibold">Parrainages</h2>
+            <p className="text-sm text-muted">
+              Chaque membre a son code personnel (page Abonnement). Le filleul a {formatCents(REFERRAL_REWARD_CENTS)} de remise sur son premier paiement ; le parrain reçoit{' '}
+              {formatCents(REFERRAL_REWARD_CENTS)} de crédit à son premier vrai paiement.
+            </p>
+          </div>
+          <p className="text-sm">
+            <strong>{referrals.length}</strong> filleul{referrals.length > 1 ? 's' : ''} · <strong>{rewarded}</strong> mois offert{rewarded > 1 ? 's' : ''} aux parrains
+          </p>
+        </div>
+        {referrals.length === 0 ? (
+          <p className="p-5 text-sm text-muted">Aucun parrainage pour le moment.</p>
+        ) : (
+          <ul className="divide-y divide-line-soft">
+            {referrals.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm">
+                <span className="min-w-0 flex-[1_1_260px]">
+                  {r.referrer ? <Link href={`/admin/membres/${r.referrer.id}`} className="font-semibold text-ink hover:text-brand">{who(r.referrer)}</Link> : who(r.referrer)}
+                  <span className="text-muted"> a invité </span>
+                  {r.referee ? <Link href={`/admin/membres/${r.referee.id}`} className="font-semibold text-ink hover:text-brand">{who(r.referee)}</Link> : who(r.referee)}
+                </span>
+                <span className="text-muted">{frenchDate(r.created_at)}</span>
+                {r.status === 'recompense' ? <Badge tone="green">Mois crédité</Badge> : r.status === 'annule' ? <Badge tone="gray">Annulé</Badge> : <Badge tone="amber">En attente du 1er paiement</Badge>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </>
   );
 }
