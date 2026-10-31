@@ -5,7 +5,7 @@ import { upsertSubscription } from '@/lib/stripe-sync';
 import { env } from '@/lib/env';
 import { createServiceClient } from '@/lib/supabase/admin';
 import { euros, frDate, notifyBilling, priceLabelOf } from '@/lib/email/billing';
-import { issueInvoiceForStripeInvoice } from '@/lib/invoices/issue';
+import { isFullyDiscounted, issueInvoiceForStripeInvoice } from '@/lib/invoices/issue';
 import { invoiceAttachment, onChargeRefunded } from '@/lib/invoices/notify';
 
 /**
@@ -137,8 +137,10 @@ async function sendBillingEmails(event: Stripe.Event) {
     }
     case 'invoice.paid': {
       const invoice = event.data.object;
-      // La facture à 0 € du début d'essai n'a pas besoin d'e-mail (l'activation en a déjà un).
-      if (invoice.amount_paid > 0) {
+      // La facture à 0 € du début d'essai n'a pas besoin d'e-mail (l'activation en a déjà un) ;
+      // une échéance offerte par un code à 100 % donne une vraie facture, envoyée comme les autres.
+      const offered = isFullyDiscounted(invoice);
+      if (invoice.amount_paid > 0 || offered) {
         const ours = await issueInvoiceForStripeInvoice(invoice);
         const file = ours ? await invoiceAttachment(ours).catch(() => null) : null;
         await notifyBilling(
@@ -148,6 +150,7 @@ async function sendBillingEmails(event: Stripe.Event) {
             amount: euros(invoice.amount_paid, invoice.currency),
             invoiceUrl: file?.url ?? null,
             invoiceNumber: ours?.number,
+            offered,
             date: frDate(invoice.lines.data[0]?.period?.end),
           },
           event.id,

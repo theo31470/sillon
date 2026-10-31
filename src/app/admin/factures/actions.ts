@@ -148,7 +148,7 @@ export async function resendInvoice(_prev: FormState, formData: FormData): Promi
     await notifyBilling(
       invoice.kind === 'avoir' ? 'remboursement' : 'paiement_recu',
       { userId: invoice.user_id },
-      { amount: euros(invoice.total_cents, invoice.currency), invoiceNumber: invoice.number, invoiceUrl: file.url },
+      { amount: euros(invoice.total_cents, invoice.currency), invoiceNumber: invoice.number, invoiceUrl: file.url, offered: invoice.kind === 'facture' && invoice.total_cents === 0 },
       `renvoi-${invoice.id}-${Date.now()}`,
       file.attachments,
     );

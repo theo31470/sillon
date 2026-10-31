@@ -410,6 +410,8 @@ export type BillingEmailInput = {
   /** Numéro de la facture ou de l'avoir Tracteurs & Co (PDF joint à l'e-mail). */
   invoiceNumber?: string;
   trial?: boolean;
+  /** Échéance offerte par un code à 100 % : facture à 0 €, rien n'est débité. */
+  offered?: boolean;
 };
 
 const BILLING_REASON = 'Vous recevez cet e-mail parce qu’il concerne votre abonnement Tracteurs & Co.';
@@ -458,6 +460,23 @@ export function billingEmail(template: BillingTemplate, input: BillingEmailInput
         site,
       );
     case 'paiement_recu':
+      if (input.offered)
+        return build(
+          input.invoiceNumber ? `Votre facture n° ${input.invoiceNumber}` : 'Votre facture Tracteurs & Co',
+          {
+            preheader: 'Votre formule Complet vous est offerte : rien n’a été débité.',
+            heading: 'Votre facture',
+            blocks: [
+              { type: 'p', text: hello(input.name) },
+              { type: 'p', text: `Votre formule Complet vous est offerte grâce à votre code promotionnel : le montant de cette échéance est de **0,00 €**, rien n’a été débité.${input.date ? ` Prochaine échéance : ${input.date}.` : ''}` },
+              ...(input.invoiceNumber ? [{ type: 'p' as const, text: `Votre facture **n° ${input.invoiceNumber}** est jointe à cet e-mail, au format PDF.` }] : []),
+              ...(input.invoiceUrl ? [{ type: 'button' as const, label: 'Télécharger la facture', url: input.invoiceUrl }] : []),
+              { type: 'note', text: 'Toutes vos factures restent disponibles à tout moment dans la page « Abonnement » de votre compte.' },
+            ],
+            reason: BILLING_REASON,
+          },
+          site,
+        );
       return build(
         `Paiement reçu : ${input.amount}`,
         {
