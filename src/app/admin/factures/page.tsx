@@ -120,7 +120,7 @@ export default async function InvoicesPage(props: PageProps<'/admin/factures'>) 
           <h2 className="mb-1 text-lg font-semibold">Mois par mois</h2>
           <p className="mb-4 text-sm text-muted">Chiffre d’affaires net (factures moins avoirs), à déclarer à l’Urssaf selon votre rythme de déclaration.</p>
           <div className="scroll-x">
-            <table className="w-full min-w-[520px] border-collapse text-sm">
+            <table className="w-full min-w-[600px] border-collapse whitespace-nowrap text-sm">
               <thead>
                 <tr className="text-left text-[13px] text-muted">
                   {['Mois', 'Factures', 'Encaissé', 'Avoirs', 'Net', ''].map((h) => <th key={h} className="border-b border-line px-2 py-2 font-medium">{h}</th>)}
@@ -162,13 +162,13 @@ export default async function InvoicesPage(props: PageProps<'/admin/factures'>) 
           <form action="/admin/factures" className="flex min-w-0 flex-1 flex-wrap gap-2">
             {year !== currentYear ? <input type="hidden" name="annee" value={year} /> : null}
             {month ? <input type="hidden" name="mois" value={month} /> : null}
-            <input name="q" type="search" defaultValue={q} placeholder="Numéro, client, e-mail…" className={`${inputClass} min-w-0 flex-1 sm:max-w-xs`} />
-            <select name="type" defaultValue={type} className={`${inputClass} w-auto`} aria-label="Type de document">
+            <input name="q" type="search" defaultValue={q} placeholder="Numéro, client, e-mail…" className={`${inputClass.replace('w-full ', '')} w-full min-w-0 sm:w-72 sm:flex-none`} />
+            <select name="type" defaultValue={type} className={`${inputClass.replace('w-full ', '')} min-w-0 flex-1 sm:w-auto sm:flex-none`} aria-label="Type de document">
               <option value="tous">Factures et avoirs</option>
               <option value="facture">Factures</option>
               <option value="avoir">Avoirs</option>
             </select>
-            <button type="submit" className="rounded-[10px] border border-field px-4 font-semibold hover:border-brand">Filtrer</button>
+            <button type="submit" className="min-h-12 rounded-[10px] border border-field px-4 font-semibold hover:border-brand">Filtrer</button>
           </form>
           <p className="text-sm text-muted">{rows.length} document{rows.length > 1 ? 's' : ''}</p>
         </div>
