@@ -212,7 +212,11 @@ export async function renderInvoicePdf(inv: InvoiceRow, opts: { creditedNumber?:
   const when = frenchDate(inv.paid_at ?? inv.issued_at);
   label(isCredit ? 'Remboursement' : 'Règlement', M, ly);
   ly -= 15;
-  const settled = isCredit ? `Remboursé le ${when} ${pm || 'sur le moyen de paiement d’origine'}.` : `Payée le ${when}${pm ? ` par ${pm}` : ''}. Aucun montant restant dû.`;
+  const settled = isCredit
+    ? `Remboursé le ${when} ${pm || 'sur le moyen de paiement d’origine'}.`
+    : inv.total_cents === 0
+      ? `Montant entièrement couvert par la remise : rien à régler. Aucun montant restant dû.`
+      : `Payée le ${when}${pm ? ` par ${pm}` : ''}. Aucun montant restant dû.`;
   for (const s of wrap(clean(settled), f.medium, 9.5, lw)) {
     text(s, M, ly, { font: f.medium, size: 9.5 });
     ly -= 12.5;

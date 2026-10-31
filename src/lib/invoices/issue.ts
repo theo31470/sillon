@@ -104,9 +104,18 @@ export function invoiceLines(inv: Stripe.Invoice): InvoiceLine[] {
   return lines;
 }
 
-/** Facture pour un paiement Stripe encaissé (événement invoice.paid). Rien pour un essai à 0 €. */
+/** Facture entièrement couverte par une remise (code à 100 %) : elle reste due au client, à 0 €. */
+export function isFullyDiscounted(inv: Stripe.Invoice) {
+  const discount = (inv.total_discount_amounts ?? []).reduce((s, d) => s + d.amount, 0);
+  return inv.amount_paid === 0 && inv.subtotal > 0 && discount >= inv.subtotal;
+}
+
+/**
+ * Facture pour un paiement Stripe encaissé (événement invoice.paid), ou pour
+ * une échéance offerte par un code à 100 %. Rien pour le début d'un essai à 0 €.
+ */
 export async function issueInvoiceForStripeInvoice(inv: Stripe.Invoice): Promise<InvoiceRow | null> {
-  if (!inv.id || inv.amount_paid <= 0) return null;
+  if (!inv.id || (inv.amount_paid <= 0 && !isFullyDiscounted(inv))) return null;
   const db = createServiceClient();
   const { data: existing } = await db.from('invoices').select('*').eq('stripe_invoice_id', inv.id).maybeSingle();
   if (existing) return existing as InvoiceRow;
@@ -116,7 +125,7 @@ export async function issueInvoiceForStripeInvoice(inv: Stripe.Invoice): Promise
     ? await db.from('profiles').select('id').eq('stripe_customer_id', stripeCustomerId).maybeSingle()
     : { data: null };
   const userId = (owner?.id as string | undefined) ?? null;
-  const charge = await chargeForInvoice(inv.id);
+  const charge = inv.amount_paid > 0 ? await chargeForInvoice(inv.id) : null;
   const paidAt = inv.status_transitions?.paid_at ? new Date(inv.status_transitions.paid_at * 1000).toISOString() : new Date().toISOString();
 
   const { data, error } = await db.rpc('issue_invoice', {
@@ -129,7 +138,7 @@ export async function issueInvoiceForStripeInvoice(inv: Stripe.Invoice): Promise
       lines: invoiceLines(inv),
       total_cents: inv.amount_paid,
       currency: inv.currency,
-      payment_method: paymentMethodLabel(charge),
+      payment_method: inv.amount_paid > 0 ? paymentMethodLabel(charge) : '',
     },
   });
   if (error) throw new Error(`Émission de la facture impossible : ${error.message}`);

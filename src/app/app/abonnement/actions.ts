@@ -5,7 +5,7 @@ import type Stripe from 'stripe';
 import { requireUser } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
 import { createServiceClient } from '@/lib/supabase/admin';
-import { TRIAL_DAYS, type BillingPeriod } from '@/lib/plans';
+import { COMPLET_PRICES, TRIAL_DAYS, type BillingPeriod } from '@/lib/plans';
 import { SITE } from '@/lib/site';
 import { rateLimit } from '@/lib/rate-limit';
 import { billingFromForm, saveBillingDetails } from '@/lib/billing-details';
@@ -51,11 +51,63 @@ async function ensureCustomer(profile: Profile, userId: string) {
   return (data?.stripe_customer_id as string) ?? customer.id;
 }
 
-async function promotionCodeId(code: string) {
+type PromoLookup = { id: null } | { id: string; code: string; coupon: Stripe.Coupon } | { error: string };
+
+/** Code promotionnel actif et sa remise (le coupon Stripe). */
+async function lookupPromo(code: string): Promise<PromoLookup> {
   const clean = code.trim();
-  if (!clean) return { id: null as string | null };
-  const list = await stripe().promotionCodes.list({ code: clean, active: true, limit: 1 });
-  return list.data[0] ? { id: list.data[0].id } : { error: 'Code promotionnel inconnu ou expiré.' };
+  if (!clean) return { id: null };
+  const list = await stripe().promotionCodes.list({ code: clean, active: true, limit: 1, expand: ['data.promotion.coupon'] });
+  const promo = list.data[0];
+  const coupon = promo?.promotion?.coupon;
+  if (!promo || !coupon) return { error: 'Code promotionnel inconnu ou expiré.' };
+  const c = typeof coupon === 'string' ? await stripe().coupons.retrieve(coupon) : coupon;
+  if (!c.valid) return { error: 'Ce code promotionnel n’est plus valable.' };
+  if (promo.expires_at && promo.expires_at * 1000 < Date.now()) return { error: 'Ce code promotionnel a expiré.' };
+  if (promo.max_redemptions && promo.times_redeemed >= promo.max_redemptions) return { error: 'Ce code promotionnel a déjà été utilisé.' };
+  return { id: promo.id, code: promo.code, coupon: c };
+}
+
+const euroLabel = (cents: number) => `${(cents / 100).toFixed(2).replace('.', ',')} €`;
+
+export type PromoPreview = {
+  code: string;
+  /** « −20 % sur le 1er paiement », « −100 % sur tous les paiements »… */
+  summary: string;
+  /** Montant du premier paiement (ou du premier après l'essai), en centimes. */
+  firstCents: number;
+  firstLabel: string;
+  /** Gratuit pour toujours : aucune carte n'est demandée. */
+  free: boolean;
+};
+
+function describePromo(code: string, coupon: Stripe.Coupon, period: BillingPeriod): PromoPreview {
+  const price = Math.round(COMPLET_PRICES[period].amount * 100);
+  const off = coupon.percent_off ? Math.round((price * coupon.percent_off) / 100) : Math.min(price, coupon.amount_off ?? 0);
+  const first = Math.max(0, price - off);
+  const what = coupon.percent_off ? `−${String(coupon.percent_off).replace('.', ',')} %` : `−${euroLabel(coupon.amount_off ?? 0)}`;
+  const when =
+    coupon.duration === 'forever'
+      ? 'sur tous les paiements'
+      : coupon.duration === 'repeating'
+        ? `pendant ${coupon.duration_in_months} mois`
+        : 'sur le 1er paiement';
+  return { code, summary: `${what} ${when}`, firstCents: first, firstLabel: euroLabel(first), free: first === 0 && coupon.duration === 'forever' };
+}
+
+/** Vérifie un code saisi sur la page de paiement et montre la remise avant de payer. */
+export async function checkPromo(code: string, periode: string): Promise<{ ok: PromoPreview } | { error: string }> {
+  const { session } = await requireUser('/app/abonnement');
+  if (!rateLimit(`promo:${session.userId}`, 10, 60_000).ok) return { error: 'Trop d’essais : patientez une minute.' };
+  if (code.trim().length > 40) return { error: 'Code promotionnel inconnu ou expiré.' };
+  try {
+    const found = await lookupPromo(code);
+    if ('error' in found) return { error: found.error };
+    if (!found.id) return { error: 'Saisissez un code.' };
+    return { ok: describePromo(found.code, found.coupon, periodOf(periode)) };
+  } catch (err) {
+    return { error: stripeMessage(err) };
+  }
 }
 
 async function hadSubscriptionBefore(userId: string) {
@@ -91,14 +143,36 @@ export async function startSubscription(formData: FormData): Promise<StartResult
     await saveBillingDetails(session.userId, billing.data, customer);
     if (await currentStripeSubscription(customer)) return { error: 'Un abonnement est déjà en cours sur ce compte : rechargez la page.' };
 
-    const promo = await promotionCodeId(String(formData.get('promo') ?? ''));
-    if ('error' in promo) return { error: promo.error!, field: 'promo' };
+    const promo = await lookupPromo(String(formData.get('promo') ?? ''));
+    if ('error' in promo) return { error: promo.error, field: 'promo' };
 
     // Tentatives de paiement abandonnées : on les annule avant d'en créer une nouvelle.
     const stale = await stripe().subscriptions.list({ customer, status: 'incomplete', limit: 10 });
     await Promise.all(stale.data.map((s) => stripe().subscriptions.cancel(s.id).catch(() => null)));
 
     const metadata = { user_id: session.userId, plan: 'complet', periode: period, promo: promo.id ?? '' };
+
+    // Code qui rend l'abonnement gratuit pour toujours : activation immédiate, sans carte ni essai.
+    // Stripe émet une facture à 0 € (remise de 100 %), que nous reprenons à notre nom.
+    if (promo.id && describePromo(promo.code, promo.coupon, period).free) {
+      const sub = await stripe().subscriptions.create(
+        {
+          customer,
+          items: [{ price: priceOfPeriod(period) }],
+          discounts: [{ promotion_code: promo.id }],
+          payment_behavior: 'default_incomplete',
+          metadata,
+        },
+        { idempotencyKey: `offert-${session.userId}-${promo.id}` },
+      );
+      if (sub.status !== 'active') {
+        await stripe().subscriptions.cancel(sub.id).catch(() => null);
+        return { error: STRIPE_ERROR };
+      }
+      await upsertSubscription(sub, session.userId);
+      revalidatePath('/app', 'layout');
+      return { kind: 'done' };
+    }
     if (!(await hadSubscriptionBefore(session.userId))) {
       const intent = await stripe().setupIntents.create({ customer, usage: 'off_session', allowed_payment_method_types: ['card'], metadata });
       return { kind: 'setup', clientSecret: intent.client_secret! };

@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { COMPLET_PRICES, TRIAL_DAYS, type BillingPeriod } from '@/lib/plans';
-import { Field, Input, btn } from '@/components/ui';
-import { activateTrial, refreshSubscription, startSubscription } from './actions';
+import { Input, btn } from '@/components/ui';
+import { activateTrial, checkPromo, refreshSubscription, startSubscription, type PromoPreview } from './actions';
 import { BillingFields, type BillingDefaults } from './billing-fields';
 import { getStripe, publishableKey, stripeAppearance } from './stripe-elements';
 
@@ -59,7 +59,13 @@ function Form({
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [slow, setSlow] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [promo, setPromo] = useState<PromoPreview | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
   const price = COMPLET_PRICES[period];
+  const free = Boolean(promo?.free);
 
   useEffect(() => {
     if (ready) return;
@@ -67,9 +73,33 @@ function Form({
     return () => clearTimeout(t);
   }, [ready]);
 
+  async function applyPromo(code = promoInput, p = period): Promise<PromoPreview | null> {
+    const clean = code.trim().toUpperCase();
+    setPromoError(null);
+    if (!clean) {
+      setPromo(null);
+      if (!trial) elements?.update({ amount: AMOUNTS[p] });
+      return null;
+    }
+    setChecking(true);
+    const res = await checkPromo(clean, p).catch(() => ({ error: 'Vérification impossible. Réessayez.' }));
+    setChecking(false);
+    if ('error' in res) {
+      setPromo(null);
+      setPromoError(res.error);
+      if (!trial) elements?.update({ amount: AMOUNTS[p] });
+      return null;
+    }
+    setPromo(res.ok);
+    // Montant affiché par le formulaire de carte (paiement immédiat, hors essai).
+    if (!trial && res.ok.firstCents > 0) elements?.update({ amount: res.ok.firstCents });
+    return res.ok;
+  }
+
   function choose(p: BillingPeriod) {
     setPeriod(p);
-    if (!trial) elements?.update({ amount: AMOUNTS[p] });
+    if (promo) void applyPromo(promo.code, p);
+    else if (!trial) elements?.update({ amount: AMOUNTS[p] });
   }
 
   async function finish() {
@@ -80,23 +110,37 @@ function Form({
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!stripe || !elements || !formRef.current || busy) return;
+    if (!formRef.current || busy || (!free && (!stripe || !elements))) return;
+    // Code saisi mais pas encore appliqué : on l'applique d'abord pour montrer la remise.
+    if (promoInput.trim().toUpperCase() !== (promo?.code ?? '').toUpperCase()) {
+      await applyPromo();
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      // 1. Vérifie la carte saisie (format, date) avant tout appel au serveur.
-      const check = await elements.submit();
-      if (check.error) throw new Error(check.error.message);
+      // 1. Vérifie la carte saisie (format, date) avant tout appel au serveur. Pas de carte si le code rend l'abonnement gratuit.
+      if (!free) {
+        const check = await elements!.submit();
+        if (check.error) throw new Error(check.error.message);
+      }
 
       // 2. Le serveur enregistre la facturation et prépare l'opération.
       const fd = new FormData(formRef.current);
       fd.set('periode', period);
+      fd.set('promo', promo?.code ?? '');
       const res = await startSubscription(fd);
       if ('error' in res) {
-        if (res.field) formRef.current.querySelector<HTMLElement>(`[name="${res.field === 'promo' ? 'promo' : `billing_${res.field === 'vat_number' ? 'vat' : res.field}`}"]`)?.focus();
+        if (res.field === 'promo') {
+          setPromoOpen(true);
+          setPromo(null);
+          setPromoError(res.error);
+        }
+        if (res.field) formRef.current.querySelector<HTMLElement>(`[name="${res.field === 'promo' ? 'promo_saisi' : `billing_${res.field === 'vat_number' ? 'vat' : res.field}`}"]`)?.focus();
         throw new Error(res.error);
       }
       if (res.kind === 'done') return await finish();
+      if (!stripe || !elements) throw new Error('Le formulaire de carte n’est pas chargé : rechargez la page.');
 
       const returnUrl = `${window.location.origin}/app/abonnement?retour=${res.kind === 'setup' ? 'essai' : 'paiement'}`;
       if (res.kind === 'setup') {
@@ -152,8 +196,56 @@ function Form({
         <BillingFields defaults={billing} idPrefix="co" />
       </fieldset>
 
+      {/* Code promotionnel */}
+      <details className="text-sm" open={promoOpen} onToggle={(e) => setPromoOpen(e.currentTarget.open)}>
+        <summary className="cursor-pointer font-semibold text-brand">J’ai un code promotionnel</summary>
+        <div className="mt-3 flex max-w-md flex-col gap-2">
+          <label htmlFor="co-promo" className="font-semibold">
+            Code promotionnel
+          </label>
+          <div className="flex gap-2">
+            <Input
+              id="co-promo"
+              name="promo_saisi"
+              maxLength={40}
+              autoComplete="off"
+              className="min-w-0 flex-1 uppercase"
+              value={promoInput}
+              onChange={(e) => {
+                setPromoInput(e.target.value);
+                setPromoError(null);
+                if (promo && e.target.value.trim().toUpperCase() !== promo.code.toUpperCase()) {
+                  setPromo(null);
+                  if (!trial) elements?.update({ amount: AMOUNTS[period] });
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void applyPromo();
+                }
+              }}
+              aria-invalid={promoError ? true : undefined}
+              aria-describedby="co-promo-msg"
+            />
+            <button type="button" onClick={() => void applyPromo()} disabled={checking || !promoInput.trim()} className={`${btn.secondary} shrink-0`}>
+              {checking ? <span className="spinner" aria-hidden="true" /> : null}
+              Appliquer
+            </button>
+          </div>
+          <p id="co-promo-msg" aria-live="polite" className={promoError ? 'text-danger' : promo ? 'font-semibold text-success' : 'sr-only'}>
+            {promoError ?? (promo ? `Code ${promo.code} appliqué : ${promo.summary}.` : '')}
+          </p>
+        </div>
+      </details>
+
       {/* Paiement */}
-      <fieldset className="flex flex-col gap-3">
+      {free ? (
+        <p className="rounded-xl bg-success-soft px-4 py-3 text-sm text-success">
+          Avec ce code, la formule Complet vous est offerte sans limite de durée : aucune carte bancaire n’est demandée.
+        </p>
+      ) : null}
+      <fieldset className={`flex flex-col gap-3 ${free ? 'hidden' : ''}`}>
         <legend className="mb-1 text-lg font-semibold">3. Carte bancaire</legend>
         {trial ? <p className="text-sm text-muted">Rien n’est débité aujourd’hui : la carte servira à la fin des {TRIAL_DAYS} jours d’essai, sauf si vous résiliez avant.</p> : null}
         <div className="min-h-[120px] rounded-xl border border-line bg-surface p-4">
@@ -166,14 +258,6 @@ function Form({
           ) : null}
           <PaymentElement onReady={() => setReady(true)} options={{ layout: 'tabs', terms: { card: 'never' }, wallets: { applePay: 'auto', googlePay: 'auto' } }} />
         </div>
-        <details className="text-sm">
-          <summary className="cursor-pointer font-semibold text-brand">J’ai un code promotionnel</summary>
-          <div className="mt-2 max-w-xs">
-            <Field label="Code promotionnel" htmlFor="co-promo">
-              <Input id="co-promo" name="promo" maxLength={40} autoComplete="off" className="uppercase" />
-            </Field>
-          </div>
-        </details>
       </fieldset>
 
       {error ? (
@@ -183,24 +267,37 @@ function Form({
       ) : null}
 
       <div className="flex flex-col gap-3 rounded-xl bg-ground p-4">
-        <p className="flex items-baseline justify-between gap-3">
-          <span className="font-semibold">{trial ? 'À payer aujourd’hui' : 'Total'}</span>
-          <span className="text-xl font-bold tabular-nums">{trial ? '0,00 €' : price.label}</span>
-        </p>
-        {trial ? (
-          <p className="text-sm text-muted">
-            Puis {price.label} {price.period} à la fin de l’essai. Résiliable en un clic depuis cette page.
+        {promo && !free ? (
+          <p className="flex items-baseline justify-between gap-3 text-sm">
+            <span>Remise {promo.code}</span>
+            <span className="tabular-nums text-success">{promo.summary}</span>
           </p>
         ) : null}
-        <button type="submit" disabled={!stripe || !ready || busy} className={`${btn.primary} w-full`}>
+        <p className="flex items-baseline justify-between gap-3">
+          <span className="font-semibold">{trial || free ? 'À payer aujourd’hui' : 'Total'}</span>
+          <span className="text-xl font-bold tabular-nums">
+            {trial || free ? '0,00 €' : promo ? promo.firstLabel : price.label}
+            {!trial && !free && promo && promo.firstLabel !== price.label ? <s className="ml-2 text-sm font-normal text-muted">{price.label}</s> : null}
+          </span>
+        </p>
+        {free ? (
+          <p className="text-sm text-muted">Une facture à 0,00 € est émise à chaque échéance. Vous pouvez résilier quand vous voulez depuis cette page.</p>
+        ) : trial ? (
+          <p className="text-sm text-muted">
+            Puis {promo ? `${promo.firstLabel} ${price.period} (${promo.summary}, au lieu de ${price.label})` : `${price.label} ${price.period}`} à la fin de l’essai. Résiliable en un clic depuis cette page.
+          </p>
+        ) : null}
+        <button type="submit" disabled={(!free && (!stripe || !ready)) || busy || checking} className={`${btn.primary} w-full`}>
           {busy ? (
             <>
               <span className="spinner" aria-hidden="true" /> Validation…
             </>
+          ) : free ? (
+            'Activer la formule Complet'
           ) : trial ? (
             `Démarrer mes ${TRIAL_DAYS} jours d’essai gratuit`
           ) : (
-            `Payer ${price.label} et activer`
+            `Payer ${promo ? promo.firstLabel : price.label} et activer`
           )}
         </button>
         <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted">
