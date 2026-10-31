@@ -8,6 +8,8 @@ const main = [
   { href: '/admin/membres', label: 'Membres' },
   { href: '/admin/messages', label: 'Messages' },
   { href: '/admin/paiements', label: 'Abonnements & paiements' },
+  { href: '/admin/factures', label: '↳ Factures' },
+  { href: '/admin/codes-promo', label: '↳ Codes promo' },
   { href: '/admin/emails', label: 'E-mails' },
   { href: '/admin/blog', label: 'Blog' },
   { href: '/admin/fiches', label: 'Fiches techniques' },

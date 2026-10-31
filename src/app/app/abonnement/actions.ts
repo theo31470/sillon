@@ -10,7 +10,8 @@ import { SITE } from '@/lib/site';
 import { rateLimit } from '@/lib/rate-limit';
 import { billingFromForm, saveBillingDetails } from '@/lib/billing-details';
 import { upsertSubscription } from '@/lib/stripe-sync';
-import { currentStripeSubscription, periodOfPrice, priceOfPeriod } from '@/lib/subscription-view';
+import { currentStripeSubscription, priceOfPeriod } from '@/lib/subscription-view';
+import { applyPeriodChange } from '@/lib/subscription-ops';
 import type { FormState } from '@/components/form-bits';
 
 /**
@@ -193,53 +194,15 @@ export async function changePeriod(_prev: FormState, formData: FormData): Promis
   if (limited(own.session.userId)) return { error: 'Trop de tentatives : patientez une minute.' };
   const target = periodOf(formData.get('periode'));
   const { sub } = own;
-  const item = sub.items.data[0];
-  if (!item) return { error: STRIPE_ERROR };
-  if (target === 'annuel' && priceOfPeriod('annuel') === priceOfPeriod('mensuel')) return { error: 'La formule annuelle n’est pas encore proposée.' };
-  if (sub.cancel_at_period_end || sub.cancel_at) return { error: 'Annulez d’abord la résiliation pour changer de formule.' };
   try {
-    const price = priceOfPeriod(target);
-    if (sub.status === 'trialing') {
-      if (periodOfPrice(item.price.id) === target) return { ok: true, message: 'C’est déjà votre formule.' };
-      const updated = await stripe().subscriptions.update(sub.id, {
-        items: [{ id: item.id, price }],
-        proration_behavior: 'none',
-        metadata: { ...sub.metadata, periode: target },
-      });
-      await upsertSubscription(updated, own.session.userId);
-      return done(`C’est noté : à la fin de l’essai, vous passerez en formule ${target === 'annuel' ? 'annuelle' : 'mensuelle'}.`);
-    }
-
-    // Changement programmé à l'échéance, avec un calendrier d'abonnement Stripe.
-    const scheduleId = typeof sub.schedule === 'string' ? sub.schedule : sub.schedule?.id;
-    if (periodOfPrice(item.price.id) === target) {
-      // Retour à la formule actuelle : on annule le changement prévu.
-      if (scheduleId) await stripe().subscriptionSchedules.release(scheduleId);
-      return done('Changement de formule annulé.');
-    }
-    const schedule = scheduleId
-      ? await stripe().subscriptionSchedules.retrieve(scheduleId)
-      : await stripe().subscriptionSchedules.create({ from_subscription: sub.id });
-    const current = schedule.phases[schedule.phases.length - 1] ?? schedule.phases[0];
-    await stripe().subscriptionSchedules.update(schedule.id, {
-      end_behavior: 'release',
-      phases: [
-        {
-          items: [{ price: item.price.id, quantity: item.quantity ?? 1 }],
-          start_date: current.start_date,
-          end_date: item.current_period_end,
-          proration_behavior: 'none',
-        },
-        {
-          items: [{ price, quantity: 1 }],
-          duration: { interval: target === 'annuel' ? 'year' : 'month', interval_count: 1 },
-          proration_behavior: 'none',
-          metadata: { ...sub.metadata, periode: target },
-        },
-      ],
-    });
-    return done(`C’est noté : vous passerez en formule ${target === 'annuel' ? 'annuelle' : 'mensuelle'} à la prochaine échéance.`);
+    const { result } = await applyPeriodChange(sub, target, own.session.userId);
+    const label = target === 'annuel' ? 'annuelle' : 'mensuelle';
+    if (result === 'deja') return { ok: true, message: 'C’est déjà votre formule.' };
+    if (result === 'annule') return done('Changement de formule annulé.');
+    if (result === 'essai') return done(`C’est noté : à la fin de l’essai, vous passerez en formule ${label}.`);
+    return done(`C’est noté : vous passerez en formule ${label} à la prochaine échéance.`);
   } catch (err) {
+    if (err instanceof Error && !('type' in err)) return { error: err.message };
     return { error: stripeMessage(err) };
   }
 }

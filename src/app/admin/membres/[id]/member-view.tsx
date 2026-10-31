@@ -6,12 +6,18 @@ import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
 import { Badge, Field, Input, Notice, Select, Textarea, btn } from '@/components/ui';
 import { Facts, FormActions, Panel, SettingRow, StatTile, Tabs } from '../layout-bits';
+import { COMPLET_PRICES } from '@/lib/plans';
+import type { SubscriptionView } from '@/lib/subscription-view';
+import { EMPTY_BILLING, type BillingDetails } from '@/lib/billing-details';
+import { formatCents } from '@/lib/invoices/types';
+import { BillingFields } from '@/app/app/abonnement/billing-fields';
+import { InvoiceActions } from '../../factures/invoice-actions';
+import { adminChangePeriod, adminUpdateBilling } from '../../factures/actions';
 import {
   deleteMember,
   extendTrial,
   grantComp,
   manageSubscription,
-  refundLastPayment,
   revokeComp,
   saveAdminNote,
   sendMemberMessage,
@@ -42,6 +48,9 @@ export type MemberData = {
   quota: { usedMonth: number; limit: number };
   self: boolean;
   recentMfa: boolean;
+  /** Abonnement lu en direct chez Stripe (onglet Abonnement). */
+  live: SubscriptionView | null;
+  billing: BillingDetails | null;
 };
 
 const SUB_LABELS: Record<string, string> = {
@@ -79,11 +88,12 @@ const initials = (s: string) =>
     .join('');
 
 export function MemberView({ data, tab }: { data: MemberData; tab: Tab }) {
-  const { member, subs, payments, invoices, file, quota, self, recentMfa } = data;
+  const { member, subs, payments, invoices, file, quota, self, recentMfa, live, billing } = data;
+  const creditedOf = (invoiceId: string) => invoices.filter((i) => i.credited_invoice_id === invoiceId).reduce((s, i) => s + i.total_cents, 0);
+  const BRAND: Record<string, string> = { visa: 'Visa', mastercard: 'Mastercard', amex: 'American Express', cartes_bancaires: 'CB' };
   const sub = subs.find((s) => RUNNING.includes(s.status)) ?? subs[0] ?? null;
   const subRunning = Boolean(sub && RUNNING.includes(sub.status));
   const compRunning = member.comp_active && (!member.comp_until || new Date(member.comp_until) > new Date());
-  const refundable = payments.find((x) => x.status === 'paid' && x.amount_cents > 0);
   const base = `/admin/membres/${member.id}`;
   const hidden = <input type="hidden" name="user_id" value={member.id} />;
   const title = member.farm_name || member.full_name || member.email;
@@ -163,6 +173,15 @@ export function MemberView({ data, tab }: { data: MemberData; tab: Tab }) {
                 ['Formule', formula],
                 ['Abonnement Stripe', sub ? `${SUB_LABELS[sub.status] ?? sub.status}${sub.cancel_at_period_end && subRunning ? ' · résiliation programmée' : ''}` : 'aucun'],
                 ...(sub?.current_period_end && subRunning ? ([[nextLabel, longDate(sub.current_period_end)]] as [string, string][]) : []),
+                ...(live
+                  ? ([
+                      ['Facturation', `${live.period === 'annuel' ? 'Annuelle' : 'Mensuelle'} · ${formatCents(live.amountCents)} ${live.period === 'annuel' ? 'par an' : 'par mois'}`],
+                      ['Carte', live.card ? `${BRAND[live.card.brand] ?? live.card.brand} •••• ${live.card.last4} · expire ${String(live.card.expMonth).padStart(2, '0')}/${live.card.expYear}` : 'aucune'],
+                      ...(live.discount ? ([['Code promo', live.discount]] as [string, string][]) : []),
+                      ...(live.pendingPeriod && live.pendingAt ? ([['Changement prévu', `${live.pendingPeriod === 'annuel' ? 'annuelle' : 'mensuelle'} le ${longDate(live.pendingAt)}`]] as [string, string][]) : []),
+                      ...(live.openInvoice ? ([['Impayé', formatCents(live.openInvoice.amountCents)]] as [string, string][]) : []),
+                    ] as [string, string][])
+                  : []),
                 ['Formule offerte', compRunning ? (member.comp_until ? `jusqu’au ${longDate(member.comp_until)}` : 'sans date de fin') : 'non'],
               ]}
             />
@@ -177,6 +196,23 @@ export function MemberView({ data, tab }: { data: MemberData; tab: Tab }) {
                     {[7, 14, 30, 60, 90].map((d) => <option key={d} value={d}>{d} jours</option>)}
                   </Select>
                   <SubmitButton variant="secondary" pendingLabel="…">Offrir</SubmitButton>
+                </FormActions>
+              </ActionForm>
+            </SettingRow>
+          ) : null}
+
+          {live && !live.cancelAt ? (
+            <SettingRow title="Mensuel ou annuel" description="Pendant l’essai : appliqué à la fin de l’essai. Sinon : à la prochaine échéance, sans double paiement.">
+              <ActionForm action={adminChangePeriod} resetOnSuccess={false} className="flex flex-col gap-3">
+                {hidden}
+                <FormActions>
+                  {live.pendingPeriod ? (
+                    <SubmitButton variant="secondary" name="periode" value={live.period} pendingLabel="…">Annuler le changement prévu</SubmitButton>
+                  ) : live.period === 'mensuel' ? (
+                    <SubmitButton variant="secondary" name="periode" value="annuel" pendingLabel="…">Passer à l’annuel ({COMPLET_PRICES.annuel.label} {COMPLET_PRICES.annuel.period})</SubmitButton>
+                  ) : (
+                    <SubmitButton variant="secondary" name="periode" value="mensuel" pendingLabel="…">Passer au mensuel ({COMPLET_PRICES.mensuel.label} {COMPLET_PRICES.mensuel.period})</SubmitButton>
+                  )}
                 </FormActions>
               </ActionForm>
             </SettingRow>
@@ -246,45 +282,56 @@ export function MemberView({ data, tab }: { data: MemberData; tab: Tab }) {
             </ActionForm>
           </SettingRow>
 
-          <SettingRow title="Paiements" description="Les 6 derniers. Le remboursement porte sur le dernier paiement, en totalité.">
-            <div className="flex flex-col gap-4">
-              {payments.length ? (
-                <table className="w-full border-collapse text-sm">
-                  <tbody>
-                    {payments.map((x) => (
-                      <tr key={x.id} className="border-b border-line-soft last:border-0">
-                        <td className="py-2.5 pr-3">{longDate(x.created_at)}</td>
-                        <td className="py-2.5 pr-3 tabular-nums">{formatEuros(x.amount_cents, x.currency)}</td>
-                        <td className="py-2.5 pr-3">{x.status === 'paid' ? <Badge tone="green">Payé</Badge> : x.status === 'refunded' ? <Badge>Remboursé</Badge> : <Badge tone="red">Échec</Badge>}</td>
-                        <td className="py-2.5 text-right">
-                          {(() => {
-                            const inv = invoices.find((i) => i.stripe_invoice_id === x.id);
-                            const credit = inv ? invoices.find((i) => i.credited_invoice_id === inv.id) : null;
-                            return inv ? (
-                              <span className="flex flex-wrap justify-end gap-x-3">
-                                <a href={`/api/factures/${inv.id}`} target="_blank" rel="noopener" className="font-semibold text-brand">{inv.number}</a>
-                                {credit ? <a href={`/api/factures/${credit.id}`} target="_blank" rel="noopener" className="font-semibold text-success">{credit.number}</a> : null}
-                              </span>
-                            ) : null;
-                          })()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="text-sm text-muted">Aucun paiement.</p>
-              )}
-              {refundable ? (
-                <ActionForm action={refundLastPayment} className="flex flex-col gap-2">
-                  {hidden}
-                  <FormActions>
-                    <span className="mr-auto text-sm text-muted">Dernier paiement : {formatEuros(refundable.amount_cents, refundable.currency)} du {longDate(refundable.created_at)}</span>
-                    <SubmitButton variant="danger" pendingLabel="Remboursement…">Rembourser</SubmitButton>
-                  </FormActions>
-                </ActionForm>
-              ) : null}
-            </div>
+          <SettingRow title="Factures et avoirs" description="Émis par le site à chaque paiement et remboursement. Un remboursement (total ou partiel) émet un avoir envoyé au membre.">
+            {invoices.length ? (
+              <ul className="divide-y divide-line-soft text-sm">
+                {invoices.map((inv) => {
+                  const left = inv.kind === 'facture' ? inv.total_cents - creditedOf(inv.id) : 0;
+                  return (
+                    <li key={inv.id} className="flex flex-col gap-2 py-3 md:flex-row md:items-center md:gap-4">
+                      <span className="min-w-0 flex-1">
+                        <a href={`/api/factures/${inv.id}`} target="_blank" rel="noopener" className="font-semibold tabular-nums hover:text-brand">{inv.number}</a>
+                        <span className="text-muted"> · {longDate(inv.issued_at)}</span>
+                        {inv.kind === 'avoir' ? <span className="ml-2"><Badge tone="amber">Avoir</Badge></span> : left < inv.total_cents ? <span className="ml-2"><Badge>{left ? 'Remboursée en partie' : 'Remboursée'}</Badge></span> : null}
+                      </span>
+                      <span className={`font-semibold tabular-nums ${inv.kind === 'avoir' ? 'text-success' : ''}`}>{inv.kind === 'avoir' ? '− ' : ''}{formatCents(inv.total_cents, inv.currency)}</span>
+                      <InvoiceActions id={inv.id} kind={inv.kind} refundableCents={left} currency={inv.currency} />
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted">Aucune facture pour le moment.</p>
+            )}
+          </SettingRow>
+
+          <SettingRow title="Paiements" description="Les 6 derniers prélèvements, réussis ou refusés.">
+            {payments.length ? (
+              <table className="w-full border-collapse text-sm">
+                <tbody>
+                  {payments.map((x) => (
+                    <tr key={x.id} className="border-b border-line-soft last:border-0">
+                      <td className="py-2.5 pr-3">{longDate(x.created_at)}</td>
+                      <td className="py-2.5 pr-3 tabular-nums">{formatEuros(x.amount_cents, x.currency)}</td>
+                      <td className="py-2.5 pr-3">{x.status === 'paid' ? <Badge tone="green">Payé</Badge> : x.status === 'refunded' ? <Badge>Remboursé</Badge> : <Badge tone="red">Échec</Badge>}</td>
+                      <td className="py-2.5 text-right text-muted">{invoices.find((i) => i.stripe_invoice_id === x.id)?.number ?? ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-sm text-muted">Aucun paiement.</p>
+            )}
+          </SettingRow>
+
+          <SettingRow title="Informations de facturation" description="Nom, adresse et SIRET repris sur les prochaines factures. Les factures déjà émises ne changent pas.">
+            <ActionForm action={adminUpdateBilling} resetOnSuccess={false} className="flex flex-col gap-4">
+              {hidden}
+              <BillingFields defaults={billing ?? { ...EMPTY_BILLING, name: member.farm_name || member.full_name }} idPrefix="adm" />
+              <FormActions>
+                <SubmitButton variant="secondary" pendingLabel="Enregistrement…">Enregistrer</SubmitButton>
+              </FormActions>
+            </ActionForm>
           </SettingRow>
         </Panel>
       ) : null}

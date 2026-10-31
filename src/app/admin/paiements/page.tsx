@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { daysAgoIso, formatDate, formatEuros } from '@/lib/format';
-import { PLANS } from '@/lib/plans';
+import { COMPLET_PRICES, PLANS } from '@/lib/plans';
 import type { Payment } from '@/lib/types';
 import { Badge, Card, Notice } from '@/components/ui';
 
@@ -16,7 +16,7 @@ export default async function PaymentsPage() {
   const since30 = daysAgoIso(30);
 
   const [subs, paid30, failed, recent, profiles, invoiceRes] = await Promise.all([
-    supabase.from('subscriptions').select('status, plan, cancel_at_period_end, updated_at'),
+    supabase.from('subscriptions').select('status, plan, price_id, cancel_at_period_end, updated_at'),
     supabase.from('payments').select('amount_cents').eq('status', 'paid').gte('created_at', since30),
     supabase.from('payments').select('*').eq('status', 'failed').order('created_at', { ascending: false }).limit(20),
     supabase.from('payments').select('*').order('created_at', { ascending: false }).limit(20),
@@ -28,18 +28,24 @@ export default async function PaymentsPage() {
   const creditOf = (invoiceId: string) => invoices.find((i) => i.credited_invoice_id === invoiceId);
   const names = new Map((profiles.data ?? []).map((p) => [p.id, p.farm_name || p.full_name || p.email]));
   const s = subs.data ?? [];
+  // Revenu mensuel récurrent : abonnés payants (hors essai), l'annuel ramené au mois.
+  const annualPrice = process.env.STRIPE_PRICE_COMPLET_ANNUEL || '__aucun__';
+  const paying = s.filter((x) => ['active', 'past_due'].includes(x.status) && !x.cancel_at_period_end);
+  const mrr = paying.reduce((t, x) => t + (x.price_id === annualPrice ? COMPLET_PRICES.annuel.amount / 12 : COMPLET_PRICES.mensuel.amount), 0);
   const kpis = [
     { label: 'Encaissé sur 30 jours', value: formatEuros((paid30.data ?? []).reduce((a, p) => a + p.amount_cents, 0)) },
     { label: 'Abonnements actifs', value: s.filter((x) => x.status === 'active').length },
     { label: 'Essais en cours', value: s.filter((x) => x.status === 'trialing').length },
     { label: 'Résiliations à venir', value: s.filter((x) => x.cancel_at_period_end && x.status !== 'canceled').length },
+    { label: 'Revenu mensuel récurrent', value: formatEuros(Math.round(mrr * 100)) },
+    { label: 'Mensuels / annuels', value: `${paying.filter((x) => x.price_id !== annualPrice).length} / ${paying.filter((x) => x.price_id === annualPrice).length}` },
   ];
   const byPlan = (plan: string) => s.filter((x) => x.plan === plan && ['active', 'trialing', 'past_due'].includes(x.status)).length;
 
   const row = (p: Payment, failedView = false) => (
     <tr key={p.id}>
       <td className="border-b border-line-soft px-3 py-3">{formatDate(p.created_at)}</td>
-      <td className="border-b border-line-soft px-3 py-3 font-medium">{p.user_id ? <Link href={`/admin/membres?id=${p.user_id}`} className="text-ink hover:text-brand">{names.get(p.user_id) ?? '—'}</Link> : '—'}</td>
+      <td className="border-b border-line-soft px-3 py-3 font-medium">{p.user_id ? <Link href={`/admin/membres/${p.user_id}`} className="text-ink hover:text-brand">{names.get(p.user_id) ?? '—'}</Link> : '—'}</td>
       <td className="border-b border-line-soft px-3 py-3">{formatEuros(p.amount_cents, p.currency)}</td>
       <td className="border-b border-line-soft px-3 py-3">
         {failedView ? `${p.attempt_count} tentative${p.attempt_count > 1 ? 's' : ''}` : p.status === 'paid' ? <Badge tone="green">Payé</Badge> : p.status === 'failed' ? <Badge tone="amber">Échec</Badge> : <Badge>Remboursé</Badge>}
@@ -69,9 +75,15 @@ export default async function PaymentsPage() {
 
   return (
     <>
-      <div>
-        <h1 className="text-[28px] font-bold tracking-tight">Abonnements & paiements</h1>
-        <p className="text-muted">Données synchronisées automatiquement depuis Stripe.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[28px] font-bold tracking-tight">Abonnements & paiements</h1>
+          <p className="text-muted">Données synchronisées automatiquement depuis Stripe.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/factures" className="inline-flex min-h-10 items-center rounded-lg border border-field px-3.5 text-sm font-semibold hover:border-brand">Factures et livre des recettes</Link>
+          <Link href="/admin/codes-promo" className="inline-flex min-h-10 items-center rounded-lg border border-field px-3.5 text-sm font-semibold hover:border-brand">Codes promo</Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 md:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">

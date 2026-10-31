@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/admin';
 import { diagnosticQuota, parisMonthStart } from '@/lib/diagnostic-quota';
 import type { MemberAdmin, Payment, Profile, Subscription } from '@/lib/types';
+import { getBillingDetails } from '@/lib/billing-details';
+import { loadSubscriptionView } from '@/lib/subscription-view';
 import { MemberView, TABS, type Tab } from './member-view';
 import type { MemberData } from './member-view';
 
@@ -39,6 +41,11 @@ export default async function MemberPage(props: PageProps<'/admin/membres/[id]'>
     diagnosticQuota(id),
     supabase.from('invoices').select('id, number, kind, stripe_invoice_id, credited_invoice_id, total_cents, currency, issued_at').eq('user_id', id).order('issued_at', { ascending: false }).limit(30),
   ]);
+  // Abonnement lu en direct chez Stripe (formule, carte, changement prévu) et informations de facturation.
+  const [live, billing] = await Promise.all([
+    member.stripe_customer_id && tab === 'abonnement' ? loadSubscriptionView(member.stripe_customer_id).catch(() => null) : Promise.resolve(null),
+    tab === 'abonnement' ? getBillingDetails(id) : Promise.resolve(null),
+  ]);
   const authUser = authRes.data?.user ?? null;
   const ai = aiRes.data ?? [];
 
@@ -65,6 +72,8 @@ export default async function MemberPage(props: PageProps<'/admin/membres/[id]'>
         quota: { usedMonth: quota.usedMonth, limit: quota.limit },
         self: member.id === session.userId,
         recentMfa: hasRecentMfa(session),
+        live,
+        billing,
       }}
     />
   );

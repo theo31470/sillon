@@ -3,13 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import type Stripe from 'stripe';
 import { hasRecentMfa, requireAdmin, type Session } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
 import { ACTIVE_STATUSES, stripe } from '@/lib/stripe';
-import { onChargeRefunded } from '@/lib/invoices/notify';
 import { env } from '@/lib/env';
 import { syncPlan } from '@/lib/membership';
 import { messageEmail } from '@/lib/email/templates';
@@ -311,54 +309,6 @@ export async function manageSubscription(_prev: FormState, formData: FormData): 
             ? 'Résiliation annulée : l’abonnement continue.'
             : 'Abonnement résilié immédiatement. Le compte repasse en Gratuit dans quelques secondes.',
     };
-  } catch (err) {
-    return { error: stripeError(err) };
-  }
-}
-
-export async function refundLastPayment(_prev: FormState, formData: FormData): Promise<FormState> {
-  const { session } = await requireAdmin('/admin/membres');
-  if (!hasRecentMfa(session)) return { error: RECENT_MFA };
-  const target = await loadTarget(formData);
-  if (!target) return { error: 'Membre introuvable.' };
-  const db = createServiceClient();
-  const { data: payment } = await db
-    .from('payments')
-    .select('id, amount_cents, currency')
-    .eq('user_id', target.id)
-    .eq('status', 'paid')
-    .gt('amount_cents', 0)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!payment) return { error: 'Aucun paiement remboursable pour ce membre.' };
-
-  try {
-    const invoicePayments = await stripe().invoicePayments.list({ invoice: payment.id, limit: 5 });
-    const paid = invoicePayments.data.find((p) => p.status === 'paid') ?? invoicePayments.data[0];
-    const ref = paid?.payment;
-    const params: Stripe.RefundCreateParams = { reason: 'requested_by_customer', metadata: { facture: payment.id, admin: session.email } };
-    if (ref?.payment_intent) params.payment_intent = typeof ref.payment_intent === 'string' ? ref.payment_intent : ref.payment_intent.id;
-    else if (ref?.charge) params.charge = typeof ref.charge === 'string' ? ref.charge : ref.charge.id;
-    else return { error: 'Paiement introuvable chez Stripe pour cette facture.' };
-    const refund = await stripe().refunds.create(params, { idempotencyKey: `remboursement-${payment.id}` });
-    await db.from('payments').update({ status: 'refunded' }).eq('id', payment.id);
-    // Avoir Tracteurs & Co tout de suite (le webhook « charge.refunded » le ferait aussi, sans doublon).
-    let creditNote = '';
-    try {
-      const chargeId = typeof refund.charge === 'string' ? refund.charge : refund.charge?.id;
-      if (chargeId) {
-        await onChargeRefunded(await stripe().charges.retrieve(chargeId), `admin-${refund.id}`);
-        const { data: note } = await db.from('invoices').select('number').eq('stripe_refund_id', refund.id).maybeSingle();
-        if (note?.number) creditNote = ` Avoir ${note.number} émis et envoyé au membre.`;
-      }
-    } catch (err) {
-      console.error('[admin] avoir', err);
-    }
-    const amount = (payment.amount_cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: payment.currency.toUpperCase() });
-    await logAudit(session, 'membre.paiement_rembourse', { type: 'profile', id: target.id }, { facture: payment.id, montant: amount });
-    refresh(target.id);
-    return { ok: true, message: `${amount} remboursés.${creditNote} L’argent revient sur la carte du membre sous 5 à 10 jours. Pensez à résilier l’abonnement si besoin.` };
   } catch (err) {
     return { error: stripeError(err) };
   }
