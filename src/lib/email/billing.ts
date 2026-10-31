@@ -31,6 +31,7 @@ export async function notifyBilling(
   who: { userId?: string | null; customerId?: string | null },
   input: Omit<BillingEmailInput, 'name'>,
   eventId: string,
+  attachments?: { filename: string; content: string }[],
 ) {
   try {
     const db = createServiceClient();
@@ -47,6 +48,7 @@ export async function notifyBilling(
         kind: 'facturation',
         template,
         userId: profile.id,
+        attachments,
       },
       { idempotencyKey: `stripe-${eventId}-${template}` },
     );

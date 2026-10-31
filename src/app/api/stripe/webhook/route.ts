@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
-import { syncPlan } from '@/lib/membership';
+import { upsertSubscription } from '@/lib/stripe-sync';
 import { env } from '@/lib/env';
 import { createServiceClient } from '@/lib/supabase/admin';
-import type { Plan } from '@/lib/types';
 import { euros, frDate, notifyBilling, priceLabelOf } from '@/lib/email/billing';
+import { issueInvoiceForStripeInvoice } from '@/lib/invoices/issue';
+import { invoiceAttachment, onChargeRefunded } from '@/lib/invoices/notify';
 
 /**
  * Webhook Stripe : seule source de vérité pour les abonnements et paiements.
@@ -36,6 +37,11 @@ export async function POST(request: NextRequest) {
         break;
       case 'invoice.paid':
         await recordInvoice(event.data.object, 'paid');
+        // Facture Tracteurs & Co (numérotée, figée) : en cas d'échec, Stripe réessaiera.
+        await issueInvoiceForStripeInvoice(event.data.object);
+        break;
+      case 'charge.refunded':
+        await onChargeRefunded(event.data.object, event.id);
         break;
       case 'invoice.payment_failed':
         await recordInvoice(event.data.object, 'failed');
@@ -69,28 +75,7 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function syncSubscription(sub: Stripe.Subscription) {
-  const supabase = createServiceClient();
-  const userId = (await userIdForCustomer(customerId(sub.customer))) ?? sub.metadata?.user_id ?? null;
-  if (!userId) {
-    console.warn('[stripe] abonnement sans compte associé', sub.id);
-    return;
-  }
-  const item = sub.items.data[0];
-  const plan: Plan = sub.metadata?.plan === 'groupement' ? 'groupement' : 'complet';
-
-  await supabase.from('subscriptions').upsert({
-    id: sub.id,
-    user_id: userId,
-    status: sub.status,
-    plan,
-    price_id: item?.price.id ?? null,
-    current_period_end: item?.current_period_end ? new Date(item.current_period_end * 1000).toISOString() : null,
-    // Le portail Stripe programme désormais la résiliation avec « cancel_at » (date) plutôt qu'avec ce booléen.
-    cancel_at_period_end: sub.cancel_at_period_end || Boolean(sub.cancel_at),
-  });
-
-  // La formule du profil suit le meilleur abonnement actif (ou une formule offerte).
-  await syncPlan(userId);
+  await upsertSubscription(sub);
 }
 
 async function recordInvoice(invoice: Stripe.Invoice, status: 'paid' | 'failed') {
@@ -154,11 +139,19 @@ async function sendBillingEmails(event: Stripe.Event) {
       const invoice = event.data.object;
       // La facture à 0 € du début d'essai n'a pas besoin d'e-mail (l'activation en a déjà un).
       if (invoice.amount_paid > 0) {
+        const ours = await issueInvoiceForStripeInvoice(invoice);
+        const file = ours ? await invoiceAttachment(ours).catch(() => null) : null;
         await notifyBilling(
           'paiement_recu',
           { customerId: customerId(invoice.customer) },
-          { amount: euros(invoice.amount_paid, invoice.currency), invoiceUrl: invoice.hosted_invoice_url ?? null, date: frDate(invoice.lines.data[0]?.period?.end) },
+          {
+            amount: euros(invoice.amount_paid, invoice.currency),
+            invoiceUrl: file?.url ?? null,
+            invoiceNumber: ours?.number,
+            date: frDate(invoice.lines.data[0]?.period?.end),
+          },
           event.id,
+          file?.attachments,
         );
       }
       break;

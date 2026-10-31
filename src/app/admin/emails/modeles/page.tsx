@@ -50,7 +50,7 @@ function sample(key: Key, site: string, name: string): BuiltEmail {
   if ((BILLING_TEMPLATES as readonly string[]).includes(key)) {
     return billingEmail(
       key as BillingTemplate,
-      { name, trial: true, priceLabel: '6,99 € par mois', date: '24 novembre 2026', amount: '6,99 €', invoiceUrl: `${site}/app/abonnement` },
+      { name, trial: true, priceLabel: '6,99 € par mois', date: '24 novembre 2026', amount: '6,99 €', invoiceUrl: `${site}/app/abonnement`, invoiceNumber: 'FA-2026-00001' },
       site,
     );
   }

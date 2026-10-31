@@ -385,7 +385,7 @@ export function contactReplyEmail(input: { name: string; subject: string; bodyMd
 // Abonnement et facturation (déclenchés par le webhook Stripe)
 // ---------------------------------------------------------------------
 
-export const BILLING_TEMPLATES = ['abonnement_active', 'essai_fin_proche', 'paiement_recu', 'paiement_refuse', 'resiliation_programmee', 'abonnement_termine'] as const;
+export const BILLING_TEMPLATES = ['abonnement_active', 'essai_fin_proche', 'paiement_recu', 'paiement_refuse', 'resiliation_programmee', 'abonnement_termine', 'remboursement'] as const;
 export type BillingTemplate = (typeof BILLING_TEMPLATES)[number];
 
 export const BILLING_TEMPLATE_LABELS: Record<BillingTemplate, string> = {
@@ -395,6 +395,7 @@ export const BILLING_TEMPLATE_LABELS: Record<BillingTemplate, string> = {
   paiement_refuse: 'Paiement refusé',
   resiliation_programmee: 'Résiliation confirmée',
   abonnement_termine: 'Abonnement terminé',
+  remboursement: 'Remboursement (avoir)',
 };
 
 export type BillingEmailInput = {
@@ -406,6 +407,8 @@ export type BillingEmailInput = {
   /** Montant payé, ex. « 6,99 € ». */
   amount?: string;
   invoiceUrl?: string | null;
+  /** Numéro de la facture ou de l'avoir Tracteurs & Co (PDF joint à l'e-mail). */
+  invoiceNumber?: string;
   trial?: boolean;
 };
 
@@ -463,7 +466,8 @@ export function billingEmail(template: BillingTemplate, input: BillingEmailInput
           blocks: [
             { type: 'p', text: hello(input.name) },
             { type: 'p', text: `Nous avons bien reçu votre paiement de **${input.amount}** pour la formule Complet.${input.date ? ` Prochaine échéance : ${input.date}.` : ''}` },
-            ...(input.invoiceUrl ? [{ type: 'button' as const, label: 'Voir la facture', url: input.invoiceUrl }] : []),
+            ...(input.invoiceNumber ? [{ type: 'p' as const, text: `Votre facture **n° ${input.invoiceNumber}** est jointe à cet e-mail, au format PDF.` }] : []),
+            ...(input.invoiceUrl ? [{ type: 'button' as const, label: 'Télécharger la facture', url: input.invoiceUrl }] : []),
             { type: 'note', text: 'Toutes vos factures restent disponibles à tout moment dans la page « Abonnement » de votre compte.' },
           ],
           reason: BILLING_REASON,
@@ -498,6 +502,23 @@ export function billingEmail(template: BillingTemplate, input: BillingEmailInput
             { type: 'p', text: `C’est noté : votre formule Complet s’arrêtera le **${input.date}**, sans nouveau prélèvement. D’ici là, vous gardez toutes les fonctions.` },
             { type: 'p', text: 'Ensuite, votre compte repassera en formule Gratuit : vos machines, entretiens et dépenses sont conservés.' },
             { type: 'button', label: 'J’ai changé d’avis', url: account },
+          ],
+          reason: BILLING_REASON,
+        },
+        site,
+      );
+    case 'remboursement':
+      return build(
+        `Remboursement de ${input.amount}`,
+        {
+          preheader: 'Votre avoir Tracteurs & Co est joint à cet e-mail.',
+          heading: 'Votre remboursement est en route',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: `Nous vous avons remboursé **${input.amount}** sur votre moyen de paiement d’origine. Selon votre banque, l’argent apparaît sur votre compte sous 5 à 10 jours.` },
+            ...(input.invoiceNumber ? [{ type: 'p' as const, text: `L’avoir correspondant, **n° ${input.invoiceNumber}**, est joint à cet e-mail au format PDF.` }] : []),
+            ...(input.invoiceUrl ? [{ type: 'button' as const, label: 'Télécharger l’avoir', url: input.invoiceUrl }] : []),
+            { type: 'note', text: 'Une question sur ce remboursement ? Répondez simplement à cet e-mail.' },
           ],
           reason: BILLING_REASON,
         },

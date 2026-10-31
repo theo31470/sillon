@@ -15,13 +15,17 @@ export default async function PaymentsPage() {
   const supabase = await createClient();
   const since30 = daysAgoIso(30);
 
-  const [subs, paid30, failed, recent, profiles] = await Promise.all([
+  const [subs, paid30, failed, recent, profiles, invoiceRes] = await Promise.all([
     supabase.from('subscriptions').select('status, plan, cancel_at_period_end, updated_at'),
     supabase.from('payments').select('amount_cents').eq('status', 'paid').gte('created_at', since30),
     supabase.from('payments').select('*').eq('status', 'failed').order('created_at', { ascending: false }).limit(20),
     supabase.from('payments').select('*').order('created_at', { ascending: false }).limit(20),
     supabase.from('profiles').select('id, farm_name, full_name, email'),
+    supabase.from('invoices').select('id, number, kind, stripe_invoice_id, credited_invoice_id').order('issued_at', { ascending: false }).limit(200),
   ]);
+  const invoices = invoiceRes.data ?? [];
+  const invoiceOf = (stripeId: string) => invoices.find((i) => i.stripe_invoice_id === stripeId);
+  const creditOf = (invoiceId: string) => invoices.find((i) => i.credited_invoice_id === invoiceId);
   const names = new Map((profiles.data ?? []).map((p) => [p.id, p.farm_name || p.full_name || p.email]));
   const s = subs.data ?? [];
   const kpis = [
@@ -41,9 +45,21 @@ export default async function PaymentsPage() {
         {failedView ? `${p.attempt_count} tentative${p.attempt_count > 1 ? 's' : ''}` : p.status === 'paid' ? <Badge tone="green">Payé</Badge> : p.status === 'failed' ? <Badge tone="amber">Échec</Badge> : <Badge>Remboursé</Badge>}
       </td>
       <td className="border-b border-line-soft px-3 py-3 text-right">
-        <a href={stripeDashboard(`invoices/${p.id}`)} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand">
-          {p.status === 'paid' ? 'Facture / rembourser' : 'Voir dans Stripe'}
-        </a>
+        <span className="flex flex-wrap justify-end gap-x-3">
+          {(() => {
+            const inv = invoiceOf(p.id);
+            const credit = inv ? creditOf(inv.id) : null;
+            return (
+              <>
+                {inv ? <a href={`/api/factures/${inv.id}`} target="_blank" rel="noopener" className="font-semibold text-ink hover:text-brand">{inv.number}</a> : null}
+                {credit ? <a href={`/api/factures/${credit.id}`} target="_blank" rel="noopener" className="font-semibold text-success">{credit.number}</a> : null}
+              </>
+            );
+          })()}
+          <a href={stripeDashboard(`invoices/${p.id}`)} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand">
+            Stripe
+          </a>
+        </span>
       </td>
     </tr>
   );
@@ -105,7 +121,7 @@ export default async function PaymentsPage() {
         ) : (
           <p className="text-muted">Aucun paiement pour le moment.</p>
         )}
-        <p className="mt-3.5 text-[13px] text-muted">Les remboursements se font dans Stripe (traçabilité bancaire complète). Les numéros de carte ne passent jamais par Tracteurs & Co.</p>
+        <p className="mt-3.5 text-[13px] text-muted">Chaque paiement donne une facture Tracteurs & Co numérotée (FA-…), envoyée au membre. Un remboursement (depuis la fiche du membre ou dans Stripe) émet automatiquement un avoir (AV-…). Les numéros de carte ne passent jamais par Tracteurs & Co.</p>
       </Card>
     </>
   );

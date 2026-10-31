@@ -9,6 +9,7 @@ import { createServiceClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit';
 import { ACTIVE_STATUSES, stripe } from '@/lib/stripe';
+import { onChargeRefunded } from '@/lib/invoices/notify';
 import { env } from '@/lib/env';
 import { syncPlan } from '@/lib/membership';
 import { messageEmail } from '@/lib/email/templates';
@@ -340,12 +341,24 @@ export async function refundLastPayment(_prev: FormState, formData: FormData): P
     if (ref?.payment_intent) params.payment_intent = typeof ref.payment_intent === 'string' ? ref.payment_intent : ref.payment_intent.id;
     else if (ref?.charge) params.charge = typeof ref.charge === 'string' ? ref.charge : ref.charge.id;
     else return { error: 'Paiement introuvable chez Stripe pour cette facture.' };
-    await stripe().refunds.create(params, { idempotencyKey: `remboursement-${payment.id}` });
+    const refund = await stripe().refunds.create(params, { idempotencyKey: `remboursement-${payment.id}` });
     await db.from('payments').update({ status: 'refunded' }).eq('id', payment.id);
+    // Avoir Tracteurs & Co tout de suite (le webhook « charge.refunded » le ferait aussi, sans doublon).
+    let creditNote = '';
+    try {
+      const chargeId = typeof refund.charge === 'string' ? refund.charge : refund.charge?.id;
+      if (chargeId) {
+        await onChargeRefunded(await stripe().charges.retrieve(chargeId), `admin-${refund.id}`);
+        const { data: note } = await db.from('invoices').select('number').eq('stripe_refund_id', refund.id).maybeSingle();
+        if (note?.number) creditNote = ` Avoir ${note.number} émis et envoyé au membre.`;
+      }
+    } catch (err) {
+      console.error('[admin] avoir', err);
+    }
     const amount = (payment.amount_cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: payment.currency.toUpperCase() });
     await logAudit(session, 'membre.paiement_rembourse', { type: 'profile', id: target.id }, { facture: payment.id, montant: amount });
     refresh(target.id);
-    return { ok: true, message: `${amount} remboursés. L’argent revient sur la carte du membre sous 5 à 10 jours. Pensez à résilier l’abonnement si besoin.` };
+    return { ok: true, message: `${amount} remboursés.${creditNote} L’argent revient sur la carte du membre sous 5 à 10 jours. Pensez à résilier l’abonnement si besoin.` };
   } catch (err) {
     return { error: stripeError(err) };
   }

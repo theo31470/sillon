@@ -8,17 +8,20 @@ const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=()' },
+  // payment : Apple Pay / Google Pay dans le formulaire de paiement Stripe.
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self "https://js.stripe.com")' },
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
       // Next.js injecte des scripts en ligne ; pour aller plus loin, voir le guide CSP à nonce (README).
-      "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''),
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com" + (process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''),
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.supabase.co",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.stripe.com",
       "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.stripe.com",
+      // Champs de carte et validation bancaire (3-D Secure) : cadres hébergés par Stripe.
+      "frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",

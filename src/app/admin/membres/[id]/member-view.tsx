@@ -29,6 +29,8 @@ export type MemberData = {
   member: Profile;
   subs: Subscription[];
   payments: Payment[];
+  /** Factures et avoirs Tracteurs & Co du membre. */
+  invoices: { id: string; number: string; kind: 'facture' | 'avoir'; stripe_invoice_id: string | null; credited_invoice_id: string | null; total_cents: number; currency: string; issued_at: string }[];
   file: MemberAdmin | null;
   emails: { id: number | string; kind: string; subject: string; status: string; created_at: string }[];
   audit: { id: number | string; actor_email: string | null; action: string; created_at: string }[];
@@ -77,7 +79,7 @@ const initials = (s: string) =>
     .join('');
 
 export function MemberView({ data, tab }: { data: MemberData; tab: Tab }) {
-  const { member, subs, payments, file, quota, self, recentMfa } = data;
+  const { member, subs, payments, invoices, file, quota, self, recentMfa } = data;
   const sub = subs.find((s) => RUNNING.includes(s.status)) ?? subs[0] ?? null;
   const subRunning = Boolean(sub && RUNNING.includes(sub.status));
   const compRunning = member.comp_active && (!member.comp_until || new Date(member.comp_until) > new Date());
@@ -254,7 +256,18 @@ export function MemberView({ data, tab }: { data: MemberData; tab: Tab }) {
                         <td className="py-2.5 pr-3">{longDate(x.created_at)}</td>
                         <td className="py-2.5 pr-3 tabular-nums">{formatEuros(x.amount_cents, x.currency)}</td>
                         <td className="py-2.5 pr-3">{x.status === 'paid' ? <Badge tone="green">Payé</Badge> : x.status === 'refunded' ? <Badge>Remboursé</Badge> : <Badge tone="red">Échec</Badge>}</td>
-                        <td className="py-2.5 text-right">{x.hosted_invoice_url ? <a href={x.hosted_invoice_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand">Facture</a> : null}</td>
+                        <td className="py-2.5 text-right">
+                          {(() => {
+                            const inv = invoices.find((i) => i.stripe_invoice_id === x.id);
+                            const credit = inv ? invoices.find((i) => i.credited_invoice_id === inv.id) : null;
+                            return inv ? (
+                              <span className="flex flex-wrap justify-end gap-x-3">
+                                <a href={`/api/factures/${inv.id}`} target="_blank" rel="noopener" className="font-semibold text-brand">{inv.number}</a>
+                                {credit ? <a href={`/api/factures/${credit.id}`} target="_blank" rel="noopener" className="font-semibold text-success">{credit.number}</a> : null}
+                              </span>
+                            ) : null;
+                          })()}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

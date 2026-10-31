@@ -23,6 +23,8 @@ export type OutgoingEmail = {
   replyTo?: string | null;
   /** Ajoute les en-têtes de désinscription en un clic (rappels, annonces). */
   unsubscribe?: { token: string; list: EmailList };
+  /** Pièces jointes (facture PDF…), contenu encodé en base64. */
+  attachments?: { filename: string; content: string }[];
 };
 
 export type SendResult = { ok: true; id: string | null } | { ok: false; error: string };
@@ -66,6 +68,7 @@ function payload(m: OutgoingEmail) {
     text: m.email.text,
     ...(m.replyTo || s.replyTo ? { reply_to: m.replyTo || s.replyTo } : {}),
     ...(Object.keys(headers).length ? { headers } : {}),
+    ...(m.attachments?.length ? { attachments: m.attachments } : {}),
     tags: [
       { name: 'type', value: m.kind },
       { name: 'modele', value: m.template.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 256) },

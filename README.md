@@ -98,15 +98,28 @@ Sans clés, les pages publiques s’affichent mais la connexion et l’applicati
    `STRIPE_PRICE_COMPLET` (mensuel) et `STRIPE_PRICE_COMPLET_ANNUEL` (annuel). Les prix affichés sont dans
    `src/lib/plans.ts` (`COMPLET_PRICES`) : gardez-les alignés avec Stripe.
 2. **Developers → Webhooks** : ajoutez l’adresse `https://votre-domaine.fr/api/stripe/webhook` avec les événements
-   `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
-   `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`.
-   Copiez le secret `whsec_…` dans `STRIPE_WEBHOOK_SECRET`.
+   `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`,
+   `customer.subscription.trial_will_end`, `invoice.paid`, `invoice.payment_failed` et **`charge.refunded`**
+   (avoirs automatiques). Copiez le secret `whsec_…` dans `STRIPE_WEBHOOK_SECRET`.
    En local : `stripe listen --forward-to localhost:3000/api/stripe/webhook`.
-3. **Settings → Billing → Customer portal** : activez le portail (résiliation, moyens de paiement, factures,
-   passage mensuel ↔ annuel). En mode test, produit, prix, webhook et portail ont été créés par l'API ;
-   à refaire à l'identique en mode réel. Le pied de facture (SIRET, mention de TVA) est posé sur chaque client
-   à sa création (`src/app/app/abonnement/actions.ts`).
+3. **Clé publique** : `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_live_…`, Developers → API keys). Elle n’est pas
+   secrète : elle sert au formulaire de carte intégré à la page « Abonnement ».
+   **Settings → Payment method domains** : ajoutez `tracteursandco.fr` (Apple Pay et Google Pay).
+   **Settings → Customer emails** : désactivez les reçus et e-mails de remboursement de Stripe : c’est le site qui
+   envoie les factures et avoirs Tracteurs & Co.
 4. **Settings → Billing → Revenue recovery** : réglez les relances automatiques des paiements échoués.
+
+**Paiement et facturation (tout sur le site, sans page Stripe)** :
+- souscription dans `/app/abonnement` avec le Payment Element de Stripe (champs de carte hébergés par Stripe :
+  aucune donnée de carte ne passe par nos serveurs). Premier abonnement : essai de 30 jours, la carte est
+  enregistrée (SetupIntent) puis l’abonnement créé côté serveur ; sinon, premier paiement immédiat (3-D Secure géré) ;
+- gestion par le membre : mensuel ↔ annuel (pendant l’essai : immédiat ; sinon à l’échéance, via un calendrier
+  d’abonnement Stripe), résiliation / reprise, changement de carte (règle aussi un paiement en retard),
+  informations de facturation (nom, adresse, SIRET, TVA) ;
+- **factures et avoirs Tracteurs & Co** (`src/lib/invoices/`) : émis par le site à chaque `invoice.paid` et à chaque
+  remboursement, numérotés sans trou (`FA-2026-00001`, `AV-2026-00001`, fonction SQL `issue_invoice`), figés en base
+  (ni modification ni suppression, 10 ans), PDF généré à la demande (`/api/factures/[id]`) et joint aux e-mails.
+  Les paiements antérieurs à ce système gardent leur facture Stripe.
 
 ### 3. E-mails (Resend)
 

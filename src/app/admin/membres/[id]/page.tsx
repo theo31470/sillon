@@ -6,6 +6,7 @@ import { createServiceClient } from '@/lib/supabase/admin';
 import { diagnosticQuota, parisMonthStart } from '@/lib/diagnostic-quota';
 import type { MemberAdmin, Payment, Profile, Subscription } from '@/lib/types';
 import { MemberView, TABS, type Tab } from './member-view';
+import type { MemberData } from './member-view';
 
 export const metadata: Metadata = { title: 'Fiche membre' };
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,7 @@ export default async function MemberPage(props: PageProps<'/admin/membres/[id]'>
   if (!p) notFound();
   const member = p as Profile;
 
-  const [subsRes, paymentsRes, fileRes, emailsRes, auditRes, machines, logs, aiRes, authRes, tagsRes, quota] = await Promise.all([
+  const [subsRes, paymentsRes, fileRes, emailsRes, auditRes, machines, logs, aiRes, authRes, tagsRes, quota, invoicesRes] = await Promise.all([
     supabase.from('subscriptions').select('*').eq('user_id', id).order('created_at', { ascending: false }),
     supabase.from('payments').select('*').eq('user_id', id).order('created_at', { ascending: false }).limit(6),
     supabase.from('member_admin').select('*').eq('user_id', id).maybeSingle(),
@@ -36,6 +37,7 @@ export default async function MemberPage(props: PageProps<'/admin/membres/[id]'>
     service.auth.admin.getUserById(id),
     service.rpc('admin_member_tags'),
     diagnosticQuota(id),
+    supabase.from('invoices').select('id, number, kind, stripe_invoice_id, credited_invoice_id, total_cents, currency, issued_at').eq('user_id', id).order('issued_at', { ascending: false }).limit(30),
   ]);
   const authUser = authRes.data?.user ?? null;
   const ai = aiRes.data ?? [];
@@ -47,6 +49,7 @@ export default async function MemberPage(props: PageProps<'/admin/membres/[id]'>
         member,
         subs: (subsRes.data ?? []) as Subscription[],
         payments: (paymentsRes.data ?? []) as Payment[],
+        invoices: (invoicesRes.data ?? []) as MemberData['invoices'],
         file: (fileRes.data ?? null) as MemberAdmin | null,
         emails: emailsRes.data ?? [],
         audit: auditRes.data ?? [],

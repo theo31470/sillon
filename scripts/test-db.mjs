@@ -185,6 +185,32 @@ ok((await as(ADM, 'aal2', 'select * from public.contact_messages')).rowCount ===
 ok((await as(ADM, 'aal2', `update public.contact_messages set status = 'traite'`)).rowCount === 0, 'même l’admin ne modifie un message que via le serveur');
 await throws(() => c.query(`insert into public.contact_messages (name, email, topic, message) values ('J', 'j@x.fr', 'spam', 'Un sujet qui n’existe pas.')`), 'sujet de message contrôlé');
 
+// --- Facturation : informations, factures et avoirs ---
+await c.query(`insert into public.billing_details (user_id, name, line1, postal_code, city, siret) values ('${A}', 'EARL A', '1 route du Moulin', '34000', 'Montpellier', '12345678901234')`);
+ok((await as(A, 'aal1', 'select * from public.billing_details')).rowCount === 1, 'A lit ses informations de facturation');
+ok((await as(B, 'aal1', 'select * from public.billing_details')).rowCount === 0, 'B ne voit pas celles de A');
+ok((await as(A, 'aal1', `update public.billing_details set siret = '99999999999999'`)).rowCount === 0, 'un membre ne modifie pas sa fiche de facturation en direct (passage par le serveur)');
+await throws(() => c.query(`update public.billing_details set siret = '123' where user_id = '${A}'`), 'SIRET : 14 chiffres exigés');
+await throws(() => as(A, 'aal1', `select public.issue_invoice('{"kind":"facture","stripe_invoice_id":"in_x","total_cents":699,"customer":{},"lines":[]}'::jsonb)`), 'un membre ne peut pas émettre de facture');
+const svc = async (p) => { await c.query('set role service_role'); try { return (await c.query('select * from public.issue_invoice($1::jsonb)', [JSON.stringify(p)])).rows[0]; } finally { await c.query('reset role'); } };
+const f1 = await svc({ kind: 'facture', user_id: A, stripe_invoice_id: 'in_1', total_cents: 699, customer: { name: 'EARL A' }, lines: [{ label: 'Formule Complet', total_cents: 699 }] });
+const f2 = await svc({ kind: 'facture', user_id: A, stripe_invoice_id: 'in_2', total_cents: 6900, customer: { name: 'EARL A' }, lines: [] });
+const f1bis = await svc({ kind: 'facture', user_id: A, stripe_invoice_id: 'in_1', total_cents: 699, customer: {}, lines: [] });
+const year = new Date().toLocaleDateString('fr-FR', { year: 'numeric', timeZone: 'Europe/Paris' });
+ok(f1.number === `FA-${year}-00001` && f2.number === `FA-${year}-00002`, `numérotation continue (${f1.number}, ${f2.number})`);
+ok(f1bis.id === f1.id, 'même paiement Stripe : la même facture, pas de doublon ni de numéro perdu');
+const av = await svc({ kind: 'avoir', user_id: A, stripe_refund_id: 're_1', credited_invoice_id: f1.id, total_cents: 699, customer: { name: 'EARL A' }, lines: [] });
+ok(av.number === `AV-${year}-00001`, `avoir dans sa propre série (${av.number})`);
+await throws(() => svc({ kind: 'avoir', user_id: A, stripe_refund_id: 're_2', total_cents: 1, customer: {}, lines: [] }), 'un avoir doit viser une facture');
+ok((await c.query(`select last_number from public.invoice_counters where series = 'FA-${year}'`)).rows[0].last_number === 2, 'l’échec d’un avoir ne consomme aucun numéro de facture');
+await throws(() => c.query(`update public.invoices set total_cents = 1 where id = '${f1.id}'`), 'une facture émise ne se modifie pas');
+await throws(() => c.query(`delete from public.invoices where id = '${f2.id}'`), 'une facture émise ne se supprime pas');
+ok((await as(A, 'aal1', 'select * from public.invoices')).rowCount === 3, 'A voit ses factures et avoirs');
+ok((await as(B, 'aal1', 'select * from public.invoices')).rowCount === 0, 'B ne voit pas les factures de A');
+ok((await as(ADM, 'aal2', 'select * from public.invoices')).rowCount === 3, 'l’admin (2FA) voit toutes les factures');
+await c.query(`update public.invoices set user_id = null where user_id = '${A}'`);
+ok((await c.query(`select count(*)::int n from public.invoices where user_id is null`)).rows[0].n === 3, 'compte supprimé : les factures restent (obligation légale), sans lien vers le compte');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');
