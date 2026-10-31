@@ -1,5 +1,5 @@
 import 'server-only';
-import { PDFDocument, rgb, type PDFFont, type PDFPage, type RGB } from 'pdf-lib';
+import { PDFDocument, rgb, type PDFFont, type RGB } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { SITE } from '@/lib/site';
 import { BARLOW_400_WOFF, BARLOW_500_WOFF, BARLOW_700_WOFF, BARLOW_800_WOFF, EMBLEM_PNG, LOGO_RATIO, LOGO_WHITE_PNG } from './assets';
@@ -7,7 +7,7 @@ import { COUNTRY_NAMES, formatCents, frenchDate, type InvoiceRow } from './types
 
 /**
  * Facture ou avoir au format PDF (A4), à l'identité Tracteurs & Co :
- * bandeau sombre, accents terre cuite, typographie Barlow (celle du site).
+ * bandeau sombre, accents terre cuite, typographie Barlow (celle du site), mise en page sobre.
  * Généré à la demande depuis la copie figée en base : identique à chaque téléchargement.
  *
  * Mentions obligatoires (micro-entreprise) : identité et SIRET du vendeur, numéro unique,
@@ -17,15 +17,10 @@ import { COUNTRY_NAMES, formatCents, frenchDate, type InvoiceRow } from './types
 
 const C = {
   ink: rgb(0.106, 0.098, 0.086), // #1B1916
-  ink2: rgb(0.17, 0.157, 0.137), // bandeau, nuance
   muted: rgb(0.42, 0.39, 0.345), // #6B6358
   line: rgb(0.898, 0.875, 0.839), // #E5DFD6
-  soft: rgb(0.98, 0.973, 0.957), // #FAF8F4
   brand: rgb(0.878, 0.529, 0.353), // #E0875A
   brandDark: rgb(0.698, 0.353, 0.18), // #B25A2E
-  brandTint: rgb(0.984, 0.945, 0.918), // #FBF1EA
-  green: rgb(0.204, 0.49, 0.325), // #347D53
-  greenTint: rgb(0.906, 0.957, 0.925),
   white: rgb(1, 1, 1),
 };
 
@@ -66,19 +61,6 @@ function wrap(text: string, font: PDFFont, size: number, maxWidth: number) {
   return lines;
 }
 
-/** Rectangle aux coins arrondis ; (x, y) = coin bas gauche. */
-function roundRect(page: PDFPage, x: number, y: number, w: number, h: number, r: number, opt: { fill?: RGB; stroke?: RGB; strokeWidth?: number; opacity?: number }) {
-  const path = `M ${r} 0 H ${w - r} Q ${w} 0 ${w} ${r} V ${h - r} Q ${w} ${h} ${w - r} ${h} H ${r} Q 0 ${h} 0 ${h - r} V ${r} Q 0 0 ${r} 0 Z`;
-  page.drawSvgPath(path, {
-    x,
-    y: y + h,
-    color: opt.fill,
-    opacity: opt.opacity,
-    borderColor: opt.stroke,
-    borderWidth: opt.stroke ? (opt.strokeWidth ?? 0.8) : 0,
-  });
-}
-
 export async function renderInvoicePdf(inv: InvoiceRow, opts: { creditedNumber?: string } = {}) {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
@@ -111,11 +93,8 @@ export async function renderInvoicePdf(inv: InvoiceRow, opts: { creditedNumber?:
   const logoWhite = await doc.embedPng(Buffer.from(LOGO_WHITE_PNG, 'base64'));
   const emblem = await doc.embedPng(Buffer.from(EMBLEM_PNG, 'base64'));
 
-  // Filigrane : l'emblème, très pâle, au centre de la page.
-  page.drawImage(emblem, { x: W / 2 - 150, y: 210, width: 300, height: 300, opacity: 0.03 });
-
   // ── Bandeau ────────────────────────────────────────────────────────────
-  const bandH = 128;
+  const bandH = 118;
   page.drawRectangle({ x: 0, y: H - bandH, width: W, height: bandH, color: C.ink });
   // Sillons : lignes de labour en perspective, discrètes.
   for (let i = 0; i < 9; i++) {
@@ -128,53 +107,14 @@ export async function renderInvoicePdf(inv: InvoiceRow, opts: { creditedNumber?:
       borderOpacity: 0.12,
     });
   }
-  page.drawRectangle({ x: 0, y: H - bandH - 4, width: W, height: 4, color: C.brand });
-  const logoW = 182;
+  page.drawRectangle({ x: 0, y: H - bandH - 3, width: W, height: 3, color: C.brand });
+  const logoW = 176;
   page.drawImage(logoWhite, { x: M, y: H - bandH / 2 - logoW / LOGO_RATIO / 2 + 2, width: logoW, height: logoW / LOGO_RATIO });
+  text(title.toUpperCase(), W - M, H - 56, { font: f.black, size: 28, color: C.white, align: 'right' });
+  text(`N° ${inv.number}`, W - M, H - 76, { font: f.bold, size: 12, color: C.brand, align: 'right' });
 
-  text(title.toUpperCase(), W - M, H - 58, { font: f.black, size: 30, color: C.white, align: 'right' });
-  text(`N° ${inv.number}`, W - M, H - 78, { font: f.bold, size: 12.5, color: C.brand, align: 'right' });
-  // Pastille d'état.
-  const pill = isCredit ? 'REMBOURSEMENT' : 'PAYÉE';
-  const pillW = f.bold.widthOfTextAtSize(pill, 8) + (isCredit ? 24 : 32);
-  roundRect(page, W - M - pillW, H - 106, pillW, 17, 8.5, { fill: isCredit ? C.brand : C.green });
-  if (!isCredit) page.drawSvgPath('M 0 4 L 3 7 L 8 0', { x: W - M - pillW + 9, y: H - 92.5, borderColor: C.white, borderWidth: 1.4 });
-  text(pill, W - M - pillW / 2 + (isCredit ? 0 : 6), H - 100.5, { font: f.bold, size: 8, color: C.white, align: 'center' });
-
-  // ── Repères : dates, objet, montant ────────────────────────────────────
-  let y = H - bandH - 4 - 22;
-  const metaH = 56;
-  roundRect(page, M, y - metaH, W - 2 * M, metaH, 8, { fill: C.soft, stroke: C.line });
-  const period = short((inv.lines[0]?.detail ?? '').replace(/^Période du /i, ''));
-  const cells: [string, string][] = isCredit
-    ? [
-        ['Émis le', short(frenchDate(inv.issued_at))],
-        ['Remboursé le', short(frenchDate(inv.paid_at ?? inv.issued_at))],
-        ['Facture d’origine', opts.creditedNumber ?? '—'],
-        ['Montant', formatCents(inv.total_cents, inv.currency)],
-      ]
-    : [
-        ['Émise le', short(frenchDate(inv.issued_at))],
-        ['Payée le', short(frenchDate(inv.paid_at ?? inv.issued_at))],
-        ['Période', period || '—'],
-        ['Montant', formatCents(inv.total_cents, inv.currency)],
-      ];
-  const widths = [0.2, 0.2, 0.38, 0.22].map((r) => r * (W - 2 * M));
-  let cx = M;
-  cells.forEach(([k, v], i) => {
-    if (i > 0) page.drawLine({ start: { x: cx, y: y - 12 }, end: { x: cx, y: y - metaH + 12 }, thickness: 0.7, color: C.line });
-    label(k, cx + 14, y - 19);
-    const last = i === cells.length - 1;
-    const lines = wrap(clean(v), last ? f.black : f.bold, last ? 14 : 10.5, widths[i] - 24);
-    lines.slice(0, 2).forEach((l, j) =>
-      text(l, cx + 14, y - (lines.length > 1 ? 32 : 37) - j * 11.5, { font: last ? f.black : f.bold, size: last ? 14 : lines.length > 1 ? 9.5 : 10.5, color: last ? C.brandDark : C.ink }),
-    );
-    cx += widths[i];
-  });
-  y -= metaH + 26;
-
-  // ── Émetteur / client ─────────────────────────────────────────────────
-  const colW = (W - 2 * M - 22) / 2;
+  // ── En-tête du document : parties à gauche, dates à droite ────────────
+  let y = H - bandH - 3 - 34;
   const c = inv.customer;
   const cityLine = [c.postal_code, c.city].filter(Boolean).join(' ');
   const buyer = [
@@ -186,21 +126,37 @@ export async function renderInvoicePdf(inv: InvoiceRow, opts: { creditedNumber?:
     ...(c.vat_number ? [`N° TVA ${c.vat_number}`] : []),
     ...(c.email && c.name ? [c.email] : []),
   ];
-  const seller = [`${SITE.editor.name}, entrepreneur individuel`, SITE.editor.address, `SIRET ${SITE.editor.siret}`, SITE.contactEmail, SITE.domain];
-  const partyH = 26 + 16 + Math.max(seller.length, buyer.length) * 12.5 + 12;
+  const seller = [`${SITE.editor.name}, entrepreneur individuel`, SITE.editor.address, `SIRET ${SITE.editor.siret}`, SITE.contactEmail];
+  const colW = 175;
 
-  label('Émetteur', M, y - 14, { color: C.brandDark });
-  text(SITE.name, M, y - 31, { font: f.black, size: 13 });
-  seller.forEach((s, i) => text(s, M, y - 46 - i * 12.5, { size: 9.5, color: C.muted }));
+  const party = (title: string, name: string, rows: string[], x: number) => {
+    label(title, x, y);
+    const names = wrap(clean(name), f.bold, 11.5, colW);
+    names.forEach((n, i) => text(n, x, y - 17 - i * 13.5, { font: f.bold, size: 11.5 }));
+    rows.forEach((r, i) => text(r, x, y - 31 - (names.length - 1) * 13.5 - i * 12.5, { size: 9.5, color: C.muted }));
+    return 31 + (names.length - 1) * 13.5 + rows.length * 12.5;
+  };
+  const hSeller = party('Émetteur', SITE.name, seller, M);
+  const hBuyer = party(isCredit ? 'Au profit de' : 'Facturé à', c.name || c.email, buyer, M + colW + 24);
 
-  const bx = M + colW + 22;
-  roundRect(page, bx, y - partyH, colW, partyH, 8, { fill: C.brandTint });
-  page.drawRectangle({ x: bx, y: y - partyH + 8, width: 3, height: partyH - 16, color: C.brand });
-  label(isCredit ? 'Au profit de' : 'Facturé à', bx + 16, y - 14, { color: C.brandDark });
-  const nameLines = wrap(clean(c.name || c.email), f.black, 13, colW - 30);
-  nameLines.forEach((l, i) => text(l, bx + 16, y - 31 - i * 14, { font: f.black, size: 13 }));
-  buyer.forEach((s, i) => text(s, bx + 16, y - 46 - (nameLines.length - 1) * 14 - i * 12.5, { size: 9.5, color: C.ink }));
-  y -= partyH + 28;
+  // Dates, alignées à droite.
+  const period = short((inv.lines[0]?.detail ?? '').replace(/^Période du /i, ''));
+  const facts: [string, string][] = isCredit
+    ? [
+        ['Date d’émission', frenchDate(inv.issued_at)],
+        ['Date de remboursement', frenchDate(inv.paid_at ?? inv.issued_at)],
+        ['Facture d’origine', opts.creditedNumber ?? '—'],
+      ]
+    : [
+        ['Date d’émission', frenchDate(inv.issued_at)],
+        ['Date de paiement', frenchDate(inv.paid_at ?? inv.issued_at)],
+        ...(period ? ([['Période', period]] as [string, string][]) : []),
+      ];
+  facts.forEach(([k, v], i) => {
+    label(k, W - M, y - i * 30, { align: 'right' });
+    text(v, W - M, y - 14 - i * 30, { font: f.medium, size: 10, align: 'right' });
+  });
+  y -= Math.max(hSeller, hBuyer, facts.length * 30 - 6) + 34;
 
   // ── Lignes ─────────────────────────────────────────────────────────────
   const col = { qty: W - M - 180, unit: W - M - 92, total: W - M };
@@ -209,7 +165,7 @@ export async function renderInvoicePdf(inv: InvoiceRow, opts: { creditedNumber?:
   label('Prix unitaire', col.unit, y, { align: 'right' });
   label('Montant', col.total, y, { align: 'right' });
   y -= 9;
-  page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 1.4, color: C.ink });
+  page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 1.2, color: C.ink });
   y -= 18;
   const labelW = col.qty - M - 50;
   for (const l of inv.lines) {
@@ -223,17 +179,16 @@ export async function renderInvoicePdf(inv: InvoiceRow, opts: { creditedNumber?:
         y -= 11.5;
       }
     }
-    text(String(l.quantity), col.qty, top, { font: f.medium, size: 10 });
+    text(String(l.quantity), col.qty, top, { font: f.medium, size: 10, align: 'right' });
     text(formatCents(l.unit_cents, inv.currency), col.unit, top, { font: f.medium, size: 10, align: 'right' });
     text(formatCents(l.total_cents, inv.currency), col.total, top, { font: f.bold, size: 10.5, align: 'right' });
     y -= 6;
     page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 0.6, color: C.line });
-    y -= 18;
+    y -= 20;
   }
 
-  // ── Totaux ─────────────────────────────────────────────────────────────
-  y -= 4;
-  const tx = W - M - 205;
+  // ── Totaux (à droite) ─────────────────────────────────────────────────
+  const tx = W - M - 200;
   const totalsTop = y;
   const row = (k: string, v: string) => {
     text(k, tx, y, { size: 9.5, color: C.muted });
@@ -242,32 +197,32 @@ export async function renderInvoicePdf(inv: InvoiceRow, opts: { creditedNumber?:
   };
   row('Total HT', formatCents(inv.total_cents, inv.currency));
   row('TVA', 'Non applicable');
-  y -= 6;
-  const boxH = 46;
-  roundRect(page, tx - 14, y - boxH + 12, W - M - tx + 14, boxH, 9, { fill: C.ink });
-  text(isCredit ? 'MONTANT REMBOURSÉ' : 'TOTAL TTC', tx, y - 9, { font: f.bold, size: 8, color: C.brand });
-  text(formatCents(inv.total_cents, inv.currency), W - M - 14, y - 15, { font: f.black, size: 20, color: C.white, align: 'right' });
-  y -= boxH + 6;
+  y += 4;
+  page.drawLine({ start: { x: tx, y }, end: { x: W - M, y }, thickness: 1.2, color: C.ink });
+  y -= 22;
+  text(isCredit ? 'Montant remboursé' : 'Total TTC', tx, y + 2, { font: f.bold, size: 11 });
+  text(formatCents(inv.total_cents, inv.currency), W - M, y, { font: f.black, size: 18, color: C.brandDark, align: 'right' });
+  y -= 18;
   text(SITE.vatMention, W - M, y, { size: 8, color: C.muted, align: 'right' });
 
-  // À gauche des totaux : remerciement et règlement.
-  const lx = M;
-  const lw = tx - M - 34;
+  // ── Règlement et mot de fin (à gauche) ────────────────────────────────
+  const lw = tx - M - 40;
   let ly = totalsTop;
-  text(isCredit ? 'Votre remboursement est en route.' : 'Merci pour votre confiance !', lx, ly, { font: f.black, size: 14 });
-  ly -= 20;
-  const pm = (inv.payment_method || '').replace(/ (\d{4})$/, '\u00a0$1');
-  const when = short(frenchDate(inv.paid_at ?? inv.issued_at));
-  const settled = isCredit ? `Remboursé le ${when} ${pm || 'sur le moyen de paiement d’origine'}.` : `Réglée le ${when}${pm ? ` par ${pm}` : ''}.`;
-  roundRect(page, lx, ly - 30, lw, 34, 7, { fill: isCredit ? C.brandTint : C.greenTint });
-  if (!isCredit) page.drawSvgPath('M 0 4 L 3.5 7.5 L 9 0', { x: lx + 11, y: ly - 9, borderColor: C.green, borderWidth: 1.6 });
-  wrap(clean(settled), f.medium, 9, lw - 38)
-    .slice(0, 2)
-    .forEach((s, i, arr) => text(s, lx + (isCredit ? 12 : 28), ly - (arr.length > 1 ? 9 : 15) - i * 11, { font: f.medium, size: 9, color: isCredit ? C.brandDark : C.green }));
-  ly -= 50;
-  for (const s of wrap(clean(`Une question sur ce document ? Écrivez-nous à ${SITE.contactEmail} en rappelant son numéro. Tous vos documents sont aussi disponibles dans votre espace, rubrique « Abonnement ».`), f.regular, 8.5, lw)) {
-    text(s, lx, ly, { size: 8.5, color: C.muted });
-    ly -= 11;
+  const pm = (inv.payment_method || '').replace(/ (\d{4})$/, ' $1');
+  const when = frenchDate(inv.paid_at ?? inv.issued_at);
+  label(isCredit ? 'Remboursement' : 'Règlement', M, ly);
+  ly -= 15;
+  const settled = isCredit ? `Remboursé le ${when} ${pm || 'sur le moyen de paiement d’origine'}.` : `Payée le ${when}${pm ? ` par ${pm}` : ''}. Aucun montant restant dû.`;
+  for (const s of wrap(clean(settled), f.medium, 9.5, lw)) {
+    text(s, M, ly, { font: f.medium, size: 9.5 });
+    ly -= 12.5;
+  }
+  ly -= 14;
+  text(isCredit ? 'Votre remboursement est en route.' : 'Merci pour votre confiance.', M, ly, { font: f.bold, size: 11.5 });
+  ly -= 15;
+  for (const s of wrap(clean(`Une question sur ce document ? Écrivez-nous à ${SITE.contactEmail} en rappelant son numéro.`), f.regular, 9, lw)) {
+    text(s, M, ly, { size: 9, color: C.muted });
+    ly -= 11.5;
   }
 
   // ── Pied de page ──────────────────────────────────────────────────────
