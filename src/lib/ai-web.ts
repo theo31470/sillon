@@ -317,7 +317,8 @@ Règles impératives :
 - Format : tableaux markdown, une colonne par modèle, une ligne par caractéristique, unités d'origine converties en métrique. Sous chaque tableau : « Source : URL exacte de la page lue ».
 - Rubriques, dans cet ordre, avec tout ce que le document donne : Moteur (marque, cylindres, cylindrée, puissance nominale et maximale en ch et kW avec la norme, couple maxi, régime) ; Transmission (type, vitesses, vitesse maxi) ; Prise de force (régimes, avant/arrière) ; Hydraulique (débit, pression, distributeurs, relevage arrière et avant) ; Pneumatiques ; Dimensions et masses (empattement, longueur, largeur, hauteur, garde au sol, poids à vide, PTAC) ; Capacités (carburant, AdBlue, huile moteur, transmission, hydraulique, refroidissement) ; Entretien (intervalles de vidange et de filtres s'ils sont indiqués).
 - Indique la version ou la génération exacte décrite par le document (et son année). Si le document couvre plusieurs générations, sépare-les.
-- Si tu ne trouves aucune donnée officielle, écris seulement « INTROUVABLE » suivi des adresses consultées.`;
+- Si tu ne trouves aucune donnée officielle, écris seulement « INTROUVABLE » suivi des adresses consultées.
+- Première ligne OBLIGATOIRE : « MODÈLES COUVERTS : » suivi des modèles de la liste demandée (noms exacts de la liste) pour lesquels les pages donnent des valeurs propres à ce modèle, séparés par des virgules ; ou « MODÈLES COUVERTS : aucun ». Un autre modèle de la gamme (autre génération, autre version, nom voisin) ne compte pas.`;
 
 const FIND_SYSTEM = `Tu cherches, sur le site officiel d'un constructeur de tracteurs, la page « caractéristiques techniques / données techniques / technical data » d'une série : celle qui contient le tableau complet, modèle par modèle.
 Fais une ou deux recherches, puis réponds UNIQUEMENT par les adresses trouvées, une par ligne, la plus complète d'abord : page web de données techniques, sinon brochure PDF de la série (qui contient le tableau en fin de document). Aucun autre texte.`;
@@ -331,7 +332,8 @@ Règles impératives :
 - Les valeurs communes à tous les modèles peuvent être regroupées dans une colonne « Tous modèles ».
 - Les options et variantes (pneus, versions Power/Profi, avant/arrière) : indique-les comme dans la page.
 - Indique la génération ou la version décrite par la page. Si une page ne concerne pas la série demandée, ignore-la.
-- Si les pages ne contiennent aucune donnée exploitable pour cette série, écris seulement « INTROUVABLE ».`;
+- Si les pages ne contiennent aucune donnée exploitable pour cette série, écris seulement « INTROUVABLE ».
+- Première ligne OBLIGATOIRE : « MODÈLES COUVERTS : » suivi des modèles de la liste demandée (noms exacts de la liste) pour lesquels les pages donnent des valeurs propres à ce modèle, séparés par des virgules ; ou « MODÈLES COUVERTS : aucun ». Un autre modèle de la gamme (autre génération, autre version, nom voisin) ne compte pas.`;
 
 /** Pages officielles de la série, téléchargées directement (au plus 2). */
 async function readOfficialPages(params: { userId: string; brand: string; target: string; domains: string[] }) {
@@ -375,12 +377,28 @@ async function readOfficialPages(params: { userId: string; brand: string; target
   return tables;
 }
 
+/**
+ * Modèles réellement couverts par un dossier officiel (ligne « MODÈLES COUVERTS : … »).
+ * Sans cette ligne (ancien format), on considère que tout est couvert.
+ */
+export function officialCoverage(text: string, models: string[]) {
+  const line = text.match(/MOD[ÈE]LES COUVERTS\s*:\s*(.*)/i)?.[1]?.replace(/^[*_\s]+/, '').trim();
+  if (line === undefined) return { covered: models, missing: [] as string[] };
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const listed = /^aucun/i.test(line) ? [] : line.split(/[,;]/).map(norm).filter(Boolean);
+  const isCovered = (m: string) => listed.some((l) => l === norm(m) || l.includes(norm(m)) || norm(m).includes(l));
+  return { covered: models.filter(isCovered), missing: models.filter((m) => !isCovered(m)) };
+}
+
 export async function researchSeries(params: { userId: string; brand: string; series: string; models: string[]; years: string }) {
   const domains = brandDomains(params.brand);
   const target = params.series
     ? `Série : ${params.brand} ${params.series}. Modèles à couvrir : ${params.models.join(', ')}.`
     : `Tracteur : ${params.brand} ${params.models[0]}.`;
   const years = params.years ? ` Années : ${params.years}.` : '';
+
+  let official: { notes: string; sources: { url: string; name: string }[] } | null = null;
+  let missing = params.models;
 
   if (domains.length) {
     // 1. Le tableau officiel complet, téléchargé directement : le meilleur et le moins cher.
@@ -405,40 +423,69 @@ export async function researchSeries(params: { userId: string; brand: string; se
         .map((b) => b.text)
         .join('')
         .trim();
-      if (text.length > 800 && !/^\s*INTROUVABLE/i.test(text)) {
-        return { notes: `${text}\n\n(Pages officielles lues en entier : ${pages.map((p) => p.url).join(' ; ')})`, sources: pages.map((p) => ({ url: p.url, name: p.title || p.url })) };
+      const cov = officialCoverage(text, params.models);
+      // Les pages parlent d'une autre génération ou d'autres modèles : elles ne comptent pas.
+      if (text.length > 800 && !/^\s*INTROUVABLE/i.test(text) && cov.covered.length) {
+        official = { notes: `${text}\n\n(Pages officielles lues en entier : ${pages.map((p) => p.url).join(' ; ')})`, sources: pages.map((p) => ({ url: p.url, name: p.title || p.url })) };
+        missing = cov.missing;
+      } else if (cov.covered.length === 0) {
+        console.info('[recherche] pages officielles sans les modèles demandés', target.slice(0, 80));
       }
     }
 
     // 2. Page non téléchargeable (site protégé, brochure PDF…) : extraits de la recherche web officielle.
-    const official = await runWithWebTools({
-      system: OFFICIAL_SYSTEM,
-      prompt: `${target}${years}\nSites officiels : ${domains.join(', ')}.\nRecopie les caractéristiques techniques officielles.`,
-      searches: 2,
-      fetches: 2,
-      pageTokens: 20_000,
-      allowedDomains: domains,
-      maxTokens: 8000,
-      deadlineMs: 120_000,
-    });
-    await recordUsage(params.userId, 'sheet_research', official.usage, official.model);
-    if (official.text.length > 1200 && !/^\s*INTROUVABLE/i.test(official.text)) return { notes: official.text, sources: official.sources };
+    if (!official) {
+      const res = await runWithWebTools({
+        system: OFFICIAL_SYSTEM,
+        prompt: `${target}${years}\nSites officiels : ${domains.join(', ')}.\nRecopie les caractéristiques techniques officielles.`,
+        searches: 2,
+        fetches: 2,
+        pageTokens: 20_000,
+        allowedDomains: domains,
+        maxTokens: 8000,
+        deadlineMs: 120_000,
+      });
+      await recordUsage(params.userId, 'sheet_research', res.usage, res.model);
+      const cov = officialCoverage(res.text, params.models);
+      if (res.text.length > 1200 && !/^\s*INTROUVABLE/i.test(res.text) && cov.covered.length) {
+        official = { notes: res.text, sources: res.sources };
+        missing = cov.missing;
+      }
+    }
+    if (official && missing.length === 0) return official;
   }
 
-  // 3. Rien d'exploitable chez le constructeur : recherche élargie (presse spécialisée).
-  const result = await runWithWebTools({
-    system: RESEARCH_SYSTEM,
-    prompt: `${target}${years}
-${domains.length ? `Site officiel du constructeur : ${domains[0]} (déjà consulté sans succès : privilégie la presse agricole et les essais).` : ''}
+  // 3. Modèles absents des documents du constructeur (souvent une génération précédente) :
+  // recherche élargie (presse spécialisée, essais, archives des constructeurs).
+  const pressTarget = official
+    ? `Tracteurs : ${params.brand} ${missing.join(', ')}${params.series ? ` (série ${params.series}, souvent une génération précédente)` : ''}.`
+    : target;
+  let press: Awaited<ReturnType<typeof runWithWebTools>> | null = null;
+  try {
+    press = await runWithWebTools({
+      system: RESEARCH_SYSTEM,
+      prompt: `${pressTarget}${years}
+${domains.length ? `Site officiel du constructeur : ${domains[0]} (déjà consulté : ces modèles n'y figurent pas, privilégie la presse agricole, les essais et les fiches d'archives).` : ''}
 Prépare le dossier.`,
-    searches: 3,
-    fetches: 1,
-    maxTokens: 8000,
-    deadlineMs: 150_000,
-  });
-  await recordUsage(params.userId, 'sheet_research', result.usage, result.model);
-  if (result.text.length < 200) throw new Error('Dossier de recherche trop maigre : modèle introuvable ?');
-  return { notes: result.text, sources: result.sources };
+      searches: 3,
+      fetches: 1,
+      maxTokens: 8000,
+      deadlineMs: 150_000,
+    });
+    await recordUsage(params.userId, 'sheet_research', press.usage, press.model);
+  } catch (e) {
+    if (!official) throw e;
+    console.warn('[recherche] presse indisponible pour', missing.join(', '), e instanceof Error ? e.message : e);
+  }
+  if (official) {
+    if (!press || press.text.length < 200) return official;
+    return {
+      notes: `${official.notes}\n\n=== MODÈLES ABSENTS DES DOCUMENTS DU CONSTRUCTEUR (${missing.join(', ')}) : presse et essais ===\n${press.text}`,
+      sources: [...official.sources, ...press.sources],
+    };
+  }
+  if (!press || press.text.length < 200) throw new Error('Dossier de recherche trop maigre : modèle introuvable ?');
+  return { notes: press.text, sources: press.sources };
 }
 
 // ---------------------------------------------------------------------
