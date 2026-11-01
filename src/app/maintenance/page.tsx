@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { getMaintenance } from '@/lib/maintenance-server';
 import { getProfile } from '@/lib/auth';
 import { SITE } from '@/lib/site';
@@ -93,9 +94,9 @@ export default async function MaintenancePage(props: PageProps<'/maintenance'>) 
           <span className="max-md:hidden">
             © {new Date().getFullYear()} {SITE.name} · Machinisme agricole
           </span>
-          <a href="/connexion?suite=/admin/maintenance" className="underline decoration-white/20 underline-offset-4 hover:text-white/80">
+          <Link href="/connexion?suite=/admin/maintenance" prefetch={false} className="underline decoration-white/20 underline-offset-4 hover:text-white/80">
             Connexion administrateur
-          </a>
+          </Link>
         </footer>
       </div>
     </main>
