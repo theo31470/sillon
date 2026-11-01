@@ -12,7 +12,7 @@ import type { Plan } from '@/lib/types';
 import { SHOP_MAX_LINES, SHOP_MAX_QTY, shopDiscountPercent, type CartLine } from '@/lib/shop-shared';
 
 /**
- * Boutique : prix, paiement Stripe Checkout, transmission à Printful et suivi.
+ * Boutique : prix, paiement intégré à la page (Stripe), transmission à Printful et suivi.
  * Les prix viennent toujours de Printful au moment de payer (jamais du navigateur).
  */
 
@@ -109,9 +109,16 @@ export async function priceCart(lines: CartLine[], plan: Plan) {
 
 const deliveryText = (min: number | null, max: number | null) => (min && max ? `${min} à ${max} jours ouvrés` : null);
 
-/** Crée la commande (en attente de paiement) et la page de paiement Stripe. Renvoie l'adresse de paiement. */
-export async function startCheckout(params: { userId: string; email: string; customerId: string | null; plan: Plan; lines: CartLine[] }) {
+export type ShopRecipient = NonNullable<ShopOrderRow['recipient']>;
+
+/**
+ * Crée la commande (en attente de paiement) et son paiement Stripe, réglé ensuite
+ * directement sur la page du site (formulaire de carte intégré, comme l'abonnement).
+ */
+export async function startShopPayment(params: { userId: string; email: string; customerId: string | null; plan: Plan; lines: CartLine[]; recipient: ShopRecipient; expectedTotal: number }) {
   const priced = await priceCart(params.lines, params.plan);
+  // Prix ou frais de port changés depuis l'affichage du panier : on le dit plutôt que de débiter autre chose.
+  if (priced.total !== params.expectedTotal) throw new ShopError('Le total a changé entre-temps (prix ou frais de port mis à jour). Vérifiez le nouveau montant puis payez à nouveau.');
   const db = createServiceClient();
   const { data: order, error } = await db
     .from('shop_orders')
@@ -126,66 +133,39 @@ export async function startCheckout(params: { userId: string; email: string; cus
       shipping_method: priced.shipping.method,
       shipping_label: deliveryText(priced.shipping.minDays, priced.shipping.maxDays),
       total_cents: priced.total,
+      recipient: params.recipient,
     })
     .select('id')
     .single();
   if (error || !order) throw new Error(`Commande impossible à créer : ${error?.message}`);
+  const orderId = order.id as string;
+  const r = params.recipient;
 
-  const site = env.siteUrl().replace(/\/$/, '');
-  const meta = { kind: 'boutique', order_id: order.id as string, user_id: params.userId };
-  const session = await stripe().checkout.sessions.create(
+  const intent = await stripe().paymentIntents.create(
     {
-      mode: 'payment',
-      locale: 'fr',
-      client_reference_id: params.userId,
-      ...(params.customerId ? { customer: params.customerId } : { customer_email: params.email }),
-      line_items: priced.items.map((i) => ({
-        quantity: i.quantity,
-        price_data: {
-          currency: 'eur',
-          unit_amount: i.unit_cents,
-          product_data: {
-            name: i.name,
-            ...(i.detail || i.unit_cents < i.list_cents
-              ? { description: [i.detail, i.unit_cents < i.list_cents ? `Prix membre Complet (au lieu de ${formatEuros(i.list_cents)})` : ''].filter(Boolean).join(' · ') }
-              : {}),
-            ...(i.image?.startsWith('https://') ? { images: [i.image] } : {}),
-          },
-        },
-      })),
-      shipping_address_collection: { allowed_countries: ['FR'] },
-      phone_number_collection: { enabled: true },
-      shipping_options: [
-        {
-          shipping_rate_data: {
-            type: 'fixed_amount',
-            display_name: priced.shipping.label,
-            fixed_amount: { amount: priced.shipping.cents, currency: 'eur' },
-            ...(priced.shipping.minDays && priced.shipping.maxDays
-              ? { delivery_estimate: { minimum: { unit: 'business_day', value: priced.shipping.minDays }, maximum: { unit: 'business_day', value: priced.shipping.maxDays } } }
-              : {}),
-          },
-        },
-      ],
-      custom_text: {
-        submit: { message: `En payant, vous acceptez les conditions de vente de la boutique (${site}/conditions). Articles imprimés à la demande puis expédiés.` },
+      amount: priced.total,
+      currency: 'eur',
+      // Carte (Apple Pay et Google Pay compris) : paiement confirmé tout de suite, la commande part aussitôt.
+      allowed_payment_method_types: ['card'],
+      ...(params.customerId ? { customer: params.customerId } : {}),
+      description: `Boutique Tracteurs & Co, commande ${orderReference(orderId)}`,
+      statement_descriptor_suffix: 'BOUTIQUE',
+      metadata: { kind: 'boutique', order_id: orderId, user_id: params.userId },
+      shipping: {
+        name: r.name,
+        phone: r.phone ?? undefined,
+        address: { line1: r.address1, line2: r.address2 ?? undefined, city: r.city, postal_code: r.zip, country: r.country_code },
       },
-      metadata: meta,
-      payment_intent_data: { metadata: meta, description: `Boutique Tracteurs & Co, commande ${orderReference(order.id as string)}` },
-      // Une page de paiement abandonnée expire au bout d'une heure (prix et stock à revérifier ensuite).
-      expires_at: Math.floor(Date.now() / 1000) + 3600,
-      success_url: `${site}/app/boutique/merci?commande=${order.id}`,
-      cancel_url: `${site}/app/boutique/panier`,
     },
-    { idempotencyKey: `boutique-${order.id}` },
+    { idempotencyKey: `boutique-${orderId}` },
   );
-  await db.from('shop_orders').update({ stripe_session_id: session.id, updated_at: new Date().toISOString() }).eq('id', order.id);
-  if (!session.url) throw new Error('Stripe n’a pas renvoyé de page de paiement');
-  return session.url;
+  await db.from('shop_orders').update({ stripe_payment_intent: intent.id, updated_at: new Date().toISOString() }).eq('id', orderId);
+  if (!intent.client_secret) throw new Error('Stripe n’a pas renvoyé de paiement');
+  return { orderId, clientSecret: intent.client_secret };
 }
 
 // ---------------------------------------------------------------------
-// Après paiement (webhook Stripe)
+// Après paiement (retour du navigateur, webhook Stripe, tâche quotidienne)
 // ---------------------------------------------------------------------
 
 async function loadOrder(id: string) {
@@ -201,40 +181,52 @@ async function updateOrder(id: string, patch: Partial<ShopOrderRow>) {
   if (error) throw new Error(`Commande ${id} : ${error.message}`);
 }
 
-/** Paiement validé : on note l'adresse, puis la commande part chez Printful. */
-export async function onShopCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const orderId = session.metadata?.order_id;
-  if (!orderId) return;
+/**
+ * Paiement réussi : la commande passe « payée », l'e-mail de confirmation part et
+ * la commande est transmise à Printful. Appelée par le navigateur juste après le
+ * paiement, par le webhook Stripe et par la tâche quotidienne : seul le premier
+ * appel fait quelque chose. L'état du paiement est toujours relu chez Stripe.
+ */
+export async function settleShopPayment(intentOrId: Stripe.PaymentIntent | string) {
+  const intent = typeof intentOrId === 'string' ? await stripe().paymentIntents.retrieve(intentOrId) : intentOrId;
+  const orderId = intent.metadata?.kind === 'boutique' ? intent.metadata.order_id : null;
+  if (!orderId) return null;
   const order = await loadOrder(orderId);
   if (!order) throw new Error(`Commande boutique introuvable : ${orderId}`);
-  if (session.payment_status !== 'paid') return;
+  if (intent.status !== 'succeeded' || order.stripe_payment_intent !== intent.id || intent.amount_received < order.total_cents) return order;
 
   if (order.status === 'pending' || order.status === 'abandoned') {
-    const ship = session.collected_information?.shipping_details;
-    const addr = ship?.address;
-    const recipient = addr
-      ? {
-          name: (ship?.name || session.customer_details?.name || '').slice(0, 120),
-          address1: addr.line1 ?? '',
-          address2: addr.line2 || null,
-          city: addr.city ?? '',
-          zip: addr.postal_code ?? '',
-          country_code: addr.country ?? 'FR',
-          phone: session.customer_details?.phone || null,
-        }
-      : null;
-    await updateOrder(orderId, {
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      recipient,
-      email: session.customer_details?.email || order.email,
-      stripe_payment_intent: typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent?.id ?? null),
-      total_cents: session.amount_total ?? order.total_cents,
-    });
-    Object.assign(order, { status: 'paid', recipient });
-    await notifyShop('commande_confirmee', (await loadOrder(orderId)) ?? order);
+    // Passage à « payée » une seule fois, même si deux appels arrivent en même temps.
+    const { data: claimed } = await createServiceClient()
+      .from('shop_orders')
+      .update({ status: 'paid', paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', orderId)
+      .in('status', ['pending', 'abandoned'])
+      .select('id');
+    if (claimed?.length) await notifyShop('commande_confirmee', (await loadOrder(orderId)) ?? order);
   }
-  if (order.status === 'paid') await submitToPrintful(orderId);
+  return submitToPrintful(orderId);
+}
+
+/** Commandes dont le paiement a abouti sans que le site l'ait encore noté (navigateur fermé pendant la validation bancaire). */
+export async function settlePendingShopPayments() {
+  const { data } = await createServiceClient()
+    .from('shop_orders')
+    .select('id, stripe_payment_intent')
+    .eq('status', 'pending')
+    .not('stripe_payment_intent', 'is', null)
+    .gte('created_at', new Date(Date.now() - 3 * 86_400_000).toISOString())
+    .limit(50);
+  let settled = 0;
+  for (const o of data ?? []) {
+    try {
+      const r = await settleShopPayment(o.stripe_payment_intent as string);
+      if (r && r.status !== 'pending') settled++;
+    } catch (err) {
+      console.error('[boutique] rattrapage paiement', o.id, err);
+    }
+  }
+  return settled;
 }
 
 /** Transmet une commande payée à Printful (aussi utilisé par le bouton « Renvoyer » de l'admin). */
@@ -276,13 +268,6 @@ export async function submitToPrintful(orderId: string) {
     );
   }
   return loadOrder(orderId);
-}
-
-/** Page de paiement expirée sans paiement. */
-export async function onShopCheckoutExpired(session: Stripe.Checkout.Session) {
-  const orderId = session.metadata?.order_id;
-  if (!orderId) return;
-  await createServiceClient().from('shop_orders').update({ status: 'abandoned', updated_at: new Date().toISOString() }).eq('id', orderId).eq('status', 'pending');
 }
 
 /** Remboursement fait dans Stripe (total ou partiel). */
@@ -361,6 +346,7 @@ export async function syncOpenShopOrders() {
       console.error('[boutique] suivi', o.id, err);
     }
   }
+  synced += await settlePendingShopPayments();
   // Commandes jamais payées : retirées des listes au bout de 2 jours.
   await createServiceClient()
     .from('shop_orders')

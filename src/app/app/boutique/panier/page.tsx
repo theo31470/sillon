@@ -11,10 +11,10 @@ export default async function CartPage() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold tracking-tight">Mon panier</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Panier et paiement</h1>
         <Link href="/app/boutique" className="font-semibold text-brand-dark hover:underline">← Continuer mes achats</Link>
       </div>
-      <CartView demo={Boolean(profile.is_demo)} vatMention={SITE.vatMention} />
+      <CartView demo={Boolean(profile.is_demo)} vatMention={SITE.vatMention} defaultName={profile.full_name} />
     </>
   );
 }

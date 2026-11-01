@@ -8,7 +8,7 @@ import { euros, frDate, notifyBilling, priceLabelOf } from '@/lib/email/billing'
 import { isFullyDiscounted, issueInvoiceForStripeInvoice } from '@/lib/invoices/issue';
 import { rewardReferrer } from '@/lib/referrals';
 import { invoiceAttachment, onChargeRefunded } from '@/lib/invoices/notify';
-import { onShopCheckoutCompleted, onShopCheckoutExpired, onShopRefund } from '@/lib/shop';
+import { onShopRefund, settleShopPayment } from '@/lib/shop';
 
 /**
  * Webhook Stripe : seule source de vérité pour les abonnements et paiements.
@@ -30,16 +30,11 @@ export async function POST(request: NextRequest) {
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        // Boutique : paiement d'une commande (transmise ensuite à Printful).
-        if (event.data.object.metadata?.kind === 'boutique') await onShopCheckoutCompleted(event.data.object);
-        else await onCheckoutCompleted(event.data.object);
+        await onCheckoutCompleted(event.data.object);
         break;
-      case 'checkout.session.async_payment_succeeded':
-        // Moyen de paiement différé (virement, prélèvement) : la commande part une fois l'argent reçu.
-        if (event.data.object.metadata?.kind === 'boutique') await onShopCheckoutCompleted(event.data.object);
-        break;
-      case 'checkout.session.expired':
-        if (event.data.object.metadata?.kind === 'boutique') await onShopCheckoutExpired(event.data.object);
+      case 'payment_intent.succeeded':
+        // Boutique : commande payée sur le site (transmise ensuite à Printful). Les abonnements passent par invoice.paid.
+        if (event.data.object.metadata?.kind === 'boutique') await settleShopPayment(event.data.object);
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':

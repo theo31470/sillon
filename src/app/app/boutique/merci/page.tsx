@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import type { ShopOrderRow } from '@/lib/shop';
+import { settleShopPayment, type ShopOrderRow } from '@/lib/shop';
 import { btn, Card } from '@/components/ui';
 import { OrderCard } from '../order-card';
 import { ClearCart } from './clear-cart';
@@ -11,10 +11,28 @@ export const metadata: Metadata = { title: 'Merci · Boutique' };
 
 export default async function ThanksPage(props: PageProps<'/app/boutique/merci'>) {
   await requireUser('/app/boutique/commandes');
-  const { commande } = await props.searchParams;
+  const { commande, redirect_status } = await props.searchParams;
   const id = typeof commande === 'string' && /^[0-9a-f-]{36}$/i.test(commande) ? commande : null;
-  const { data } = id ? await (await createClient()).from('shop_orders').select('*').eq('id', id).maybeSingle() : { data: null };
-  const order = data as ShopOrderRow | null;
+  const load = async () => {
+    const { data } = id ? await (await createClient()).from('shop_orders').select('*').eq('id', id).maybeSingle() : { data: null };
+    return data as ShopOrderRow | null;
+  };
+  let order = await load();
+  // Retour de la validation bancaire (3-D Secure) : le paiement est relu chez Stripe et la commande part.
+  if (order?.status === 'pending' && order.stripe_payment_intent && redirect_status !== 'failed') {
+    await settleShopPayment(order.stripe_payment_intent).catch((err) => console.error('[boutique] retour de paiement', err));
+    order = await load();
+  }
+
+  if (redirect_status === 'failed' || (order && order.status === 'pending' && redirect_status)) {
+    return (
+      <Card className="flex flex-col items-start gap-3">
+        <h1 className="text-2xl font-bold tracking-tight">Le paiement n’a pas abouti</h1>
+        <p className="text-muted">La validation par votre banque a échoué ou a été annulée. Rien n’a été débité : votre panier est intact, vous pouvez réessayer.</p>
+        <Link href="/app/boutique/panier" className={btn.primary}>Retour au panier</Link>
+      </Card>
+    );
+  }
 
   return (
     <>

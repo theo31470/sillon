@@ -3,7 +3,9 @@
 import { headers } from 'next/headers';
 import { getProfile, getSession, requireUser } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
-import { priceCart, ShopError, startCheckout } from '@/lib/shop';
+import { z } from 'zod';
+import { createServiceClient } from '@/lib/supabase/admin';
+import { priceCart, settleShopPayment, ShopError, startShopPayment } from '@/lib/shop';
 import { printfulConfigured } from '@/lib/printful';
 import type { CartLine } from '@/lib/shop-shared';
 
@@ -51,8 +53,24 @@ export async function quoteCart(lines: CartLine[]): Promise<CartQuote> {
   }
 }
 
-/** Passe au paiement : crée la commande et renvoie l'adresse de la page Stripe. */
-export async function checkoutCart(lines: CartLine[], acceptedTerms: boolean): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+const recipientSchema = z.object({
+  name: z.string().trim().min(2, 'Indiquez le nom du destinataire.').max(120),
+  address1: z.string().trim().min(3, 'Indiquez l’adresse de livraison.').max(200),
+  address2: z.string().trim().max(200).nullable().optional(),
+  city: z.string().trim().min(1, 'Indiquez la ville.').max(100),
+  zip: z.string().trim().regex(/^\d{5}$/, 'Code postal à 5 chiffres.'),
+  country_code: z.literal('FR', { message: 'Livraison en France uniquement.' }),
+  phone: z.string().trim().min(6, 'Indiquez un téléphone pour le livreur.').max(30),
+});
+export type RecipientInput = z.input<typeof recipientSchema>;
+
+/** Étape 1 du paiement : crée la commande et le paiement Stripe, réglé ensuite dans la page. */
+export async function startPayment(
+  lines: CartLine[],
+  recipient: RecipientInput,
+  expectedTotal: number,
+  acceptedTerms: boolean,
+): Promise<{ ok: true; orderId: string; clientSecret: string } | { ok: false; error: string; changed?: boolean }> {
   // Compte de démonstration : requireUser renvoie vers la création de compte.
   const { session, profile } = await requireUser('/app/boutique/panier');
   if (!acceptedTerms) return { ok: false, error: 'Cochez la case des conditions de vente pour continuer.' };
@@ -62,10 +80,36 @@ export async function checkoutCart(lines: CartLine[], acceptedTerms: boolean): P
     return { ok: false, error: 'Trop de tentatives, patientez quelques minutes.' };
   }
   if (!Array.isArray(lines) || !lines.length) return { ok: false, error: 'Votre panier est vide.' };
+  const parsed = recipientSchema.safeParse(recipient);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Adresse de livraison incomplète.' };
   try {
-    const url = await startCheckout({ userId: session.userId, email: profile.email, customerId: profile.stripe_customer_id, plan: profile.plan, lines });
-    return { ok: true, url };
+    const r = await startShopPayment({
+      userId: session.userId,
+      email: profile.email,
+      customerId: profile.stripe_customer_id,
+      plan: profile.plan,
+      lines,
+      recipient: { ...parsed.data, address2: parsed.data.address2 || null },
+      expectedTotal: Math.round(Number(expectedTotal)),
+    });
+    return { ok: true, ...r };
   } catch (err) {
-    return { ok: false, error: friendly(err) };
+    const changed = err instanceof ShopError && err.message.startsWith('Le total a changé');
+    return { ok: false, error: friendly(err), changed };
+  }
+}
+
+/** Étape 2 : le paiement vient d'aboutir dans la page ; la commande part tout de suite (le webhook Stripe sert de filet). */
+export async function finishPayment(orderId: string): Promise<{ ok: boolean }> {
+  const session = await getSession();
+  if (!session || typeof orderId !== 'string' || !/^[0-9a-f-]{36}$/i.test(orderId)) return { ok: false };
+  const { data } = await createServiceClient().from('shop_orders').select('stripe_payment_intent, user_id').eq('id', orderId).maybeSingle();
+  if (!data?.stripe_payment_intent || data.user_id !== session.userId) return { ok: false };
+  try {
+    await settleShopPayment(data.stripe_payment_intent as string);
+    return { ok: true };
+  } catch (err) {
+    console.error('[boutique] fin de paiement', orderId, err);
+    return { ok: false };
   }
 }
