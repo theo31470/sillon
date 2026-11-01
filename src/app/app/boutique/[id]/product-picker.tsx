@@ -131,7 +131,7 @@ export function ProductPicker({ product, percent, isPaid }: { product: ShopProdu
         <ul className="flex flex-col gap-2 border-t border-line pt-4 text-sm text-muted">
           <li>Imprimé à la demande en Europe, rien n’est produit en trop.</li>
           <li>Livraison en France, frais de port calculés au panier.</li>
-          <li>Paiement sécurisé par carte, Apple Pay ou Google Pay.</li>
+          <li>Paiement sécurisé par carte, Apple Pay, Google Pay ou PayPal.</li>
         </ul>
       </div>
     </div>

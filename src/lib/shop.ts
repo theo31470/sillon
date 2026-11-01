@@ -145,8 +145,8 @@ export async function startShopPayment(params: { userId: string; email: string; 
     {
       amount: priced.total,
       currency: 'eur',
-      // Carte (Apple Pay et Google Pay compris) : paiement confirmé tout de suite, la commande part aussitôt.
-      allowed_payment_method_types: ['card'],
+      // Carte (Apple Pay et Google Pay compris) ou PayPal : paiement confirmé tout de suite, la commande part aussitôt.
+      allowed_payment_method_types: ['card', 'paypal'],
       ...(params.customerId ? { customer: params.customerId } : {}),
       description: `Boutique Tracteurs & Co, commande ${orderReference(orderId)}`,
       statement_descriptor_suffix: 'BOUTIQUE',

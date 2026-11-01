@@ -26,11 +26,12 @@ export default async function ThanksPage(props: PageProps<'/app/boutique/merci'>
     order = await load();
   }
 
-  if (redirect_status === 'failed' || (order && order.status === 'pending' && redirect_status)) {
+  // Paiement refusé ou abandonné (carte refusée par la banque, retour depuis PayPal sans payer).
+  if (redirect_status === 'failed') {
     return (
       <Card className="flex flex-col items-start gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Le paiement n’a pas abouti</h1>
-        <p className="text-muted">La validation par votre banque a échoué ou a été annulée. Rien n’a été débité : votre panier est intact, vous pouvez réessayer.</p>
+        <p className="text-muted">Le paiement a été refusé ou annulé (validation bancaire ou PayPal). Rien n’a été débité : votre panier est intact, vous pouvez réessayer.</p>
         <Link href="/app/boutique/panier" className={btn.primary}>Retour au panier</Link>
       </Card>
     );

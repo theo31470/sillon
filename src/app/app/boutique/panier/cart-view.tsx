@@ -179,7 +179,7 @@ function StripeCheckout({ total, children }: { total: number; children: React.Re
         mode: 'payment',
         amount: initialAmount,
         currency: 'eur',
-        allowedPaymentMethodTypes: ['card'],
+        allowedPaymentMethodTypes: ['card', 'paypal'],
         appearance,
         fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap' }],
       }}
@@ -351,7 +351,7 @@ function CheckoutForm({
                 <rect x="4" y="11" width="16" height="10" rx="2" />
                 <path d="M8 11V7a4 4 0 0 1 8 0v4" />
               </svg>
-              Carte bancaire, Apple Pay ou Google Pay. Paiement sécurisé par Stripe : vos numéros de carte ne passent jamais par Tracteurs & Co.
+              Carte bancaire, Apple Pay, Google Pay ou PayPal. Paiement sécurisé par Stripe : vos numéros de carte ne passent jamais par Tracteurs & Co.
             </p>
             {!ready.payment ? <p className="text-sm text-muted">Chargement du formulaire sécurisé…</p> : null}
             <PaymentElement
