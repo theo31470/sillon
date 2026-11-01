@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AddressElement, Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { btn, Card } from '@/components/ui';
@@ -214,9 +214,30 @@ function CheckoutForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState({ address: false, payment: false });
-  const [complete, setComplete] = useState({ address: false, payment: false });
   const [stage, setStage] = useState<PayStage>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [shipTo, setShipTo] = useState<string | null>(null);
+  const [stepError, setStepError] = useState<string | null>(null);
+  // Trois écrans : panier, livraison, paiement (adresse dans l'URL : le bouton « retour » du téléphone fonctionne).
+  const params = useSearchParams();
+  const wanted = params.get('etape') === 'paiement' ? 3 : params.get('etape') === 'livraison' ? 2 : 1;
+  const step = wanted === 3 && !shipTo ? 2 : wanted;
+  const goTo = (n: 1 | 2 | 3) => {
+    setError(null);
+    setStepError(null);
+    window.history.pushState(null, '', n === 1 ? '/app/boutique/panier' : `/app/boutique/panier?etape=${n === 2 ? 'livraison' : 'paiement'}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  async function toPayment() {
+    const address = await elements?.getElement('address')?.getValue();
+    if (!address?.complete) {
+      setStepError('Complétez l’adresse de livraison et le téléphone pour continuer.');
+      return;
+    }
+    const v = address.value;
+    setShipTo([v.name, v.address.line1, v.address.line2, `${v.address.postal_code} ${v.address.city}`].filter(Boolean).join(', '));
+    goTo(3);
+  }
   // Paiement déjà préparé pour ce panier et ce montant : réutilisé si la carte est refusée puis ressaisie.
   const prepared = useRef<{ key: string; total: number; orderId: string; clientSecret: string } | null>(null);
 
@@ -280,75 +301,125 @@ function CheckoutForm({
     }
   }
 
+  const titles = { 1: 'Mon panier', 2: 'Livraison', 3: 'Paiement' } as const;
+  const back = step === 2 ? { label: '← Retour au panier', to: 1 as const } : step === 3 ? { label: '← Modifier la livraison', to: 2 as const } : null;
+
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-start gap-5">
-      <div className="w-full">
-        <PaySteps
-          steps={[
-            { label: 'Articles', done: true },
-            { label: 'Livraison', done: complete.address },
-            { label: 'Paiement', done: complete.payment },
-          ]}
-        />
-      </div>
-      <div className="flex min-w-0 flex-[2_1_480px] flex-col gap-5">
-        {items}
-        <Card className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Livraison</h2>
-          <p className="text-sm text-muted">En France métropolitaine. Le téléphone sert uniquement au transporteur.</p>
-          {!ready.address ? <p className="text-sm text-muted">Chargement…</p> : null}
-          <AddressElement
-            onReady={() => setReady((r) => ({ ...r, address: true }))}
-            onChange={(e) => setComplete((c) => (c.address === e.complete ? c : { ...c, address: e.complete }))}
-            options={{
-              mode: 'shipping',
-              allowedCountries: ['FR'],
-              fields: { phone: 'always' },
-              validation: { phone: { required: 'always' } },
-              defaultValues: { name: defaultName, address: { country: 'FR' } },
-            }}
-          />
-        </Card>
-        <Card className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Paiement</h2>
-          <p className="flex items-start gap-2 text-sm text-muted">
-            <svg className="mt-0.5 flex-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="4" y="11" width="16" height="10" rx="2" />
-              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-            </svg>
-            Carte bancaire, Apple Pay ou Google Pay. Paiement sécurisé par Stripe : vos numéros de carte ne passent jamais par Tracteurs & Co.
-          </p>
-          {!ready.payment ? <p className="text-sm text-muted">Chargement du formulaire sécurisé…</p> : null}
-          <PaymentElement
-            onReady={() => setReady((r) => ({ ...r, payment: true }))}
-            onChange={(e) => setComplete((c) => (c.payment === e.complete ? c : { ...c, payment: e.complete }))}
-            options={{ layout: 'tabs', terms: { card: 'never' }, wallets: { applePay: 'auto', googlePay: 'auto' } }}
-          />
-        </Card>
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      <PaySteps
+        steps={[
+          { label: 'Panier', done: step > 1 },
+          { label: 'Livraison', done: step > 2 },
+          { label: 'Paiement', done: Boolean(done) },
+        ]}
+      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 key={step} className="celebrate-rise text-2xl font-bold tracking-tight">{titles[step]}</h2>
+        {back ? (
+          <button type="button" onClick={() => goTo(back.to)} disabled={busy} className="font-semibold text-brand-dark hover:underline">
+            {back.label}
+          </button>
+        ) : null}
       </div>
 
-      <Card className="flex min-w-0 flex-[1_1_300px] flex-col gap-4 lg:sticky lg:top-6">
-        <h2 className="text-xl font-semibold">Récapitulatif</h2>
-        {summary}
-        <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-0.5 size-5 flex-none accent-brand" />
-          <span>
-            J’accepte les{' '}
-            <Link href="/conditions#boutique" target="_blank" className="font-semibold underline underline-offset-4">conditions de vente de la boutique</Link>{' '}
-            (articles imprimés à la demande, livraison en France).
-          </span>
-        </label>
-        {error ? <p role="alert" className="rounded-[10px] bg-danger-soft px-4 py-3 text-sm text-danger">{error}</p> : null}
-        <button
-          type="submit"
-          disabled={!stripe || busy || updating || !ready.payment}
-          aria-busy={busy}
-          className={`${btn.primary} transition-colors ${done ? 'pay-btn-done !bg-success !text-page disabled:!opacity-100' : ''}`}
-        >
-          <PayButtonContent idle={`Payer ${euros(total)}`} stage={busy ? (stage ?? { label: 'Paiement en cours…' }) : null} done={done} />
-        </button>
-        <p className="text-xs text-muted">Confirmation par e-mail, puis numéro de suivi dès l’expédition.</p>
-      </Card>
+      <div className="flex flex-wrap items-start gap-5">
+        <div className="flex min-w-0 flex-[2_1_480px] flex-col gap-5">
+          {step === 1 ? <div key="articles" className="celebrate-rise">{items}</div> : null}
+
+          {/* Les formulaires Stripe restent montés d'un écran à l'autre : rien de ce qui est saisi ne se perd. */}
+          <Card className={`flex flex-col gap-3 ${step === 2 ? 'celebrate-rise' : 'hidden'}`}>
+            <p className="text-sm text-muted">En France métropolitaine. Le téléphone sert uniquement au transporteur.</p>
+            {!ready.address ? <p className="text-sm text-muted">Chargement…</p> : null}
+            <AddressElement
+              onReady={() => setReady((r) => ({ ...r, address: true }))}
+              onChange={(e) => {
+                if (e.complete) setStepError(null);
+              }}
+              options={{
+                mode: 'shipping',
+                allowedCountries: ['FR'],
+                fields: { phone: 'always' },
+                validation: { phone: { required: 'always' } },
+                defaultValues: { name: defaultName, address: { country: 'FR' } },
+              }}
+            />
+          </Card>
+
+          <Card className={`flex flex-col gap-3 ${step === 3 ? 'celebrate-rise' : 'hidden'}`}>
+            <p className="flex items-start gap-2 text-sm text-muted">
+              <svg className="mt-0.5 flex-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="4" y="11" width="16" height="10" rx="2" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+              Carte bancaire, Apple Pay ou Google Pay. Paiement sécurisé par Stripe : vos numéros de carte ne passent jamais par Tracteurs & Co.
+            </p>
+            {!ready.payment ? <p className="text-sm text-muted">Chargement du formulaire sécurisé…</p> : null}
+            <PaymentElement
+              onReady={() => setReady((r) => ({ ...r, payment: true }))}
+              options={{ layout: 'tabs', terms: { card: 'never' }, wallets: { applePay: 'auto', googlePay: 'auto' } }}
+            />
+          </Card>
+        </div>
+
+        <Card className="flex min-w-0 flex-[1_1_300px] flex-col gap-4 lg:sticky lg:top-6">
+          <h2 className="text-xl font-semibold">Récapitulatif</h2>
+          {summary}
+          {step > 1 ? (
+            <button type="button" onClick={() => goTo(1)} disabled={busy} className="self-start text-sm font-semibold text-brand-dark hover:underline">
+              Modifier le panier
+            </button>
+          ) : null}
+
+          {step === 1 ? (
+            <button type="button" onClick={() => goTo(2)} disabled={updating} className={btn.primary}>
+              Continuer vers la livraison
+            </button>
+          ) : null}
+
+          {step === 2 ? (
+            <>
+              {stepError ? <p role="alert" className="rounded-[10px] bg-danger-soft px-4 py-3 text-sm text-danger">{stepError}</p> : null}
+              <button type="button" onClick={() => void toPayment()} disabled={!ready.address} className={btn.primary}>
+                Continuer vers le paiement
+              </button>
+            </>
+          ) : null}
+
+          {step === 3 ? (
+            <>
+              {shipTo ? (
+                <div className="flex items-start justify-between gap-3 rounded-[10px] bg-ground px-4 py-3 text-sm">
+                  <span>
+                    <span className="block font-semibold">Livraison à</span>
+                    <span className="text-muted">{shipTo}</span>
+                  </span>
+                  <button type="button" onClick={() => goTo(2)} disabled={busy} className="flex-none font-semibold text-brand-dark hover:underline">
+                    Modifier
+                  </button>
+                </div>
+              ) : null}
+              <label className="flex items-start gap-3 text-sm">
+                <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-0.5 size-5 flex-none accent-brand" />
+                <span>
+                  J’accepte les{' '}
+                  <Link href="/conditions#boutique" target="_blank" className="font-semibold underline underline-offset-4">conditions de vente de la boutique</Link>{' '}
+                  (articles imprimés à la demande, livraison en France).
+                </span>
+              </label>
+              {error ? <p role="alert" className="rounded-[10px] bg-danger-soft px-4 py-3 text-sm text-danger">{error}</p> : null}
+              <button
+                type="submit"
+                disabled={!stripe || busy || updating || !ready.payment}
+                aria-busy={busy}
+                className={`${btn.primary} transition-colors ${done ? 'pay-btn-done !bg-success !text-page disabled:!opacity-100' : ''}`}
+              >
+                <PayButtonContent idle={`Payer ${euros(total)}`} stage={busy ? (stage ?? { label: 'Paiement en cours…' }) : null} done={done} />
+              </button>
+              <p className="text-xs text-muted">Confirmation par e-mail, puis numéro de suivi dès l’expédition.</p>
+            </>
+          ) : null}
+        </Card>
+      </div>
     </form>
   );
 }
