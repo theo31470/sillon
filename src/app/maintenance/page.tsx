@@ -89,7 +89,14 @@ export default async function MaintenancePage(props: PageProps<'/maintenance'>) 
           </p>
         </section>
 
-        <footer className="text-xs text-white/40 max-md:hidden">© {new Date().getFullYear()} {SITE.name} · Machinisme agricole</footer>
+        <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-white/40">
+          <span className="max-md:hidden">
+            © {new Date().getFullYear()} {SITE.name} · Machinisme agricole
+          </span>
+          <a href="/connexion?suite=/admin/maintenance" className="underline decoration-white/20 underline-offset-4 hover:text-white/80">
+            Connexion administrateur
+          </a>
+        </footer>
       </div>
     </main>
   );
