@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { getMachine } from '@/lib/fleet';
+import { getFleetAccess } from '@/lib/fleet-access';
+import { invoiceQuota } from '@/lib/invoice-reader';
+import { InvoiceReader } from '../invoice-reader';
 import { listPublishedSheets } from '@/lib/content';
 import { dueLabel } from '@/lib/maintenance';
 import { euros } from '@/lib/costs';
@@ -26,11 +29,18 @@ const ORIGIN_SHORT = { constructeur: 'Constructeur', presse: 'Presse', utilisate
 export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>) {
   const { id } = await props.params;
   const { ajout } = await props.searchParams;
-  const { profile } = await requireUser(`/app/materiel/${id}`);
+  const { session, profile } = await requireUser(`/app/materiel/${id}`);
   const m = await getMachine(id);
   if (!m) notFound();
+  // Parc partagé : les invités voient le carnet ; les collaborateurs notent relevés et entretiens.
+  const owner = m.role === 'owner';
+  const canWrite = m.role !== 'lecture';
   const paid = profile.plan !== 'free';
-  const sheets = await listPublishedSheets({ category: 'machine' });
+  const fleetLabel = owner ? null : (await getFleetAccess())?.fleets.find((f) => f.ownerId === m.user_id)?.label ?? 'un parc partagé';
+  const [sheets, invoices] = await Promise.all([
+    listPublishedSheets({ category: 'machine' }),
+    owner && paid ? invoiceQuota(session.userId).catch(() => null) : Promise.resolve(null),
+  ]);
   const today = new Date().toISOString().slice(0, 10);
   const hoursNow = Number(m.hours);
   const e = m.economics;
@@ -38,17 +48,29 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
   const costTotals = Object.entries(COST_KINDS)
     .map(([k, label]) => ({ k, label, total: k === 'assurance' ? e.fixed.insurance : (e.variable as Record<string, number>)[k] ?? 0 }))
     .filter((c) => c.total > 0);
-  const nav = [
-    ['entretien', 'Entretien'],
-    ['depenses', 'Dépenses'],
-    ['cout', 'Coût de revient'],
-    ['compteur', 'Compteur'],
-    ['infos', 'Informations'],
-  ];
+  const nav = (
+    owner
+      ? [
+          ['entretien', 'Entretien'],
+          ['depenses', 'Dépenses'],
+          ['cout', 'Coût de revient'],
+          ['compteur', 'Compteur'],
+          ['infos', 'Informations'],
+        ]
+      : [
+          ['entretien', 'Entretien'],
+          ['compteur', 'Compteur'],
+        ]
+  ) as [string, string][];
 
   return (
     <>
       <Link href="/app/materiel" transitionTypes={['nav-back']} className="link-underline self-start text-sm text-brand">← Mon parc</Link>
+      {fleetLabel ? (
+        <Notice tone="gray">
+          Machine du parc de <strong>{fleetLabel}</strong> · accès {m.role === 'collaborateur' ? 'collaborateur : vous notez relevés et entretiens' : 'en lecture seule'}.
+        </Notice>
+      ) : null}
       {ajout ? <Notice tone="green">Machine ajoutée. Complétez ses informations d’achat pour calculer son coût de revient.</Notice> : null}
 
       {/* En-tête de la machine */}
@@ -72,17 +94,19 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
                 <p className="font-mono text-3xl font-bold tabular-nums">{formatNumber(hoursNow, 1)} h</p>
               </div>
             </div>
+            {canWrite ? (
             <ActionForm action={recordHours} resetOnSuccess={false} className="grid grid-cols-2 items-end gap-2.5 rounded-xl bg-ground p-3 sm:flex sm:flex-wrap">
               <input type="hidden" name="machine_id" value={m.id} />
               <Field label="Nouveau relevé (h)" htmlFor="hours"><Input id="hours" name="hours" inputMode="decimal" required placeholder={String(hoursNow)} className="sm:w-36" /></Field>
               <Field label="Date" htmlFor="read_on"><Input id="read_on" name="read_on" type="date" defaultValue={today} max={today} className="sm:w-44" /></Field>
               <div className="col-span-2 grid sm:block"><SubmitButton pendingLabel="…">Relever le compteur</SubmitButton></div>
             </ActionForm>
+            ) : null}
             <nav aria-label="Sections" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:flex-none">
               {nav.map(([anchor, label]) => (
                 <a key={anchor} href={`#${anchor}`} className="rounded-full border border-field px-3 py-1.5 text-sm font-medium transition-colors hover:border-brand hover:text-brand-dark">{label}</a>
               ))}
-              {paid ? (
+              {paid && owner ? (
                 <Link href={`/app/materiel/${m.id}/rapport`} className="inline-flex items-center gap-1.5 rounded-full bg-brand sm:ml-auto px-3 py-1.5 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-dark">
                   <Icon name="print" size={15} /> Rapport pour la revente
                 </Link>
@@ -124,7 +148,24 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           )}
         </Card>
 
+        {canWrite ? (
         <div className="flex flex-wrap items-start gap-5">
+          {owner ? (
+            <Card className="min-w-0 flex-[1_1_min(340px,100%)]">
+              <h3 className="mb-1 flex items-center gap-2 text-lg font-semibold">
+                Facture d’atelier <Badge tone="blue">Nouveau</Badge>
+              </h3>
+              <p className="mb-3 text-sm text-muted">Photographiez la facture du garage : les entretiens, le compteur et le montant se remplissent tout seuls. Vous relisez avant d’enregistrer.</p>
+              {paid && invoices ? (
+                <InvoiceReader machineId={m.id} hoursNow={hoursNow} remaining={invoices.remaining} />
+              ) : (
+                <div className="flex flex-col items-start gap-3 rounded-xl bg-brand-tint p-4">
+                  <p className="text-sm">La lecture des factures est incluse dans la formule Complet ({invoices?.limit ?? 30} factures par mois).</p>
+                  <Link href="/app/abonnement" className={btn.primary}>Découvrir la formule Complet</Link>
+                </div>
+              )}
+            </Card>
+          ) : null}
           <Card className="min-w-0 flex-[1_1_min(360px,100%)]">
             <h3 className="mb-3 text-lg font-semibold">Noter un entretien</h3>
             <ActionForm action={logMaintenance}>
@@ -140,14 +181,17 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
                 <Field label="Au compteur (h)" htmlFor="done_at_hours"><Input id="done_at_hours" name="done_at_hours" inputMode="decimal" defaultValue={String(hoursNow)} required /></Field>
                 <Field label="Date" htmlFor="done_on"><Input id="done_on" name="done_on" type="date" defaultValue={today} max={today} /></Field>
               </div>
-              <Field label="Coût (€ HT, facultatif)" htmlFor="cost" hint="Ajouté aux dépenses de la machine.">
-                <Input id="cost" name="cost" inputMode="decimal" />
-              </Field>
+              {owner ? (
+                <Field label="Coût (€ HT, facultatif)" htmlFor="cost" hint="Ajouté aux dépenses de la machine.">
+                  <Input id="cost" name="cost" inputMode="decimal" />
+                </Field>
+              ) : null}
               <Field label="Notes" htmlFor="notes"><Textarea id="notes" name="notes" rows={2} maxLength={1000} placeholder="Pièces changées, garage…" /></Field>
               <SubmitButton pendingLabel="Enregistrement…">Noter l’entretien</SubmitButton>
             </ActionForm>
           </Card>
 
+          {owner ? (
           <Card className="min-w-0 flex-[1_1_min(320px,100%)]">
             <h3 className="mb-1 text-lg font-semibold">Mon plan d’entretien</h3>
             <p className="mb-3 text-sm text-muted">Vos propres opérations. Une opération du même nom remplace celle de la fiche.</p>
@@ -175,7 +219,9 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
               <SubmitButton variant="secondary" pendingLabel="…">Ajouter au plan</SubmitButton>
             </ActionForm>
           </Card>
+          ) : null}
         </div>
+        ) : null}
 
         {m.logs.length ? (
           <Card>
@@ -186,11 +232,13 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
                   <span className="col-span-2 font-medium sm:order-3 sm:min-w-0 sm:flex-1">{l.operation}{l.notes ? <span className="font-normal text-muted"> · {l.notes}</span> : null}</span>
                   <span className="text-muted sm:order-1 sm:w-24 sm:flex-none">{formatDate(l.done_on)}<span className="font-mono tabular-nums text-ink sm:hidden"> · {formatNumber(Number(l.done_at_hours), 0)} h</span></span>
                   <span className="hidden w-20 flex-none font-mono tabular-nums sm:order-2 sm:inline">{formatNumber(Number(l.done_at_hours), 0)} h</span>
-                  <form action={deleteLog} className="sm:order-4">
-                    <input type="hidden" name="id" value={l.id} />
-                    <input type="hidden" name="machine_id" value={m.id} />
-                    <button type="submit" className="text-xs text-danger hover:underline">Supprimer</button>
-                  </form>
+                  {owner || (m.role === 'collaborateur' && l.user_id === session.userId) ? (
+                    <form action={deleteLog} className="sm:order-4">
+                      <input type="hidden" name="id" value={l.id} />
+                      <input type="hidden" name="machine_id" value={m.id} />
+                      <button type="submit" className="text-xs text-danger hover:underline">Supprimer</button>
+                    </form>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -198,6 +246,8 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
         ) : null}
       </section>
 
+      {owner ? (
+      <>
       {/* Dépenses */}
       <section id="depenses" className="scroll-mt-6 flex flex-wrap items-start gap-5">
         <Card className="min-w-0 flex-[1_1_min(340px,100%)]">
@@ -331,6 +381,8 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           )}
         </Card>
       </section>
+      </>
+      ) : null}
 
       {/* Compteur */}
       <section id="compteur" className="scroll-mt-6">
@@ -351,7 +403,8 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
         </Card>
       </section>
 
-      {/* Informations */}
+      {owner ? (
+      /* Informations */
       <section id="infos" className="scroll-mt-6 flex flex-wrap items-start gap-5">
         <Card className="min-w-0 flex-[2_1_min(520px,100%)]">
           <h2 className="mb-4 text-xl font-semibold">Informations</h2>
@@ -400,6 +453,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           </ActionForm>
         </Card>
       </section>
+      ) : null}
     </>
   );
 }

@@ -65,6 +65,8 @@ export type Machine = {
 export type MaintenanceLog = {
   id: string;
   machine_id: string;
+  /** Auteur de la saisie (titulaire du parc ou collaborateur). */
+  user_id: string;
   operation: string;
   done_at_hours: number;
   done_on: string;

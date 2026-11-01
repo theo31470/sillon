@@ -274,6 +274,11 @@ utilisés pour l’estimation sont dans `src/lib/ai.ts` (`PRICES`).
 - **Parrainage** : code personnel par membre (page Abonnement), lien `/p/CODE` (cookie 60 jours). Le filleul a 6,99 € de remise sur son premier paiement (coupon Stripe `parrainage-1-mois`, créé automatiquement), le parrain reçoit 6,99 € de crédit (solde client Stripe) au premier vrai paiement du filleul. Suivi dans Admin → Promos et parrainage.
 - **Relances des comptes gratuits** : un e-mail quand la limite de machines est atteinte, un autre après 14 jours sans visite (tournée quotidienne des rappels). Une seule fois chacun, uniquement si les annonces sont activées.
 
+## Parc partagé et factures d’atelier
+
+- **Mon équipe** (`/app/equipe`) : le titulaire d’une formule Complet invite 2 personnes par e-mail (lien `/invitation/<jeton>`, usage unique). Rôles : *collaborateur* (note relevés et entretiens) ou *lecture seule*. Les dépenses, le coût de revient, les informations de la machine et l’abonnement restent au titulaire. La base applique ces règles (`private.fleet_role`, migration `20261101000300_parc_partage.sql`) ; l’accès est suspendu si le titulaire repasse en Gratuit. Une barre « Parc affiché » permet de passer d’un parc à l’autre (cookie `tc_parc`).
+- **Facture d’atelier en photo** (fiche d’une machine, titulaire Complet, 30 par mois) : la photo est réduite dans le navigateur, lue par Claude (`src/lib/invoice-reader.ts`), puis le membre relit et coche ce qui entre dans le carnet (entretiens, relevé de compteur, dépense). Le document n’est pas conservé.
+
 ## Mode maintenance
 
 Admin → Mode maintenance : ferme le site au public le temps d’une mise à jour. Le proxy (`src/proxy.ts`) lit l’état dans `site_settings` (cache de 15 s par instance) et sert `/maintenance` avec un code 503 à tous, sauf aux administrateurs. Les routes API (webhook Stripe, tâches planifiées) ne sont pas concernées. La page affiche une scène 3D (three.js, chargée uniquement sur cette page, `src/app/maintenance/scene.ts`) et se recharge seule à la réouverture (`/api/statut`). Aperçu à tout moment : `/maintenance?apercu=1` (admin).

@@ -367,7 +367,7 @@ export function createMaintenanceScene(canvas: HTMLCanvasElement, opts: Opts) {
 
   // Garde-boue arrière.
   for (const z of [0.82, -0.82]) {
-    const fender = new THREE.Mesh(track(new THREE.CylinderGeometry(1.03, 1.03, 0.62, 40, 1, true, -Math.PI * 0.5, Math.PI * 0.95)), m.paint);
+    const fender = new THREE.Mesh(track(new THREE.CylinderGeometry(1.03, 1.03, 0.62, 40, 1, true, Math.PI * 0.42, Math.PI * 1.02)), m.paint);
     fender.rotation.x = Math.PI / 2;
     fender.position.set(-0.78, 0.96, z);
     tractor.add(fender);

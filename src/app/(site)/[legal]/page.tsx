@@ -59,7 +59,7 @@ const pages: Record<string, LegalPage> = {
         h: 'Données collectées',
         p: [
           'Votre compte : nom, nom de l’exploitation, adresse e-mail, mot de passe (stocké sous forme chiffrée, jamais lisible).',
-          'Votre parc matériel : machines, relevés de compteur, entretiens, dépenses et réglages que vous saisissez.',
+          'Votre parc matériel : machines, relevés de compteur, entretiens, dépenses et réglages que vous saisissez. Si vous partagez votre parc, les personnes invitées voient les machines et leur carnet d’entretien (jamais les dépenses), et leurs saisies portent leur nom.',
           'L’abonnement : informations de facturation (nom ou raison sociale, adresse, SIRET et numéro de TVA s’il y a lieu), historique des paiements, factures et avoirs. Les numéros de carte bancaire sont saisis dans un formulaire sécurisé de Stripe et ne passent jamais par Tracteurs & Co.',
           'La sécurité : journal technique des connexions et actions sensibles (adresse IP comprise), pour détecter les abus.',
           'Le formulaire de contact : nom, adresse e-mail, et si vous les indiquez téléphone et exploitation, avec votre message, pour vous répondre.',
@@ -79,7 +79,7 @@ const pages: Record<string, LegalPage> = {
         h: 'Prestataires',
         p: [
           'Vercel (hébergement du site, États-Unis), Supabase (base de données, Paris), Resend (envoi des e-mails, serveurs en Irlande), Stripe (paiements, Irlande).',
-          'Anthropic (États-Unis) : l’aide au diagnostic transmet à l’intelligence artificielle Claude la description de panne que vous saisissez. N’y indiquez pas d’informations personnelles.',
+          'Anthropic (États-Unis) : l’aide au diagnostic transmet à l’intelligence artificielle Claude la description de panne que vous saisissez, et la lecture des factures d’atelier lui transmet la photo ou le PDF de la facture. N’y indiquez pas d’informations personnelles. Les factures ne sont pas conservées par Tracteurs & Co : seules les informations que vous validez sont enregistrées.',
           'Les transferts hors de l’Union européenne sont encadrés par les garanties prévues par le RGPD (clauses contractuelles types ou cadre de protection des données UE–États-Unis).',
         ],
       },

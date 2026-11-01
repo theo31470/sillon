@@ -174,7 +174,7 @@ export async function recordHours(_prev: FormState, formData: FormData): Promise
     return { error: `Le compteur ne peut pas baisser (dernier relevé : ${Number(machine.hours).toLocaleString('fr-FR')} h).` };
   }
   const { error } = await supabase.from('hour_readings').insert(parsed.data);
-  if (error) return { error: 'Relevé impossible.' };
+  if (error) return { error: 'Relevé impossible : votre accès à ce parc est en lecture seule.' };
   await supabase.from('machines').update({ hours: parsed.data.hours }).eq('id', parsed.data.machine_id);
   refresh(parsed.data.machine_id);
   return { ok: true, message: 'Compteur relevé.' };
@@ -185,7 +185,7 @@ export async function recordHours(_prev: FormState, formData: FormData): Promise
 /* ------------------------------------------------------------------ */
 
 export async function logMaintenance(_prev: FormState, formData: FormData): Promise<FormState> {
-  await requireUser('/app/materiel');
+  const { session } = await requireUser('/app/materiel');
   const parsed = z
     .object({
       machine_id: uuid,
@@ -207,9 +207,11 @@ export async function logMaintenance(_prev: FormState, formData: FormData): Prom
   const { cost, ...log } = parsed.data;
   const supabase = await createClient();
 
-  // Coût facultatif : enregistré dans les dépenses (catégorie entretien).
+  // Coût facultatif : enregistré dans les dépenses (catégorie entretien), par le titulaire seulement.
+  const { data: owner } = await supabase.from('machines').select('user_id').eq('id', log.machine_id).maybeSingle();
+  if (!owner) return { error: 'Machine introuvable.' };
   let cost_id: string | null = null;
-  if (cost && cost > 0) {
+  if (cost && cost > 0 && owner.user_id === session.userId) {
     const { data } = await supabase
       .from('machine_costs')
       .insert({ machine_id: log.machine_id, kind: 'entretien', label: log.operation, amount: cost, hours_at: log.done_at_hours, spent_on: log.done_on })
@@ -218,7 +220,7 @@ export async function logMaintenance(_prev: FormState, formData: FormData): Prom
     cost_id = data?.id ?? null;
   }
   const { error } = await supabase.from('maintenance_logs').insert({ ...log, cost_id });
-  if (error) return { error: 'Impossible d’enregistrer l’entretien.' };
+  if (error) return { error: owner.user_id === session.userId ? 'Impossible d’enregistrer l’entretien.' : 'Impossible : votre accès à ce parc est en lecture seule.' };
   await bumpHours(log.machine_id, log.done_at_hours, log.done_on);
   refresh(log.machine_id);
   return { ok: true, message: 'Entretien noté.' };

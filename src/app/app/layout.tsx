@@ -5,9 +5,13 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { AppNav, AppTabBar } from './app-nav';
 import { PageTransition } from '@/components/motion';
 import { signOut } from '@/app/(auth)/actions';
+import { getFleetAccess, ROLE_LABELS } from '@/lib/fleet-access';
+import { switchFleet } from './equipe/actions';
 
 export default async function AppLayout({ children }: LayoutProps<'/app'>) {
   const { profile } = await requireUser('/app');
+  const access = await getFleetAccess();
+  const fleets = access?.fleets ?? [];
   const initials = (profile.full_name || profile.email).split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
@@ -27,6 +31,7 @@ export default async function AppLayout({ children }: LayoutProps<'/app'>) {
             <div className="absolute right-0 z-10 mt-2 flex w-60 flex-col rounded-xl border border-line bg-surface p-2 shadow-lg [&_a]:py-2.5 [&_button]:py-2.5">
               <p className="truncate px-3 py-2 text-sm text-muted">{profile.farm_name || profile.email}</p>
               <Link href="/app/compte" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Mon compte</Link>
+              <Link href="/app/equipe" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Mon équipe</Link>
               <Link href="/app/abonnement" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Abonnement</Link>
               {profile.role === 'admin' ? <Link href="/admin" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Administration</Link> : null}
               <form action={signOut}>
@@ -36,6 +41,30 @@ export default async function AppLayout({ children }: LayoutProps<'/app'>) {
           </details>
         </div>
       </header>
+      {fleets.length > 1 && access ? (
+        // Parcs partagés : choix du parc affiché.
+        <div className="no-print border-b border-line bg-surface">
+          <form action={switchFleet} className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-2 text-sm sm:px-6">
+            <span className="flex-none text-muted">Parc affiché :</span>
+            {fleets.map((f) => {
+              const on = f.ownerId === access.current.ownerId;
+              return (
+                <button
+                  key={f.ownerId}
+                  type="submit"
+                  name="owner"
+                  value={f.ownerId}
+                  aria-pressed={on}
+                  className={`flex-none rounded-full px-3 py-1.5 font-semibold transition-colors ${on ? 'bg-brand text-on-brand' : 'border border-field hover:border-brand'}`}
+                >
+                  {f.label}
+                  {f.role !== 'owner' ? <span className={`ml-1.5 font-normal ${on ? 'text-on-brand/80' : 'text-muted'}`}>· {ROLE_LABELS[f.role].toLowerCase()}</span> : null}
+                </button>
+              );
+            })}
+          </form>
+        </div>
+      ) : null}
       <main className="mx-auto w-full max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 md:py-8">
         <PageTransition>
           <div className="flex flex-col gap-5 md:gap-6">{children}</div>

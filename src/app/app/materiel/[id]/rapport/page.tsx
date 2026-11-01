@@ -21,7 +21,7 @@ export default async function ReportPage(props: PageProps<'/app/materiel/[id]/ra
   const { profile } = await requireUser(`/app/materiel/${id}/rapport`);
   if (profile.plan === 'free') redirect('/app/abonnement?raison=rapport');
   const m = await getMachine(id);
-  if (!m) notFound();
+  if (!m || m.role !== 'owner') notFound();
   const withCosts = couts === '1';
   const logs = [...m.logs].sort((a, b) => a.done_on.localeCompare(b.done_on) || Number(a.done_at_hours) - Number(b.done_at_hours));
   const readings = [...m.readings].sort((a, b) => a.read_on.localeCompare(b.read_on));

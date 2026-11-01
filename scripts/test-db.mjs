@@ -240,6 +240,38 @@ ok((await as(ADM, 'aal2', `update public.site_settings set value = '{"active": t
 await throws(() => as(A, 'aal1', `insert into public.site_settings (key, value) values ('maintenance', '{}')`), 'un membre ne crée pas de réglage');
 await throws(() => c.query(`insert into public.site_settings (key) values ('autre')`), 'seules les clés prévues sont acceptées');
 
+// --- Parc partagé ---
+const C3 = '44444444-4444-4444-4444-444444444444';
+await c.query(`insert into auth.users (id, email, raw_user_meta_data) values ('${C3}', 'meca@x.fr', '{}')`);
+await c.query(`update public.profiles set plan = 'complet' where id = '${A}'`);
+await c.query(`insert into public.fleet_members (owner_id, member_id, email, role, status, token) values ('${A}', '${C3}', 'meca@x.fr', 'collaborateur', 'actif', null)`);
+await throws(() => as(C3, 'aal1', `insert into public.fleet_members (owner_id, member_id, email, status) values ('${C3}', '${A}', 'a@x.fr', 'actif')`), 'un membre ne s’ajoute pas lui-même à un parc');
+const nA = (await c.query(`select count(*)::int n from public.machines where user_id = '${A}'`)).rows[0].n;
+const mShared = (await c.query(`select id from public.machines where user_id = '${A}' limit 1`)).rows[0].id;
+await as(A, 'aal1', `insert into public.machine_tasks (machine_id, operation, interval_hours) values ($1, 'Graissage', 50)`, [mShared]);
+ok((await as(C3, 'aal1', `select id from public.machines`)).rowCount === nA, 'collaborateur : voit les machines du parc partagé');
+ok((await as(C3, 'aal1', `update public.machines set name = 'Piraté'`)).rowCount === 0, 'collaborateur : ne modifie pas les machines');
+ok((await as(C3, 'aal1', `delete from public.machines`)).rowCount === 0, 'collaborateur : ne supprime pas de machine');
+ok((await as(C3, 'aal1', `select * from public.machine_costs`)).rowCount === 0, 'collaborateur : ne voit pas les dépenses');
+ok((await as(C3, 'aal1', `select * from public.machine_tasks`)).rowCount >= 1, 'collaborateur : voit le plan d’entretien (échéances)');
+await as(C3, 'aal1', `insert into public.maintenance_logs (machine_id, operation, done_at_hours) values ($1, 'Graissage', 1500)`, [mShared]);
+ok(true, 'collaborateur : note un entretien');
+await throws(() => as(C3, 'aal1', `insert into public.machine_costs (machine_id, kind, amount) values ($1, 'entretien', 10)`, [mShared]), 'collaborateur : ne saisit pas de dépense');
+ok((await as(A, 'aal1', `select * from public.maintenance_logs where operation = 'Graissage'`)).rowCount === 1, 'titulaire : voit l’entretien noté par son collaborateur');
+ok((await as(C3, 'aal1', `delete from public.maintenance_logs where operation <> 'Graissage'`)).rowCount === 0, 'collaborateur : ne retire pas les saisies du titulaire');
+await as(C3, 'aal1', `insert into public.hour_readings (machine_id, hours) values ($1, 1600)`, [mShared]);
+ok(Number((await c.query(`select hours from public.machines where id = $1`, [mShared])).rows[0].hours) === 1600, 'relevé d’un collaborateur : le compteur de la machine avance');
+await as(A, 'aal1', `insert into public.hour_readings (machine_id, hours) values ($1, 900)`, [mShared]);
+ok(Number((await c.query(`select hours from public.machines where id = $1`, [mShared])).rows[0].hours) === 1600, 'un relevé plus bas ne fait jamais reculer le compteur');
+await c.query(`update public.fleet_members set role = 'lecture' where member_id = '${C3}'`);
+await throws(() => as(C3, 'aal1', `insert into public.maintenance_logs (machine_id, operation, done_at_hours) values ($1, 'Vidange', 1700)`, [mShared]), 'lecture seule : n’ajoute pas d’entretien');
+ok((await as(C3, 'aal1', `select id from public.machines`)).rowCount === nA, 'lecture seule : voit les machines');
+ok((await as(ADM, 'aal1', `select id from public.machines`)).rowCount === 0, 'une personne non invitée ne voit rien du parc');
+await c.query(`update public.profiles set plan = 'free' where id = '${A}'`);
+ok((await as(C3, 'aal1', `select id from public.machines`)).rowCount === 0, 'titulaire repassé en Gratuit : l’accès partagé est suspendu');
+ok((await as(C3, 'aal1', `select * from public.fleet_members`)).rowCount === 1, 'l’invité voit son accès');
+ok((await as(B, 'aal1', `select * from public.fleet_members`)).rowCount === 0, 'un autre membre ne voit pas les accès des autres');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

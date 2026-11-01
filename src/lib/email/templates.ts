@@ -652,3 +652,34 @@ export function nudgeEmail(
     site,
   );
 }
+
+// ---------------------------------------------------------------------
+// Parc partagé
+// ---------------------------------------------------------------------
+
+/** Invitation à rejoindre le parc matériel d'une exploitation. */
+export function fleetInviteEmail(input: { from: string; role: string; url: string }, siteUrl: string): BuiltEmail {
+  const site = siteUrl.replace(/\/$/, '');
+  return build(
+    `${input.from} vous invite sur son parc matériel`,
+    {
+      preheader: 'Suivez les machines, les compteurs et les entretiens sur Tracteurs & Co.',
+      heading: 'Vous êtes invité sur un parc matériel',
+      blocks: [
+        { type: 'p', text: 'Bonjour,' },
+        { type: 'p', text: `**${input.from}** vous invite à rejoindre son parc matériel sur Tracteurs & Co, avec l’accès **${input.role}**.` },
+        {
+          type: 'p',
+          text:
+            input.role === 'Lecture seule'
+              ? 'Vous pourrez consulter les machines, leur carnet d’entretien et les prochaines échéances.'
+              : 'Vous pourrez consulter les machines et noter les relevés de compteur et les entretiens que vous faites.',
+        },
+        { type: 'button', label: 'Accepter l’invitation', url: input.url },
+        { type: 'note', text: 'Pas encore de compte ? Il se crée en une minute depuis ce lien, gratuitement. Si vous ne connaissez pas cette personne, ignorez simplement cet e-mail.' },
+      ],
+      reason: 'Vous recevez cet e-mail parce qu’un membre de Tracteurs & Co vous a invité sur son parc matériel.',
+    },
+    site,
+  );
+}

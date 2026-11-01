@@ -2,6 +2,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { getFleet } from '@/lib/fleet';
+import { getFleetAccess, ROLE_LABELS } from '@/lib/fleet-access';
+import { Notice } from '@/components/ui';
 import { listPublishedSheets } from '@/lib/content';
 import { FREE_MACHINE_LIMIT } from '@/lib/plans';
 import { MACHINE_KINDS } from '@/lib/types';
@@ -13,18 +15,25 @@ import { addMachine } from './actions';
 
 export const metadata: Metadata = { title: 'Mon parc' };
 
-export default async function FleetPage() {
+export default async function FleetPage(props: PageProps<'/app/materiel'>) {
   const { profile } = await requireUser('/app/materiel');
-  const [fleet, sheets] = await Promise.all([getFleet(), listPublishedSheets({ category: 'machine' })]);
-  const free = profile.plan === 'free';
+  const { parc } = await props.searchParams;
+  const [fleet, sheets, access] = await Promise.all([getFleet(), listPublishedSheets({ category: 'machine' }), getFleetAccess()]);
+  const current = access?.current;
+  const owner = !current || current.role === 'owner';
+  const free = owner && profile.plan === 'free';
   const full = free && fleet.length >= FREE_MACHINE_LIMIT;
 
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Mon parc</h1>
-          <p className="text-muted">Compteurs, entretiens, dépenses et coût de revient de chaque machine.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{owner ? 'Mon parc' : `Parc de ${current?.label}`}</h1>
+          <p className="text-muted">
+            {owner
+              ? 'Compteurs, entretiens, dépenses et coût de revient de chaque machine.'
+              : `Accès ${ROLE_LABELS[current!.role as 'collaborateur' | 'lecture'].toLowerCase()} : ${current!.role === 'collaborateur' ? 'notez relevés et entretiens' : 'consultez machines et échéances'}.`}
+          </p>
         </div>
         {free ? (
           <p className="text-sm text-muted">
@@ -33,6 +42,8 @@ export default async function FleetPage() {
           </p>
         ) : null}
       </div>
+
+      {parc === 'partage' && !owner ? <Notice tone="green">Bienvenue sur le parc de {current?.label} ! Vous pouvez revenir à votre propre parc depuis la barre du haut.</Notice> : null}
 
       <div className="flex flex-wrap items-start gap-6">
         <div className="min-w-0 flex-[2_1_560px]">
@@ -45,6 +56,7 @@ export default async function FleetPage() {
           )}
         </div>
 
+        {owner ? (
         <Card className="min-w-0 flex-[1_1_300px] lg:sticky lg:top-6">
           <h2 id="ajouter" className="mb-1 scroll-mt-24 text-xl font-semibold">Ajouter une machine</h2>
           <p className="mb-4 text-sm text-muted">Le reste (achat, n° de série…) se complète ensuite.</p>
@@ -81,6 +93,7 @@ export default async function FleetPage() {
             </ActionForm>
           )}
         </Card>
+        ) : null}
       </div>
     </>
   );

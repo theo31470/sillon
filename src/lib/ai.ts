@@ -34,7 +34,7 @@ Règles impératives :
 - Unités du système métrique, format français (virgule décimale).
 - origin = "constructeur" pour les informations tirées de documents du constructeur, "presse" pour un article de presse.`;
 
-export type AiFeature = 'diagnostic' | 'sheet_generation' | 'sheet_revision' | 'sheet_research' | 'catalog_listing' | 'photo_selection';
+export type AiFeature = 'diagnostic' | 'sheet_generation' | 'sheet_revision' | 'sheet_research' | 'catalog_listing' | 'photo_selection' | 'invoice_reading';
 
 /**
  * Tarifs Anthropic en USD par million de tokens (entrée, sortie), à tenir à jour :

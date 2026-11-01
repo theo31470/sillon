@@ -1,13 +1,19 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SignUpForm } from '../forms';
+import { safeNext } from '@/lib/safe-redirect';
 
 export const metadata: Metadata = { title: 'Créer un compte' };
 
 export default async function SignUpPage(props: PageProps<'/inscription'>) {
-  const { formule, periode, parrain } = await props.searchParams;
+  const { formule, periode, parrain, suite } = await props.searchParams;
   const invited = typeof parrain === 'string' && /^[A-Z0-9]{4,12}$/.test(parrain);
-  const next = formule === 'complet' || invited ? `/app/abonnement${periode === 'annuel' ? '?periode=annuel' : ''}` : '/app';
+  const next =
+    typeof suite === 'string' && suite.startsWith('/invitation/')
+      ? safeNext(suite)
+      : formule === 'complet' || invited
+        ? `/app/abonnement${periode === 'annuel' ? '?periode=annuel' : ''}`
+        : '/app';
   return (
     <>
       {invited ? (

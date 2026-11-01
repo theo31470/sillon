@@ -4,13 +4,17 @@ import { computeMaintenance, maintenancePlan, type MaintenanceDue } from '@/lib/
 import { computeCosts, type CostBreakdown } from '@/lib/costs';
 import { machineKind, type MachineKind } from '@/lib/sheets/insights';
 import type { HourReading, Machine, MachineCost, MachineTask, MaintenanceLog, TechSheet } from '@/lib/types';
+import { getFleetAccess, type FleetRole } from '@/lib/fleet-access';
 
 /**
- * Parc matériel de l'exploitant connecté. Les règles RLS limitent toutes les
- * lectures à ses propres lignes.
+ * Parc matériel affiché : celui de l'exploitant connecté, ou un parc qu'on lui
+ * a partagé. Les règles RLS limitent toutes les lectures aux parcs accessibles ;
+ * les dépenses ne sont jamais montrées aux invités.
  */
 
 export type FleetMachine = Machine & {
+  /** Droits de la personne connectée sur cette machine. */
+  role: FleetRole;
   sheet: Pick<TechSheet, 'id' | 'slug' | 'title' | 'cover_url'> | null;
   art: MachineKind;
   due: MaintenanceDue[];
@@ -31,13 +35,18 @@ const ART_BY_KIND: Record<Machine['kind'], MachineKind> = {
   autre: 'outil',
 };
 
-async function load(machineId?: string): Promise<FleetMachine[]> {
+async function load(opts: { machineId?: string; ownerId?: string }): Promise<FleetMachine[]> {
+  const access = await getFleetAccess();
+  if (!access) return [];
   const supabase = await createClient();
+  const machineId = opts.machineId;
   let mq = supabase.from('machines').select('*').order('name');
   if (machineId) mq = mq.eq('id', machineId);
+  if (opts.ownerId) mq = mq.eq('user_id', opts.ownerId);
   const { data: machines } = await mq;
   const list = (machines ?? []) as Machine[];
   if (list.length === 0) return [];
+  const roleOf = (m: Machine): FleetRole => access.fleets.find((f) => f.ownerId === m.user_id)?.role ?? 'lecture';
   const ids = list.map((m) => m.id);
   const since = new Date(Date.now() - 2 * 365 * 86_400_000).toISOString().slice(0, 10);
 
@@ -60,13 +69,16 @@ async function load(machineId?: string): Promise<FleetMachine[]> {
   const by = <T extends { machine_id: string }>(rows: T[] | null, id: string) => (rows ?? []).filter((r) => r.machine_id === id);
 
   return list.map((m) => {
+    const role = roleOf(m);
     const sheet = m.sheet_id ? sheetMap.get(m.sheet_id) ?? null : null;
     const machineLogs = by(logs.data as MaintenanceLog[] | null, m.id);
     const machineTasks = by(tasks.data as MachineTask[] | null, m.id);
     const machineReadings = by(readings.data as HourReading[] | null, m.id);
-    const machineCosts = by(costs.data as MachineCost[] | null, m.id);
+    // Les invités ne voient pas les dépenses (la base ne les leur renvoie pas non plus).
+    const machineCosts = role === 'owner' ? by(costs.data as MachineCost[] | null, m.id) : [];
     return {
       ...m,
+      role,
       sheet: sheet ? { id: sheet.id, slug: sheet.slug, title: sheet.title, cover_url: sheet.cover_url } : null,
       art: sheet ? machineKind({ title: sheet.title, category: 'machine' }) : ART_BY_KIND[m.kind] ?? 'tracteur',
       due: computeMaintenance(m, maintenancePlan(sheet?.content ?? null, machineTasks), machineLogs),
@@ -79,13 +91,17 @@ async function load(machineId?: string): Promise<FleetMachine[]> {
   });
 }
 
+/** Machines du parc affiché (le sien, ou celui choisi parmi les parcs partagés). */
 export async function getFleet() {
-  return load();
+  const access = await getFleetAccess();
+  if (!access) return [];
+  return load({ ownerId: access.current.ownerId });
 }
 
+/** Une machine de n'importe quel parc accessible (lien direct, e-mail). */
 export async function getMachine(id: string) {
   if (!/^[0-9a-f-]{36}$/.test(id)) return null;
-  return (await load(id))[0] ?? null;
+  return (await load({ machineId: id }))[0] ?? null;
 }
 
 /** Nombre de jours depuis le dernier relevé de compteur (ou l'ajout de la machine). */

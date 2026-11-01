@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { daysSinceReading, getFleet } from '@/lib/fleet';
+import { getFleetAccess } from '@/lib/fleet-access';
 import { dueLabel } from '@/lib/maintenance';
 import { euros } from '@/lib/costs';
 import { daysAgoIso, formatDate, formatNumber } from '@/lib/format';
@@ -14,8 +15,9 @@ export const metadata: Metadata = { title: 'Tableau de bord' };
 
 export default async function DashboardPage() {
   const { profile } = await requireUser();
-  const fleet = await getFleet();
+  const [fleet, access] = await Promise.all([getFleet(), getFleetAccess()]);
   const firstName = profile.full_name.split(' ')[0] || '';
+  const owner = !access || access.current.role === 'owner';
 
   if (fleet.length === 0) {
     return (
@@ -73,16 +75,19 @@ export default async function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Bonjour{firstName ? ` ${firstName}` : ''}</h1>
-          <p className="text-muted">{formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long', year: undefined })} · {fleet.length} machine{fleet.length > 1 ? 's' : ''} dans votre parc</p>
+          <p className="text-muted">
+            {formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long', year: undefined })} · {fleet.length} machine{fleet.length > 1 ? 's' : ''}{' '}
+            {owner ? 'dans votre parc' : `· parc de ${access?.current.label}`}
+          </p>
         </div>
-        <Link href="/app/materiel#ajouter" className={btn.primary}>+ Ajouter une machine</Link>
+        {owner ? <Link href="/app/materiel#ajouter" className={btn.primary}>+ Ajouter une machine</Link> : null}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:[grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
         <Kpi icon="warning" label="Entretiens à prévoir" value={String(dues.length)} sub={lateCount ? `dont ${lateCount} en retard` : 'aucun en retard'} />
         <Kpi icon="clock" label="Heures sur 12 mois" value={`${formatNumber(hoursYear, 0)} h`} sub="d’après vos relevés" />
-        <Kpi icon="can" label="Dépenses sur 12 mois" value={euros(spent)} sub="HT, tout le parc" />
-        <Kpi icon="tag" label="Machines" value={String(fleet.length)} sub={profile.plan === 'free' ? 'formule gratuite' : 'parc illimité'} />
+        {owner ? <Kpi icon="can" label="Dépenses sur 12 mois" value={euros(spent)} sub="HT, tout le parc" /> : null}
+        <Kpi icon="tag" label="Machines" value={String(fleet.length)} sub={owner ? (profile.plan === 'free' ? 'formule gratuite' : 'parc illimité') : 'parc partagé'} />
       </div>
 
       <div className="flex flex-wrap items-start gap-5 md:gap-6">
