@@ -191,6 +191,12 @@ export async function attachCommonsPhoto(params: { userId: string; sheetId: stri
   const brandAlt = params.brand.replace(/[\s-]+/g, '');
   const queries = [`"${label}"`, label, `${params.brand} ${modelBase}`, `${brandAlt} ${modelBase}`, `${params.brand} ${modelBase} tractor`];
   if (seriesBase) queries.push(`${params.brand} ${seriesBase}`, `${brandAlt} ${seriesBase}`);
+  // Famille du modèle (« Puma 155 » → « Puma », « L2-452 » → « L2 », « T7.230 » → « T7 ») : quand aucune
+  // photo ne porte le numéro exact, celles de la famille montrent souvent la même carrosserie.
+  const family = (modelBase.split(/\s+/)[0] ?? '').split(/[.\-]/)[0];
+  if (family && /[a-z]/i.test(family) && family.toLowerCase() !== modelBase.toLowerCase()) {
+    queries.push(`${params.brand} ${family}`, `${brandAlt} ${family}`, `${params.brand} ${family} tractor`);
+  }
   const seen = new Set<string>();
   const candidates: Candidate[] = [];
   for (const q of [...new Set(queries.filter((q) => q.trim().length > 3))]) {
