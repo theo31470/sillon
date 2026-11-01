@@ -8,6 +8,10 @@ export const TRIAL_DAYS = 30;
 /** Aide au diagnostic (formule Complet) : quota compté en base, voir src/lib/diagnostic-quota.ts. */
 export const DIAGNOSTIC_MONTHLY_LIMIT = 30;
 export const DIAGNOSTIC_DAILY_LIMIT = 10;
+/** Factures d'atelier lues par Claude, par mois (formule Complet). */
+export const INVOICE_READINGS_MONTHLY = 30;
+/** Personnes invitées sur le parc en plus du titulaire (formule Complet). */
+export const TEAM_GUESTS = 2;
 
 /** Formule Complet : prix TTC (micro-entreprise, TVA non applicable). */
 export const COMPLET_PRICES = {
@@ -27,7 +31,7 @@ export const PLANS = {
       `Jusqu’à ${FREE_MACHINE_LIMIT} machines`,
       'Carnet d’entretien et rappels',
       'Relevés de compteur et dépenses',
-      'Fiches techniques',
+      'Fiches techniques, et demande des modèles manquants',
     ],
   },
   complet: {
@@ -36,9 +40,11 @@ export const PLANS = {
     period: '/ mois',
     features: [
       'Parc matériel illimité',
+      `Factures du garage lues en photo (${INVOICE_READINGS_MONTHLY} par mois)`,
+      `Partage du parc : ${TEAM_GUESTS + 1} personnes (salarié, associé, mécanicien)`,
       'Coût de revient à l’heure, machine par machine',
-      'Rapport d’historique pour la revente',
       `Aide au diagnostic des pannes (${DIAGNOSTIC_MONTHLY_LIMIT} par mois)`,
+      'Rapport d’historique pour la revente',
       `${TRIAL_DAYS} jours d’essai gratuit`,
     ],
   },
@@ -46,6 +52,6 @@ export const PLANS = {
     name: 'CUMA & ETA',
     priceLabel: 'Sur devis',
     period: '',
-    features: ['CUMA, entrepreneurs de travaux, GAEC', 'Matériel partagé entre plusieurs utilisateurs', 'Accompagnement à la prise en main'],
+    features: ['CUMA, entrepreneurs de travaux, grands GAEC', `Plus de ${TEAM_GUESTS + 1} personnes sur le même parc`, 'Lectures de factures et diagnostics à volonté', 'Accompagnement à la prise en main'],
   },
 } as const;

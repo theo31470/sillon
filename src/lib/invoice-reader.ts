@@ -6,6 +6,7 @@ import { env } from '@/lib/env';
 import { client, recordUsage } from '@/lib/ai';
 import { createServiceClient } from '@/lib/supabase/admin';
 import { parisMonthStart } from '@/lib/diagnostic-quota';
+import { INVOICE_READINGS_MONTHLY } from '@/lib/plans';
 
 /**
  * Lecture d'une facture d'atelier (photo ou PDF) par Claude : date, compteur,
@@ -14,7 +15,7 @@ import { parisMonthStart } from '@/lib/diagnostic-quota';
  */
 
 /** Factures lues par mois et par membre (formule Complet). */
-export const INVOICE_MONTHLY_LIMIT = 30;
+export const INVOICE_MONTHLY_LIMIT = INVOICE_READINGS_MONTHLY;
 
 export const invoiceSchema = z.object({
   is_invoice: z.boolean().describe('true si le document est une facture, un devis réalisé ou un bon d’intervention sur du matériel agricole'),

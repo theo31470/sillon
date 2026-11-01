@@ -26,6 +26,14 @@ export async function POST() {
       if (expired) console.info('[formules offertes] expirées :', expired);
       const r = await runReminders();
       console.info('[rappels]', r);
+      // Parc de démonstration : dates et échéances remises à jour chaque jour.
+      try {
+        const { ensureDemoUser, seedDemo, unlockDemoUser } = await import('@/lib/demo');
+        const demoId = await ensureDemoUser();
+        await Promise.all([seedDemo(demoId, { force: true }), unlockDemoUser(demoId)]);
+      } catch (err) {
+        console.error('[démo]', err);
+      }
       // Relance unique des comptes gratuits restés sans visite depuis 14 jours.
       if (!r.skipped) console.info('[relances] inactifs :', await runInactiveNudges());
     } catch (err) {

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { PHOTO_CREDITS } from '@/lib/photo-credits';
 import { SITE } from '@/lib/site';
-import { ANNUAL_DISCOUNT, COMPLET_PRICES, DIAGNOSTIC_DAILY_LIMIT, DIAGNOSTIC_MONTHLY_LIMIT, FREE_MACHINE_LIMIT, TRIAL_DAYS } from '@/lib/plans';
+import { ANNUAL_DISCOUNT, COMPLET_PRICES, DIAGNOSTIC_DAILY_LIMIT, DIAGNOSTIC_MONTHLY_LIMIT, FREE_MACHINE_LIMIT, INVOICE_READINGS_MONTHLY, TEAM_GUESTS, TRIAL_DAYS } from '@/lib/plans';
 
 /**
  * Pages légales. Base rédigée pour une micro-entreprise : à faire relire par
@@ -136,7 +136,7 @@ const pages: Record<string, LegalPage> = {
         p: [
           `Formule Gratuit : jusqu’à ${FREE_MACHINE_LIMIT} machines, sans limite de durée.`,
           `Formule Complet : ${COMPLET_PRICES.mensuel.label} par mois, ou ${COMPLET_PRICES.annuel.label} par an (soit −${ANNUAL_DISCOUNT} %). Prix TTC, ${SITE.vatMention}.`,
-          `La formule Complet comprend jusqu’à ${DIAGNOSTIC_MONTHLY_LIMIT} aides au diagnostic par mois (et ${DIAGNOSTIC_DAILY_LIMIT} par 24 heures), pour garantir un usage raisonnable du service.`,
+          `La formule Complet comprend jusqu’à ${DIAGNOSTIC_MONTHLY_LIMIT} aides au diagnostic par mois (et ${DIAGNOSTIC_DAILY_LIMIT} par 24 heures) et ${INVOICE_READINGS_MONTHLY} lectures de factures d’atelier par mois, pour garantir un usage raisonnable du service. Le titulaire peut partager son parc avec ${TEAM_GUESTS} personnes, sous sa responsabilité ; il peut retirer leur accès à tout moment.`,
           `Un premier abonnement commence par ${TRIAL_DAYS} jours d’essai gratuit. Sans résiliation pendant l’essai, l’abonnement démarre à la fin de celui-ci.`,
           'Le paiement se fait par carte bancaire, sur la page « Abonnement », via un formulaire sécurisé de notre prestataire de paiement Stripe, au début de chaque période. L’abonnement se renouvelle automatiquement pour la même durée.',
           `Une facture ${SITE.name} est émise à chaque paiement et envoyée par e-mail ; toutes les factures sont téléchargeables depuis la page « Abonnement ». Un remboursement donne lieu à un avoir.`,

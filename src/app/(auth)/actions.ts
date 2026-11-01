@@ -125,6 +125,9 @@ export async function updatePassword(_prev: FormState, formData: FormData): Prom
 
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  // Compte de démonstration partagé : on ne ferme que la session de ce navigateur.
+  const { data } = await supabase.auth.getClaims();
+  const { data: p } = data?.claims ? await supabase.from('profiles').select('is_demo').eq('id', data.claims.sub).maybeSingle() : { data: null };
+  await supabase.auth.signOut(p?.is_demo ? { scope: 'local' } : undefined);
   redirect('/');
 }

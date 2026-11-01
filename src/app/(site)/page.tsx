@@ -14,13 +14,26 @@ import exploitantPhoto from '../../../public/photos/exploitant-tracteur.jpg';
 import cumaPhoto from '../../../public/photos/cuma-chantier.jpg';
 import etaPhoto from '../../../public/photos/eta-moisson.jpg';
 import costPhoto from '../../../public/photos/cout-de-revient-pressage.jpg';
+import captureDashboard from '../../../public/captures/tableau-de-bord.webp';
+import captureDue from '../../../public/captures/echeances.webp';
+import captureInvoice from '../../../public/captures/facture.webp';
 
-const features: { icon: IconName; title: string; text: string }[] = [
+// Captures de l'application (compte de démonstration, données fictives).
+const captures = [
+  { img: captureDashboard, title: 'Tout le parc d’un coup d’œil', text: 'Ce qui est à faire cette semaine, les heures de l’année, les dépenses.' },
+  { img: captureDue, title: 'Chaque échéance, au bon moment', text: 'Vidanges, filtres, graissage : au premier des deux termes, heures ou mois.' },
+  { img: captureInvoice, title: 'La facture du garage en photo', text: 'Opérations, compteur et montant remplis tout seuls. Vous relisez, c’est noté.' },
+];
+
+const features: { icon: IconName; title: string; text: string; tag?: string }[] = [
   { icon: 'wrench', title: 'Carnet d’entretien automatique', text: 'Choisissez le modèle de votre machine : vidanges, filtres et graissages sont repris de sa fiche technique.' },
   { icon: 'clock', title: 'Rappels au bon moment', text: 'Chaque échéance tombe au premier terme atteint, heures moteur ou mois. Plus de vidange oubliée.' },
+  { icon: 'camera', title: 'Facture du garage en photo', text: 'Photographiez la facture : entretiens, compteur et montant se remplissent tout seuls. Vous relisez, c’est enregistré.', tag: 'Nouveau' },
+  { icon: 'team', title: 'Travaillez en équipe', text: 'Invitez un salarié, un associé ou votre mécanicien : chacun note ses heures et ses entretiens. Les dépenses restent à vous.', tag: 'Nouveau' },
   { icon: 'power', title: 'Coût de revient à l’heure', text: 'Amortissement, gazole, entretien, réparations : le vrai coût de chaque heure de travail, machine par machine.' },
-  { icon: 'can', title: 'Dépenses et carburant', text: 'Pleins, factures d’atelier, pneus, assurance : tout est rattaché à la machine, avec la consommation en L/h.' },
-  { icon: 'book', title: 'Fiches techniques', text: 'Caractéristiques, plan d’entretien, pannes connues et tests à faire, avec les sources citées.' },
+  { icon: 'warning', title: 'Aide au diagnostic', text: 'Un voyant, un bruit, une perte de puissance ? Les causes possibles et quoi vérifier, du plus simple au plus poussé.' },
+  { icon: 'book', title: 'Fiches techniques', text: 'Caractéristiques, plan d’entretien, pannes connues et pièces, avec les sources citées. Un modèle manque ? Demandez-le.' },
+  { icon: 'can', title: 'Dépenses et carburant', text: 'Pleins, pneus, assurance, réparations : tout est rattaché à la machine, avec la consommation en L/h.' },
   { icon: 'print', title: 'Rapport pour la revente', text: 'Un historique d’entretien propre à remettre à l’acheteur : votre matériel se vend mieux.' },
 ];
 
@@ -34,6 +47,8 @@ const faq = [
   { q: 'Faut-il être à l’aise avec l’informatique ?', a: 'Non. Relever un compteur ou noter une vidange prend dix secondes, avec de gros boutons pensés pour le téléphone.' },
   { q: 'Mon modèle de tracteur n’a pas de fiche technique ?', a: 'Vous pouvez quand même l’ajouter et créer votre propre plan d’entretien. La base de fiches s’enrichit chaque semaine.' },
   { q: 'Comment est calculé le coût de revient ?', a: 'Charges fixes (amortissement, frais financiers, assurance) divisées par vos heures annuelles, plus les charges variables (carburant, entretien, réparations) rapportées aux heures travaillées. Les heures viennent de vos relevés de compteur.' },
+  { q: 'Mon salarié ou mon mécanicien peut-il l’utiliser ?', a: 'Oui, avec la formule Complet : invitez jusqu’à deux personnes. Elles notent heures et entretiens sur votre parc, sans voir vos dépenses ni pouvoir supprimer une machine.' },
+  { q: 'Comment marche la facture en photo ?', a: 'Sur la fiche d’une machine, prenez la facture du garage en photo. L’intelligence artificielle lit la date, le compteur, les opérations et le montant ; vous vérifiez et corrigez avant d’enregistrer. La photo n’est pas conservée.' },
   { q: 'Mes données sont-elles à moi ?', a: 'Oui. Vous pouvez les exporter ou demander leur suppression à tout moment.' },
   { q: 'Puis-je arrêter quand je veux ?', a: 'Oui, l’abonnement est sans engagement et se résilie en un clic depuis votre espace.' },
 ];
@@ -47,7 +62,8 @@ const example = [
 const exampleTotal = example.reduce((s, e) => s + e.value, 0);
 const eur = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default async function HomePage() {
+export default async function HomePage(props: PageProps<'/'>) {
+  const { demo } = await props.searchParams;
   const sheets = (await listPublishedSheets({ category: 'machine' })).slice(0, 3);
 
   return (
@@ -67,8 +83,14 @@ export default async function HomePage() {
             </p>
             <div className="mb-6 flex flex-wrap gap-3">
               <Link href="/inscription" className={btn.primary}>Essayer gratuitement</Link>
-              <Link href="/fiches" className={btn.secondary}>Voir les fiches techniques</Link>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- navigation complète : la session de démo se pose par cookie */}
+              <a href="/demo" className={btn.secondary}>Voir la démo, sans inscription</a>
             </div>
+            {demo === 'indisponible' || demo === 'occupee' ? (
+              <p role="alert" className="mb-5 rounded-xl bg-warn-soft px-4 py-3 text-sm text-warn">
+                La démo est momentanément indisponible. Réessayez dans quelques minutes, ou créez directement votre compte : c’est gratuit.
+              </p>
+            ) : null}
             <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[15px] text-muted">
               {[`Gratuit jusqu’à ${FREE_MACHINE_LIMIT} machines`, 'Sans engagement', 'Vos données vous appartiennent'].map((t) => (
                 <li key={t} className="flex items-center gap-2"><CheckIcon className="text-brand" />{t}</li>
@@ -131,6 +153,32 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* L'application, en vrai */}
+      <section id="apercu" className="scroll-mt-20 border-y border-line bg-surface">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <h2 className="mb-3 text-center text-[clamp(30px,3.4vw,40px)] font-bold tracking-tight">L’application, en vrai</h2>
+          <p className="mx-auto mb-12 max-w-xl text-center text-muted">Pensée pour le téléphone, avec de gros boutons : relever un compteur ou noter une vidange prend dix secondes.</p>
+          <div className="-mx-6 flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0">
+            {captures.map((c) => (
+              <figure key={c.title} className="reveal flex w-[260px] flex-none snap-center flex-col items-center gap-5 md:w-auto">
+                <div className="w-full max-w-[290px] rounded-[38px] border border-line bg-[#0b0a09] p-2.5 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.6)]">
+                  <Image src={c.img} alt={`Capture de l’application : ${c.title.toLowerCase()}`} sizes="(min-width: 768px) 290px, 260px" placeholder="blur" className="h-auto w-full rounded-[30px]" />
+                </div>
+                <figcaption className="max-w-[290px] text-center">
+                  <p className="font-semibold">{c.title}</p>
+                  <p className="text-sm text-muted">{c.text}</p>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+          <div className="mt-10 flex flex-col items-center gap-2 text-center">
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- navigation complète : la session de démo se pose par cookie */}
+            <a href="/demo" className={btn.primary}>Ouvrir le parc de démonstration</a>
+            <p className="text-sm text-muted">Un vrai parc d’exemple à parcourir, sans inscription ni carte bancaire.</p>
+          </div>
+        </div>
+      </section>
+
       {/* Fonctionnalités */}
       <section id="fonctions" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-20">
         <h2 className="mb-3 text-center text-[clamp(30px,3.4vw,40px)] font-bold tracking-tight">Tout votre matériel, bien suivi</h2>
@@ -141,7 +189,10 @@ export default async function HomePage() {
               <span className="mb-4 flex size-12 items-center justify-center rounded-xl bg-brand-tint text-brand transition-colors duration-300 group-hover:bg-brand group-hover:text-on-brand">
                 <Icon name={f.icon} size={24} />
               </span>
-              <h3 className="mb-2 text-lg font-semibold">{f.title}</h3>
+              <h3 className="mb-2 flex flex-wrap items-center gap-2 text-lg font-semibold">
+                {f.title}
+                {f.tag ? <span className="rounded-full bg-brand-tint px-2 py-0.5 text-xs font-bold text-brand-dark">{f.tag}</span> : null}
+              </h3>
               <p className="text-[15px] text-muted">{f.text}</p>
             </article>
           ))}

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { getSession } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/admin';
+import { TEAM_GUESTS } from '@/lib/plans';
 
 /**
  * Parc partagé : un membre peut accéder, en plus du sien, au parc d'un titulaire
@@ -16,7 +17,7 @@ export type FleetAccess = { ownerId: string; role: FleetRole; label: string };
 
 export const FLEET_COOKIE = 'tc_parc';
 /** Personnes invitées en plus du titulaire, formule Complet. */
-export const FLEET_GUESTS_LIMIT = 2;
+export const FLEET_GUESTS_LIMIT = TEAM_GUESTS;
 
 export const ROLE_LABELS: Record<Exclude<FleetRole, 'owner'>, string> = {
   collaborateur: 'Collaborateur',

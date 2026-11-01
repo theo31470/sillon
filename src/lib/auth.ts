@@ -1,6 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { Profile } from '@/lib/types';
@@ -56,6 +57,8 @@ export async function requireUser(next = '/app') {
   const profile = await getProfile();
   if (!profile) redirect(`/connexion?suite=${encodeURIComponent(next)}`);
   if (profile.suspended) redirect('/compte-suspendu');
+  // Compte de démonstration : on regarde, on n'enregistre rien. Toute action mène à l'inscription.
+  if (profile.is_demo && (await headers()).has('next-action')) redirect('/demo/fin');
 
   // Formule offerte arrivée à échéance : on la retire tout de suite.
   if (compExpired(profile)) {

@@ -71,6 +71,9 @@ export function PricingCards() {
           );
         })}
       </div>
+      <p className="text-center text-sm">
+        <strong>Parrainage :</strong> <span className="text-muted">invitez un voisin, il a un mois offert sur son premier paiement, et vous un mois crédité sur le vôtre.</span>
+      </p>
       <p className="text-center text-xs text-muted">Prix TTC · {SITE.vatMention} · Sans engagement, résiliable à tout moment.</p>
     </div>
   );

@@ -6,7 +6,7 @@ import { safeNext } from '@/lib/safe-redirect';
 export const metadata: Metadata = { title: 'Créer un compte' };
 
 export default async function SignUpPage(props: PageProps<'/inscription'>) {
-  const { formule, periode, parrain, suite } = await props.searchParams;
+  const { formule, periode, parrain, suite, demo } = await props.searchParams;
   const invited = typeof parrain === 'string' && /^[A-Z0-9]{4,12}$/.test(parrain);
   const next =
     typeof suite === 'string' && suite.startsWith('/invitation/')
@@ -16,6 +16,11 @@ export default async function SignUpPage(props: PageProps<'/inscription'>) {
         : '/app';
   return (
     <>
+      {demo === '1' ? (
+        <p className="mb-5 rounded-xl bg-brand-tint px-4 py-3 text-sm">
+          <strong>Ça vous plaît ?</strong> Créez votre compte pour ajouter vos propres machines : c’est gratuit jusqu’à 3 machines, sans carte bancaire.
+        </p>
+      ) : null}
       {invited ? (
         <p className="mb-5 rounded-xl bg-success-soft px-4 py-3 text-sm text-success">
           <strong>Un membre vous invite.</strong> Avec son code <strong>{parrain}</strong>, vous avez un mois offert sur votre premier paiement, en plus des 30 jours d’essai de la

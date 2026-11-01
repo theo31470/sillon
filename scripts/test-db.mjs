@@ -272,6 +272,18 @@ ok((await as(C3, 'aal1', `select id from public.machines`)).rowCount === 0, 'tit
 ok((await as(C3, 'aal1', `select * from public.fleet_members`)).rowCount === 1, 'l’invité voit son accès');
 ok((await as(B, 'aal1', `select * from public.fleet_members`)).rowCount === 0, 'un autre membre ne voit pas les accès des autres');
 
+// --- Compte de démonstration ---
+const D = '55555555-5555-5555-5555-555555555555';
+await c.query(`insert into auth.users (id, email, raw_user_meta_data) values ('${D}', 'demo@x.fr', '{}')`);
+await c.query(`update public.profiles set is_demo = true, plan = 'complet' where id = '${D}'`);
+await throws(() => as(D, 'aal1', `insert into public.machines (name) values ('Tag')`), 'démo : aucune machine ne peut être ajoutée');
+await c.query(`insert into public.machines (user_id, name) values ('${D}', 'Le Fendt')`);
+ok((await as(D, 'aal1', `select * from public.machines`)).rowCount === 1, 'démo : le parc d’exemple est visible');
+await throws(() => as(D, 'aal1', `update public.machines set name = 'Piraté'`), 'démo : les machines ne se modifient pas');
+ok((await as(D, 'aal1', `update public.profiles set farm_name = 'Piraté' where id = '${D}'`)).rowCount === 0, 'démo : le profil ne se modifie pas');
+await throws(() => as(B, 'aal1', `update public.profiles set is_demo = true where id = '${B}'`), 'un membre ne se déclare pas compte de démonstration');
+await throws(() => c.query(`update public.profiles set is_demo = true where id = '${A}'`), 'un seul compte de démonstration');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

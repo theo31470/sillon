@@ -41,6 +41,23 @@ export default async function AppLayout({ children }: LayoutProps<'/app'>) {
           </details>
         </div>
       </header>
+      {profile.is_demo ? (
+        <div className="no-print bg-brand text-on-brand">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm sm:px-6">
+            <p className="min-w-0 flex-[1_1_280px]">
+              <strong>Démo</strong> · Vous visitez le parc d’exemple de l’EARL des Trois Chênes. Regardez tout : rien de ce que vous touchez n’est enregistré.
+            </p>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- navigation complète : la session de démo se pose par cookie */}
+            <a href="/demo/fin" className="rounded-lg bg-on-brand px-3.5 py-2 font-semibold text-brand-dark hover:opacity-90">
+              Créer mon compte gratuit
+            </a>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- navigation complète : la session de démo se pose par cookie */}
+            <a href="/demo/fin?vers=accueil" className="font-semibold underline underline-offset-4">
+              Quitter la démo
+            </a>
+          </div>
+        </div>
+      ) : null}
       {fleets.length > 1 && access ? (
         // Parcs partagés : choix du parc affiché.
         <div className="no-print border-b border-line bg-surface">

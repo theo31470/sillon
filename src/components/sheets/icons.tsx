@@ -22,7 +22,7 @@ function Svg({ children, size = 22, className = '' }: { children: ReactNode; siz
   );
 }
 
-const paths: Record<GroupIcon | 'power' | 'speed' | 'fuel' | 'warning' | 'check' | 'tag' | 'clock' | 'calendar' | 'book' | 'print' | 'copy' | 'chevron' | 'spark', ReactNode> = {
+const paths: Record<GroupIcon | 'power' | 'speed' | 'fuel' | 'warning' | 'check' | 'tag' | 'clock' | 'calendar' | 'book' | 'print' | 'copy' | 'chevron' | 'spark' | 'camera' | 'team', ReactNode> = {
   engine: (
     <>
       <path d="M4 10h2V8h3V6h5v2h2l2 2h2v6h-2l-2 2H8l-2-2H4z" />
@@ -148,6 +148,20 @@ const paths: Record<GroupIcon | 'power' | 'speed' | 'fuel' | 'warning' | 'check'
     </>
   ),
   chevron: <path d="m6 9 6 6 6-6" />,
+  camera: (
+    <>
+      <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </>
+  ),
+  team: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M15.5 14.2A4.5 4.5 0 0 1 21 18.5" />
+    </>
+  ),
   spark: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />,
 };
 

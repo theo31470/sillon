@@ -23,6 +23,8 @@ export type Profile = {
   comp_until: string | null;
   /** Dernière activité (connexion ou visite de l'espace membre). */
   last_seen_at: string | null;
+  /** Compte de démonstration (parc d'exemple en lecture seule, ouvert à tous). */
+  is_demo?: boolean;
   created_at: string;
   updated_at: string;
 };
