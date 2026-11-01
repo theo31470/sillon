@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/admin';
 import { logAudit } from '@/lib/audit';
 import { rateLimit } from '@/lib/rate-limit';
 import { listBrandModels } from '@/lib/ai-web';
@@ -103,4 +104,34 @@ export async function updateSelection(_prev: FormState, formData: FormData): Pro
   }
   revalidatePath('/admin/fiches/catalogue');
   return { ok: true, message: n ? `${n} fiche(s) en cours de préparation. Vous pouvez fermer cette page : le travail continue.` : 'Aucun modèle à générer dans la sélection.' };
+}
+
+/**
+ * Photos manquantes : toutes les fiches sans photo repassent dans la file des
+ * recherches (une par minute quand la file d'import est au repos).
+ */
+export async function retryMissingPhotos(): Promise<FormState> {
+  const { session } = await requireAdmin('/admin/fiches');
+  const db = createServiceClient();
+  const { data: sheets } = await db.from('tech_sheets').select('id').is('cover_url', null).in('status', ['review', 'validated', 'published']);
+  const ids = (sheets ?? []).map((s) => s.id as string);
+  if (!ids.length) return { ok: true, message: 'Toutes les fiches ont déjà une photo.' };
+  let n = 0;
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data } = await db
+      .from('catalog_models')
+      .update({ photo_retry_at: null, photo_status: 'none' })
+      .in('sheet_id', ids.slice(i, i + 100))
+      .eq('status', 'done')
+      .select('id');
+    n += data?.length ?? 0;
+  }
+  await logAudit(session, 'catalogue.photos_relancees', undefined, { fiches: n });
+  try {
+    await fetch(new URL('/api/catalogue/tick', env.siteUrl()), { method: 'POST', signal: AbortSignal.timeout(3000) });
+  } catch {
+    /* la tâche planifiée prendra le relais */
+  }
+  revalidatePath('/admin/fiches');
+  return { ok: true, message: `${n} fiche(s) sans photo remises en recherche : comptez environ une minute par fiche. Les photos apparaissent au fur et à mesure.` };
 }

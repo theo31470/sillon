@@ -6,6 +6,9 @@ import { countPendingReview, parseSheetContent } from '@/lib/sheets/schema';
 import { SHEET_CATEGORIES, SHEET_STATUSES, type SheetStatus, type TechSheet } from '@/lib/types';
 import { Badge, Card, btn } from '@/components/ui';
 import { NewSheetForm } from './new-sheet-form';
+import { ActionForm } from '@/components/action-form';
+import { SubmitButton } from '@/components/form-bits';
+import { retryMissingPhotos } from './catalogue/actions';
 
 export const metadata = { title: 'Fiches techniques' };
 
@@ -24,7 +27,11 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
   const supabase = await createClient();
   let query = supabase.from('tech_sheets').select('id, slug, title, category, status, content, updated_at, validated_by').order('updated_at', { ascending: false });
   if (filter) query = query.eq('status', filter);
-  const [{ data }, { data: all }] = await Promise.all([query, supabase.from('tech_sheets').select('status')]);
+  const [{ data }, { data: all }, { count: noPhoto }] = await Promise.all([
+    query,
+    supabase.from('tech_sheets').select('status'),
+    supabase.from('tech_sheets').select('id', { count: 'exact', head: true }).is('cover_url', null).in('status', ['review', 'validated', 'published']),
+  ]);
   const sheets = (data ?? []) as Pick<TechSheet, 'id' | 'slug' | 'title' | 'category' | 'status' | 'content' | 'updated_at' | 'validated_by'>[];
   const counts = (all ?? []).reduce<Record<string, number>>((acc, s) => ({ ...acc, [s.status]: (acc[s.status] ?? 0) + 1 }), {});
 
@@ -49,6 +56,15 @@ export default async function AdminSheetsPage(props: PageProps<'/admin/fiches'>)
           </Link>
         ))}
       </div>
+
+      {noPhoto ? (
+        <ActionForm action={retryMissingPhotos} resetOnSuccess={false} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4">
+          <p className="min-w-0 flex-[1_1_320px] text-sm">
+            <strong>{noPhoto} fiche{noPhoto > 1 ? 's' : ''} sans photo.</strong> <span className="text-muted">Nouvelle recherche sur Wikimedia Commons (photos libres de droits), avec plus de variantes de noms. Environ une minute par fiche, en arrière-plan.</span>
+          </p>
+          <SubmitButton variant="secondary" pendingLabel="Relance…">Relancer la recherche des photos</SubmitButton>
+        </ActionForm>
+      ) : null}
 
       <div className="flex flex-wrap items-start gap-5">
         <Card className="min-w-0 flex-[1_1_320px]">

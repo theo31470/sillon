@@ -72,12 +72,16 @@ async function searchCommons(query: string): Promise<Candidate[]> {
     gsrlimit: '12',
     prop: 'imageinfo',
     iiprop: 'url|mime|extmetadata',
-    iiurlwidth: '1600',
+    // Tailles de vignettes standard de Wikimedia (les autres sont refusées ou ralenties).
+    iiurlwidth: '1280',
     iiextmetadatafilter: 'Artist|LicenseShortName|LicenseUrl|ImageDescription|Restrictions',
     origin: '*',
   });
-  const res = await fetch(`${COMMONS_API}?${params}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15_000) });
-  if (!res.ok) return [];
+  const res = await politeFetch(`${COMMONS_API}?${params}`, 15_000);
+  if (!res?.ok) {
+    console.warn('[photos] recherche Commons refusée', query, res?.status ?? 'réseau');
+    return [];
+  }
   const json = (await res.json()) as { query?: { pages?: CommonsPage[] } };
   const out: Candidate[] = [];
   for (const page of json.query?.pages ?? []) {
@@ -96,15 +100,29 @@ async function searchCommons(query: string): Promise<Candidate[]> {
       licenseUrl: meta.LicenseUrl?.value ?? null,
       pageUrl: info.descriptionurl,
       thumbUrl,
-      smallUrl: thumbUrl.includes('/thumb/') ? thumbUrl.replace(/\/\d+px-/, '/480px-') : thumbUrl,
+      smallUrl: thumbUrl.includes('/thumb/') ? thumbUrl.replace(/\/\d+px-/, '/500px-') : thumbUrl,
     });
   }
   return out;
 }
 
+/** Requête vers Wikimedia avec une nouvelle tentative si le serveur demande de ralentir. */
+async function politeFetch(url: string, timeout: number) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': UA, 'Api-User-Agent': UA }, signal: AbortSignal.timeout(timeout) });
+      if (res.status !== 429 && res.status < 500) return res;
+    } catch {
+      /* réseau : on retente */
+    }
+    await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+  }
+  return null;
+}
+
 async function download(url: string, maxBytes: number) {
-  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20_000) });
-  if (!res.ok) return null;
+  const res = await politeFetch(url, 20_000);
+  if (!res?.ok) return null;
   const type = (res.headers.get('content-type') ?? '').split(';')[0];
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(type)) return null;
   const buffer = Buffer.from(await res.arrayBuffer());
@@ -124,7 +142,10 @@ const choiceSchema = z.object({
 async function pickPhoto(params: { userId: string; label: string; series: string; candidates: Candidate[] }) {
   const images = (await Promise.all(params.candidates.map((c) => download(c.smallUrl, 1_500_000)))).map((img, i) => ({ img, c: params.candidates[i] }));
   const usable = images.filter((x) => x.img);
-  if (!usable.length) return null;
+  if (!usable.length) {
+    console.warn('[photos]', params.label, 'aucune vignette téléchargeable');
+    return null;
+  }
 
   const content: Anthropic.ContentBlockParam[] = [];
   usable.forEach(({ img, c }, i) => {
@@ -164,23 +185,28 @@ export async function attachCommonsPhoto(params: { userId: string; sheetId: stri
   const label = `${params.brand} ${params.model}`.trim();
   // Série sans la génération (« 300 Vario Gen5 » → « 300 Vario ») : c'est ainsi que les photos sont nommées.
   const series = (params.series ?? '').trim();
-  const seriesBase = series.replace(/\s*(gen|génération)\s*\d+(\.\d+)?\b/i, '').trim();
-  const queries = [`"${label}"`, label, `${label} tractor`];
-  if (series) queries.push(`${params.brand} ${series}`, `${params.brand} ${seriesBase}`);
+  const seriesBase = series.replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s*(gen|génération)\s*\d+(\.\d+)?\b/i, '').replace(/\s+/g, ' ').trim();
+  // Modèle sans les noms de transmission (« Optum 250 CVXDrive » → « Optum 250 ») et marque sous ses autres graphies (« CaseIH »).
+  const modelBase = params.model.replace(/\b(CVX ?Drive|ActiveDrive ?\d*|CMATIC|Powershift|Dyna-?\w+|Electro ?Command|PLM Intelligence)\b/gi, '').replace(/\s+/g, ' ').trim();
+  const brandAlt = params.brand.replace(/[\s-]+/g, '');
+  const queries = [`"${label}"`, label, `${params.brand} ${modelBase}`, `${brandAlt} ${modelBase}`, `${params.brand} ${modelBase} tractor`];
+  if (seriesBase) queries.push(`${params.brand} ${seriesBase}`, `${brandAlt} ${seriesBase}`);
   const seen = new Set<string>();
   const candidates: Candidate[] = [];
-  for (const q of [...new Set(queries)]) {
+  for (const q of [...new Set(queries.filter((q) => q.trim().length > 3))]) {
     for (const c of await searchCommons(q)) {
       if (seen.has(c.pageUrl)) continue;
       seen.add(c.pageUrl);
       candidates.push(c);
     }
-    // Assez de candidates pour le modèle exact : inutile d'élargir à la série.
-    if (candidates.length >= 8) break;
+    // Assez de candidates : inutile d'élargir encore.
+    if (candidates.length >= 14) break;
   }
+  console.info('[photos]', label, `${candidates.length} candidate(s)`);
   if (!candidates.length) return null;
 
-  const picked = await pickPhoto({ userId: params.userId, label, series, candidates: candidates.slice(0, 10) });
+  const picked = await pickPhoto({ userId: params.userId, label, series: seriesBase || series, candidates: candidates.slice(0, 12) });
+  console.info('[photos]', label, picked ? `retenue : ${picked.candidate.title} (${picked.sameModel ? 'modèle' : 'série'})` : 'aucune retenue');
   if (!picked) return null;
   const chosen = picked.candidate;
 
