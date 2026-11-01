@@ -553,3 +553,152 @@ html { -webkit-tap-highlight-color: transparent; text-size-adjust: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .maintenance-bar > span { animation: none; }
 }
+
+/* ───────────── Célébrations (abonnement, boutique) ───────────── */
+
+.celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+.celebrate-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #0d0b09 72%, transparent);
+  backdrop-filter: blur(6px);
+  animation: fade-in 300ms ease both;
+}
+.celebrate-panel {
+  position: relative;
+  width: min(100%, 520px);
+  border-radius: 28px;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.6);
+  animation: celebrate-pop 520ms var(--ease-out-soft) both;
+}
+@keyframes celebrate-pop {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+}
+.celebrate-scene { display: block; width: 100%; height: auto; }
+.celebrate-sun { transform-box: fill-box; transform-origin: center; animation: celebrate-sun 1600ms var(--ease-out-soft) 150ms both; }
+@keyframes celebrate-sun {
+  from { transform: translateY(40px) scale(0.7); opacity: 0; }
+}
+.celebrate-drive { animation: celebrate-drive 1500ms cubic-bezier(0.16, 1, 0.3, 1) 250ms both; }
+@keyframes celebrate-drive {
+  from { transform: translateX(-520px); }
+}
+.celebrate-bump { animation: bump 420ms ease-in-out 5 both; transform-box: fill-box; transform-origin: bottom center; }
+.celebrate-dust circle { transform-box: fill-box; transform-origin: center; animation: celebrate-dust 900ms ease-out both; }
+@keyframes celebrate-dust {
+  from { opacity: 0.55; transform: scale(0.4) translateX(0); }
+  to { opacity: 0; transform: scale(1.6) translateX(-30px); }
+}
+.celebrate-furrows { animation: celebrate-furrows 1500ms cubic-bezier(0.16, 1, 0.3, 1) 250ms both; }
+@keyframes celebrate-furrows {
+  from { transform: translateX(160px); }
+}
+.celebrate-rise { animation: rise 520ms var(--ease-out-soft) both; }
+
+/* Confettis aux couleurs de la charte */
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 81;
+  pointer-events: none;
+  overflow: hidden;
+}
+.confetti i {
+  position: absolute;
+  top: -24px;
+  left: var(--x);
+  width: var(--w);
+  height: calc(var(--w) * 0.45);
+  background: var(--c);
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti-fall var(--t) cubic-bezier(0.3, 0.6, 0.5, 1) var(--d) forwards;
+}
+@keyframes confetti-fall {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg); }
+  100% { opacity: 0.9; transform: translate3d(var(--dx), 110vh, 0) rotate(var(--r)); }
+}
+
+/* Carte de membre */
+.member-card {
+  --rx: 0deg;
+  --ry: 0deg;
+  position: relative;
+  aspect-ratio: 1.586;
+  width: 100%;
+  border-radius: 18px;
+  overflow: hidden;
+  color: #f3efe9;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(224, 135, 90, 0.45), transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, rgba(212, 169, 85, 0.22), transparent 60%),
+    linear-gradient(135deg, #2e2722 0%, #1b1714 60%, #141110 100%);
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 300ms var(--ease-out-soft);
+}
+.member-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(-28deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 9px);
+  pointer-events: none;
+}
+.member-card::after {
+  content: '';
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.16) 48%, rgba(255, 220, 190, 0.1) 52%, transparent 60%);
+  transform: translateX(-60%);
+  animation: member-shine 3.6s ease-in-out 1.2s infinite;
+  pointer-events: none;
+}
+@keyframes member-shine {
+  0%, 55% { transform: translateX(-60%); }
+  100% { transform: translateX(60%); }
+}
+.member-card-flip { animation: member-flip 900ms var(--ease-out-soft) both; }
+@keyframes member-flip {
+  from { opacity: 0; transform: perspective(900px) rotateY(-80deg) translateY(16px); }
+}
+
+/* Étapes du paiement */
+.pay-steps-bar { transition: width 500ms var(--ease-out-soft); }
+.pay-step-dot { transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, transform 300ms var(--ease-out-soft); }
+.pay-step-dot[data-done='true'] { transform: scale(1.08); }
+.pay-btn-done { animation: pay-done 500ms var(--ease-out-soft) both; }
+@keyframes pay-done {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+.pay-check path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: pay-check 420ms ease-out 120ms forwards; }
+@keyframes pay-check { to { stroke-dashoffset: 0; } }
+
+/* Boutique : panier qui sautille, suivi de commande */
+.cart-bump { animation: cart-bump 520ms var(--ease-out-soft) 620ms; }
+@keyframes cart-bump {
+  30% { transform: scale(1.35); }
+}
+.track-fill { transform-origin: left; animation: grow-x 1400ms var(--ease-out-soft) 200ms both; }
+.track-tractor { animation: track-arrive 1400ms var(--ease-out-soft) 200ms both; }
+@keyframes track-arrive {
+  from { left: 0; }
+}
+.track-current { animation: track-pulse 1.8s ease-in-out infinite; }
+@keyframes track-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand) 45%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-brand) 0%, transparent); }
+}
+.track-bump { animation: bump 600ms ease-in-out infinite; }

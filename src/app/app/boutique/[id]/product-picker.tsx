@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ShopProduct } from '@/lib/printful';
 import { SHOP_MAX_QTY, SHOP_MEMBER_DISCOUNT } from '@/lib/shop-shared';
 import { btn } from '@/components/ui';
@@ -20,9 +20,11 @@ export function ProductPicker({ product, percent, isPaid }: { product: ShopProdu
   const variant = forColor.find((v) => v.size === size) ?? forColor.find((v) => v.available) ?? forColor[0] ?? firstAvailable;
   const image = variant.image ?? product.image;
 
+  const photo = useRef<HTMLImageElement>(null);
   const add = () => {
     addToCart({ productId: product.id, variantId: variant.id, quantity });
     setAdded(true);
+    flyToCart(photo.current);
   };
 
   return (
@@ -30,7 +32,7 @@ export function ProductPicker({ product, percent, isPaid }: { product: ShopProdu
       <div className="overflow-hidden rounded-2xl border border-line bg-[#f4f2ee]">
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element -- maquettes servies par Printful
-          <img src={image} alt={`${product.name}${variant.color ? `, ${variant.color}` : ''}`} className="aspect-square size-full object-contain p-4" />
+          <img ref={photo} src={image} alt={`${product.name}${variant.color ? `, ${variant.color}` : ''}`} className="aspect-square size-full object-contain p-4" />
         ) : (
           <div className="aspect-square" />
         )}
@@ -134,4 +136,47 @@ export function ProductPicker({ product, percent, isPaid }: { product: ShopProdu
       </div>
     </div>
   );
+}
+
+/** L'article « vole » jusqu'au panier (désactivé en mouvement réduit). */
+function flyToCart(img: HTMLImageElement | null) {
+  const target = document.querySelector('[data-cart-target]');
+  if (!img || !target || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // Photo sortie de l'écran (téléphone, page défilée) : l'envol part du bouton « Ajouter ».
+  const pic = img.getBoundingClientRect();
+  const visible = pic.top + pic.height / 2 > 0 && pic.top + pic.height / 2 < window.innerHeight;
+  const button = document.activeElement instanceof HTMLElement ? document.activeElement.getBoundingClientRect() : pic;
+  const from = visible ? pic : new DOMRect(button.left + button.width / 2 - 70, button.top - 120, 140, 140);
+  const box = target.getBoundingClientRect();
+  // Panier hors de l'écran : on vise le haut de l'écran, à son aplomb.
+  const to = box.bottom < 0 ? new DOMRect(box.left, 8, box.width, box.height) : box;
+  const size = Math.min(from.width, from.height) * 0.6;
+  const clone = img.cloneNode() as HTMLImageElement;
+  clone.removeAttribute('class');
+  Object.assign(clone.style, {
+    position: 'fixed',
+    zIndex: '90',
+    left: `${from.left + from.width / 2 - size / 2}px`,
+    top: `${from.top + from.height / 2 - size / 2}px`,
+    width: `${size}px`,
+    height: `${size}px`,
+    objectFit: 'contain',
+    borderRadius: '16px',
+    background: '#f4f2ee',
+    boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
+    pointerEvents: 'none',
+  });
+  document.body.appendChild(clone);
+  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+  clone
+    .animate(
+      [
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+        { transform: `translate(${dx * 0.55}px, ${dy * 0.55 - 60}px) scale(0.55)`, opacity: 1, offset: 0.6 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0.12)`, opacity: 0.4 },
+      ],
+      { duration: 750, easing: 'cubic-bezier(0.45, 0, 0.2, 1)' },
+    )
+    .finished.finally(() => clone.remove());
 }

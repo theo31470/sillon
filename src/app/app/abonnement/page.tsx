@@ -18,6 +18,9 @@ import { BillingFields } from './billing-fields';
 import { CardUpdate, StripeReturn } from './card-update';
 import { CheckoutForm } from './checkout-form';
 import { ReferralShare } from './referral-share';
+import { SubscriptionWelcome } from './welcome';
+import { memberNumber } from '@/lib/member';
+import { shopIsOpen } from '@/lib/printful';
 import { REFERRAL_COOKIE, REFERRAL_REWARD_CENTS, referralStats, type ReferralStats } from '@/lib/referrals';
 
 export const metadata: Metadata = { title: 'Abonnement' };
@@ -70,7 +73,20 @@ export default async function SubscriptionPage(props: PageProps<'/app/abonnement
       <Suspense fallback={null}>
         <StripeReturn />
       </Suspense>
-      {statut === 'merci' ? <Notice tone="green">Merci ! Votre formule Complet est active. Votre facture vous sera envoyée par e-mail à chaque paiement.</Notice> : null}
+      {statut === 'merci' ? (
+        profile.plan !== 'free' ? (
+          <SubscriptionWelcome
+            farm={profile.farm_name || defaults.name}
+            holder={profile.full_name}
+            since={new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })}
+            number={memberNumber(session.userId)}
+            trialEnd={sub?.status === 'trialing' ? long(sub.trialEnd) : null}
+            shopOpen={await shopIsOpen().catch(() => false)}
+          />
+        ) : (
+          <Notice tone="green">Merci ! Votre formule Complet est en cours d’activation : elle apparaîtra ici dans quelques instants.</Notice>
+        )
+      ) : null}
       {raison === 'limite' ? <Notice>La formule gratuite est limitée à {FREE_MACHINE_LIMIT} machines : passez à la formule Complet pour un parc illimité.</Notice> : null}
       {raison === 'rapport' ? <Notice>Le rapport d’historique pour la revente est inclus dans la formule Complet.</Notice> : null}
       {view === 'erreur' ? <Notice tone="red">Le service de paiement ne répond pas pour le moment : les informations de votre abonnement s’afficheront dans quelques instants.</Notice> : null}
@@ -184,7 +200,14 @@ export default async function SubscriptionPage(props: PageProps<'/app/abonnement
                   {subCount ? '' : ` ${TRIAL_DAYS} jours d’essai offerts.`}
                 </p>
               )}
-              <CheckoutForm trial={!subCount} annualAvailable={annualAvailable} billing={defaults} vatMention={SITE.vatMention} initialPromo={initialPromo} />
+              <CheckoutForm
+                trial={!subCount}
+                annualAvailable={annualAvailable}
+                billing={defaults}
+                vatMention={SITE.vatMention}
+                initialPromo={initialPromo}
+                member={{ holder: profile.full_name, number: memberNumber(session.userId), since: new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' }) }}
+              />
             </Card>
           ) : null}
         </div>

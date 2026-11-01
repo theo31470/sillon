@@ -2,7 +2,9 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { settleShopPayment, type ShopOrderRow } from '@/lib/shop';
+import { orderReference, settleShopPayment, type ShopOrderRow } from '@/lib/shop';
+import { formatEuros } from '@/lib/format';
+import { OrderCelebration } from './order-celebration';
 import { btn, Card } from '@/components/ui';
 import { OrderCard } from '../order-card';
 import { ClearCart } from './clear-cart';
@@ -10,8 +12,8 @@ import { ClearCart } from './clear-cart';
 export const metadata: Metadata = { title: 'Merci · Boutique' };
 
 export default async function ThanksPage(props: PageProps<'/app/boutique/merci'>) {
-  await requireUser('/app/boutique/commandes');
-  const { commande, redirect_status } = await props.searchParams;
+  const { profile } = await requireUser('/app/boutique/commandes');
+  const { commande, redirect_status, fete } = await props.searchParams;
   const id = typeof commande === 'string' && /^[0-9a-f-]{36}$/i.test(commande) ? commande : null;
   const load = async () => {
     const { data } = id ? await (await createClient()).from('shop_orders').select('*').eq('id', id).maybeSingle() : { data: null };
@@ -37,6 +39,16 @@ export default async function ThanksPage(props: PageProps<'/app/boutique/merci'>
   return (
     <>
       <ClearCart />
+      {fete === '1' && order && order.status !== 'pending' ? (
+        <OrderCelebration
+          orderId={order.id}
+          reference={orderReference(order.id)}
+          firstName={(profile.full_name || order.recipient?.name || '').trim().split(/\s+/)[0] ?? ''}
+          items={order.items.map((i) => ({ name: i.name, detail: i.detail, image: i.image, quantity: i.quantity }))}
+          total={formatEuros(order.total_cents)}
+          delay={order.shipping_label}
+        />
+      ) : null}
       <div className="max-w-3xl">
         <h1 className="text-3xl font-bold tracking-tight">Merci pour votre commande !</h1>
         <p className="text-muted">

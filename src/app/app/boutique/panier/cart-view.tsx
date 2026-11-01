@@ -7,6 +7,7 @@ import { AddressElement, Elements, PaymentElement, useElements, useStripe } from
 import { btn, Card } from '@/components/ui';
 import { SHOP_MAX_QTY } from '@/lib/shop-shared';
 import { getStripe, publishableKey, stripeAppearance } from '../../abonnement/stripe-elements';
+import { PayButtonContent, PaySteps, type PayStage } from '@/components/pay-steps';
 import { finishPayment, quoteCart, startPayment, type CartQuote } from '../actions';
 import { setQuantity, useCart } from '../cart-store';
 
@@ -213,6 +214,9 @@ function CheckoutForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState({ address: false, payment: false });
+  const [complete, setComplete] = useState({ address: false, payment: false });
+  const [stage, setStage] = useState<PayStage>(null);
+  const [done, setDone] = useState<string | null>(null);
   // Paiement déjà préparé pour ce panier et ce montant : réutilisé si la carte est refusée puis ressaisie.
   const prepared = useRef<{ key: string; total: number; orderId: string; clientSecret: string } | null>(null);
 
@@ -231,6 +235,7 @@ function CheckoutForm({
     setError(null);
     try {
       // 1. Adresse et carte vérifiées dans la page, avant tout appel au serveur.
+      setStage({ label: 'Vérification…' });
       const check = await elements.submit();
       if (check.error) throw new Error(check.error.message);
       const address = await elements.getElement('address')?.getValue();
@@ -240,6 +245,7 @@ function CheckoutForm({
       // 2. Le serveur recalcule le total, crée la commande et le paiement.
       let p = prepared.current?.key === cartKey && prepared.current.total === total ? prepared.current : null;
       if (!p) {
+        setStage({ label: 'Préparation de la commande…' });
         const res = await startPayment(
           lines,
           { name: v.name, address1: v.address.line1, address2: v.address.line2 ?? null, city: v.address.city, zip: v.address.postal_code, country_code: v.address.country as 'FR', phone: v.phone ?? '' },
@@ -255,21 +261,36 @@ function CheckoutForm({
       }
 
       // 3. Paiement dans la page (validation 3-D Secure si la banque la demande).
-      const returnUrl = `${window.location.origin}/app/boutique/merci?commande=${p.orderId}`;
+      setStage({ label: 'Paiement sécurisé…' });
+      const returnUrl = `${window.location.origin}/app/boutique/merci?commande=${p.orderId}&fete=1`;
       const { error: err } = await stripe.confirmPayment({ elements, clientSecret: p.clientSecret, confirmParams: { return_url: returnUrl }, redirect: 'if_required' });
       if (err) throw new Error(err.message);
 
       // 4. La commande part chez Printful, puis page de remerciement.
+      setStage({ label: 'Envoi à l’atelier d’impression…' });
       await finishPayment(p.orderId).catch(() => null);
-      router.push(`/app/boutique/merci?commande=${p.orderId}`);
+      setStage(null);
+      setDone('Commande validée !');
+      await new Promise((r) => setTimeout(r, 650));
+      router.push(`/app/boutique/merci?commande=${p.orderId}&fete=1`);
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : 'Le paiement n’a pas abouti. Réessayez.');
+      setStage(null);
       setBusy(false);
     }
   }
 
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-start gap-5">
+      <div className="w-full">
+        <PaySteps
+          steps={[
+            { label: 'Articles', done: true },
+            { label: 'Livraison', done: complete.address },
+            { label: 'Paiement', done: complete.payment },
+          ]}
+        />
+      </div>
       <div className="flex min-w-0 flex-[2_1_480px] flex-col gap-5">
         {items}
         <Card className="flex flex-col gap-3">
@@ -278,6 +299,7 @@ function CheckoutForm({
           {!ready.address ? <p className="text-sm text-muted">Chargement…</p> : null}
           <AddressElement
             onReady={() => setReady((r) => ({ ...r, address: true }))}
+            onChange={(e) => setComplete((c) => (c.address === e.complete ? c : { ...c, address: e.complete }))}
             options={{
               mode: 'shipping',
               allowedCountries: ['FR'],
@@ -289,8 +311,8 @@ function CheckoutForm({
         </Card>
         <Card className="flex flex-col gap-3">
           <h2 className="text-xl font-semibold">Paiement</h2>
-          <p className="flex items-center gap-2 text-sm text-muted">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <p className="flex items-start gap-2 text-sm text-muted">
+            <svg className="mt-0.5 flex-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <rect x="4" y="11" width="16" height="10" rx="2" />
               <path d="M8 11V7a4 4 0 0 1 8 0v4" />
             </svg>
@@ -299,6 +321,7 @@ function CheckoutForm({
           {!ready.payment ? <p className="text-sm text-muted">Chargement du formulaire sécurisé…</p> : null}
           <PaymentElement
             onReady={() => setReady((r) => ({ ...r, payment: true }))}
+            onChange={(e) => setComplete((c) => (c.payment === e.complete ? c : { ...c, payment: e.complete }))}
             options={{ layout: 'tabs', terms: { card: 'never' }, wallets: { applePay: 'auto', googlePay: 'auto' } }}
           />
         </Card>
@@ -316,15 +339,13 @@ function CheckoutForm({
           </span>
         </label>
         {error ? <p role="alert" className="rounded-[10px] bg-danger-soft px-4 py-3 text-sm text-danger">{error}</p> : null}
-        <button type="submit" disabled={!stripe || busy || updating || !ready.payment} aria-busy={busy} className={btn.primary}>
-          {busy ? (
-            <>
-              <span className="spinner" aria-hidden="true" />
-              Paiement en cours…
-            </>
-          ) : (
-            `Payer ${euros(total)}`
-          )}
+        <button
+          type="submit"
+          disabled={!stripe || busy || updating || !ready.payment}
+          aria-busy={busy}
+          className={`${btn.primary} transition-colors ${done ? 'pay-btn-done !bg-success !text-page disabled:!opacity-100' : ''}`}
+        >
+          <PayButtonContent idle={`Payer ${euros(total)}`} stage={busy ? (stage ?? { label: 'Paiement en cours…' }) : null} done={done} />
         </button>
         <p className="text-xs text-muted">Confirmation par e-mail, puis numéro de suivi dès l’expédition.</p>
       </Card>

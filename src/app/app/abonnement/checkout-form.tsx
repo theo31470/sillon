@@ -8,6 +8,10 @@ import { Input, btn } from '@/components/ui';
 import { activateTrial, checkPromo, refreshSubscription, startSubscription, type PromoPreview } from './actions';
 import { BillingFields, type BillingDefaults } from './billing-fields';
 import { getStripe, publishableKey, stripeAppearance } from './stripe-elements';
+import { PayButtonContent, PaySteps, type PayStage } from '@/components/pay-steps';
+import { MemberCard } from '@/components/member-card';
+
+export type MemberPreview = { holder: string; number: string; since: string };
 
 const AMOUNTS: Record<BillingPeriod, number> = { mensuel: Math.round(COMPLET_PRICES.mensuel.amount * 100), annuel: Math.round(COMPLET_PRICES.annuel.amount * 100) };
 
@@ -18,12 +22,14 @@ export function CheckoutForm({
   billing,
   vatMention,
   initialPromo = '',
+  member,
 }: {
   trial: boolean;
   annualAvailable: boolean;
   billing: BillingDefaults;
   vatMention: string;
   initialPromo?: string;
+  member: MemberPreview;
 }) {
   const [period, setPeriod] = useState<BillingPeriod>(annualAvailable ? 'annuel' : 'mensuel');
   const stripePromise = useMemo(() => getStripe(), []);
@@ -43,7 +49,7 @@ export function CheckoutForm({
         fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap' }],
       }}
     >
-      <Form trial={trial} annualAvailable={annualAvailable} billing={billing} vatMention={vatMention} period={period} setPeriod={setPeriod} initialPromo={initialPromo} />
+      <Form trial={trial} annualAvailable={annualAvailable} billing={billing} vatMention={vatMention} period={period} setPeriod={setPeriod} initialPromo={initialPromo} member={member} />
     </Elements>
   );
 }
@@ -56,6 +62,7 @@ function Form({
   period,
   setPeriod,
   initialPromo,
+  member,
 }: {
   trial: boolean;
   annualAvailable: boolean;
@@ -64,6 +71,7 @@ function Form({
   period: BillingPeriod;
   setPeriod: (p: BillingPeriod) => void;
   initialPromo: string;
+  member: MemberPreview;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -80,6 +88,20 @@ function Form({
   const [promoOpen, setPromoOpen] = useState(Boolean(initialPromo));
   const price = COMPLET_PRICES[period];
   const free = Boolean(promo?.free);
+  // Paiement plus vivant : étapes cochées au fil de la saisie, carte de membre qui se remplit.
+  const filled = (b: BillingDefaults) => Boolean(b.name.trim() && b.line1.trim() && b.postal_code.trim() && b.city.trim());
+  const [billingName, setBillingName] = useState(billing.name);
+  const [billingDone, setBillingDone] = useState(filled(billing));
+  const [cardDone, setCardDone] = useState(false);
+  const [stage, setStage] = useState<PayStage>(null);
+  const [done, setDone] = useState<string | null>(null);
+  function onFormInput() {
+    const f = formRef.current;
+    if (!f) return;
+    const v = (n: string) => (f.elements.namedItem(n) as HTMLInputElement | null)?.value ?? '';
+    setBillingName(v('billing_name'));
+    setBillingDone(filled({ ...billing, name: v('billing_name'), line1: v('billing_line1'), postal_code: v('billing_postal_code'), city: v('billing_city') }));
+  }
 
   useEffect(() => {
     if (ready) return;
@@ -126,7 +148,9 @@ function Form({
   }
 
   async function finish() {
-    await refreshSubscription().catch(() => null);
+    setStage(null);
+    setDone(trial ? 'Essai activé !' : 'C’est fait !');
+    await Promise.all([refreshSubscription().catch(() => null), new Promise((r) => setTimeout(r, 700))]);
     router.replace('/app/abonnement?statut=merci');
     router.refresh();
   }
@@ -144,6 +168,7 @@ function Form({
     try {
       // 1. Vérifie la carte saisie (format, date) avant tout appel au serveur. Pas de carte si le code rend l'abonnement gratuit.
       if (!free) {
+        setStage({ label: 'Vérification de la carte…' });
         const check = await elements!.submit();
         if (check.error) throw new Error(check.error.message);
       }
@@ -152,6 +177,7 @@ function Form({
       const fd = new FormData(formRef.current);
       fd.set('periode', period);
       fd.set('promo', promo?.code ?? '');
+      setStage({ label: free ? 'Activation de la formule…' : 'Préparation de l’abonnement…' });
       const res = await startSubscription(fd);
       if ('error' in res) {
         if (res.field === 'promo') {
@@ -166,12 +192,14 @@ function Form({
       if (!stripe || !elements) throw new Error('Le formulaire de carte n’est pas chargé : rechargez la page.');
 
       const returnUrl = `${window.location.origin}/app/abonnement?retour=${res.kind === 'setup' ? 'essai' : 'paiement'}`;
+      setStage({ label: res.kind === 'setup' ? 'Enregistrement de la carte…' : 'Validation par votre banque…' });
       if (res.kind === 'setup') {
         // 3a. Essai : la carte est enregistrée (validation bancaire si besoin), rien n'est débité.
         const { error: err, setupIntent } = await stripe.confirmSetup({ elements, clientSecret: res.clientSecret, confirmParams: { return_url: returnUrl }, redirect: 'if_required' });
         if (err) throw new Error(err.message);
-        const done = await activateTrial(setupIntent.id);
-        if ('error' in done) throw new Error(done.error);
+        setStage({ label: 'Activation de votre essai…' });
+        const activated = await activateTrial(setupIntent.id);
+        if ('error' in activated) throw new Error(activated.error);
         return await finish();
       }
       // 3b. Premier paiement (validation bancaire 3-D Secure si la banque la demande).
@@ -180,12 +208,21 @@ function Form({
       return await finish();
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : 'Le paiement n’a pas abouti. Réessayez.');
+      setStage(null);
       setBusy(false);
     }
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-6" noValidate={false}>
+    <form ref={formRef} onSubmit={onSubmit} onInput={onFormInput} className="flex flex-col gap-6" noValidate={false}>
+      <PaySteps
+        steps={[
+          { label: 'Formule', done: true },
+          { label: 'Facturation', done: billingDone },
+          { label: free ? 'Activation' : 'Carte', done: free || cardDone },
+        ]}
+      />
+
       {/* Formule */}
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-2 text-lg font-semibold">1. Votre formule</legend>
@@ -279,7 +316,7 @@ function Form({
                 : 'Chargement du formulaire sécurisé…'}
             </p>
           ) : null}
-          <PaymentElement onReady={() => setReady(true)} options={{ layout: 'tabs', terms: { card: 'never' }, wallets: { applePay: 'auto', googlePay: 'auto' } }} />
+          <PaymentElement onReady={() => setReady(true)} onChange={(e) => setCardDone(e.complete)} options={{ layout: 'tabs', terms: { card: 'never' }, wallets: { applePay: 'auto', googlePay: 'auto' } }} />
         </div>
       </fieldset>
 
@@ -290,6 +327,10 @@ function Form({
       ) : null}
 
       <div className="flex flex-col gap-3 rounded-xl bg-ground p-4">
+        <div className="mx-auto w-full max-w-[340px] py-1">
+          <p className="mb-2 text-center text-xs font-semibold uppercase tracking-[0.14em] text-muted">Votre future carte de membre</p>
+          <MemberCard farm={billingName} holder={member.holder} since={member.since} number={member.number} />
+        </div>
         {promo && !free ? (
           <p className="flex items-baseline justify-between gap-3 text-sm">
             <span>Remise {promo.code}</span>
@@ -310,21 +351,19 @@ function Form({
             Puis {promo ? `${promo.firstLabel} ${price.period} (${promo.summary}, au lieu de ${price.label})` : `${price.label} ${price.period}`} à la fin de l’essai. Résiliable en un clic depuis cette page.
           </p>
         ) : null}
-        <button type="submit" disabled={(!free && (!stripe || !ready)) || busy || checking} className={`${btn.primary} w-full`}>
-          {busy ? (
-            <>
-              <span className="spinner" aria-hidden="true" /> Validation…
-            </>
-          ) : free ? (
-            'Activer la formule Complet'
-          ) : trial ? (
-            `Démarrer mes ${TRIAL_DAYS} jours d’essai gratuit`
-          ) : (
-            `Payer ${promo ? promo.firstLabel : price.label} et activer`
-          )}
+        <button
+          type="submit"
+          disabled={(!free && (!stripe || !ready)) || busy || checking}
+          className={`${btn.primary} w-full transition-colors ${done ? 'pay-btn-done !bg-success !text-page disabled:!opacity-100' : ''}`}
+        >
+          <PayButtonContent
+            idle={free ? 'Activer la formule Complet' : trial ? `Démarrer mes ${TRIAL_DAYS} jours d’essai gratuit` : `Payer ${promo ? promo.firstLabel : price.label} et activer`}
+            stage={busy ? (stage ?? { label: 'Validation…' }) : null}
+            done={done}
+          />
         </button>
         <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <svg className="flex-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <rect x="5" y="11" width="14" height="10" rx="2" />
             <path d="M8 11V8a4 4 0 0 1 8 0v3" />
           </svg>
