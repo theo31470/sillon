@@ -683,3 +683,104 @@ export function fleetInviteEmail(input: { from: string; role: string; url: strin
     site,
   );
 }
+
+// ---------------------------------------------------------------------
+// Boutique
+// ---------------------------------------------------------------------
+
+export const SHOP_TEMPLATES = ['commande_confirmee', 'commande_expediee', 'commande_retardee', 'commande_remboursee'] as const;
+export type ShopTemplate = (typeof SHOP_TEMPLATES)[number];
+
+export type ShopEmailInput = {
+  name?: string | null;
+  /** Référence courte de la commande, ex. « B-3F2A9C1D ». */
+  reference: string;
+  /** Lignes lisibles : « 2 × T-shirt Tracteurs & Co (Noir, M) — 45,00 € ». */
+  lines: string[];
+  total: string;
+  shipping: string;
+  discount?: string | null;
+  address?: string | null;
+  delay?: string | null;
+  tracking?: { carrier: string; number: string; url: string }[];
+};
+
+const SHOP_REASON = 'Vous recevez cet e-mail parce qu’il concerne une commande passée sur la boutique Tracteurs & Co.';
+
+export function shopEmail(template: ShopTemplate, input: ShopEmailInput, siteUrl: string): BuiltEmail {
+  const site = siteUrl.replace(/\/$/, '');
+  const orders = `${site}/app/boutique/commandes`;
+  const recap = [
+    ...input.lines,
+    ...(input.discount ? [`Remise formule Complet : −${input.discount}`] : []),
+    `Livraison : ${input.shipping}`,
+    `**Total payé : ${input.total}**`,
+  ].join('\n');
+  switch (template) {
+    case 'commande_confirmee':
+      return build(
+        `Commande ${input.reference} confirmée`,
+        {
+          preheader: `Merci ! Votre commande est partie à l’impression${input.delay ? `, livraison estimée ${input.delay}` : ''}.`,
+          heading: 'Merci pour votre commande',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: `Votre paiement est bien reçu. Vos articles sont imprimés à la demande, puis expédiés${input.delay ? ` : comptez **${input.delay}** pour la livraison` : ''}. Vous recevrez un e-mail avec le numéro de suivi dès l’envoi.` },
+            { type: 'p', text: recap },
+            ...(input.address ? [{ type: 'note' as const, text: `Livraison à : ${input.address}` }] : []),
+            { type: 'button', label: 'Suivre ma commande', url: orders },
+          ],
+          reason: SHOP_REASON,
+        },
+        site,
+      );
+    case 'commande_expediee':
+      return build(
+        `Votre commande ${input.reference} est en route`,
+        {
+          preheader: 'Votre colis vient de partir. Voici de quoi le suivre.',
+          heading: 'Votre colis est en route',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: 'Bonne nouvelle : votre commande vient d’être expédiée.' },
+            ...(input.tracking ?? []).map((t) => ({ type: 'p' as const, text: `Transporteur **${t.carrier}**, numéro de suivi **${t.number}**` })),
+            ...(input.tracking?.[0]?.url ? [{ type: 'button' as const, label: 'Suivre le colis', url: input.tracking[0].url }] : [{ type: 'button' as const, label: 'Voir ma commande', url: orders }]),
+            { type: 'p', text: recap },
+          ],
+          reason: SHOP_REASON,
+        },
+        site,
+      );
+    case 'commande_retardee':
+      return build(
+        `Commande ${input.reference} : un petit contretemps`,
+        {
+          preheader: 'Votre commande demande une vérification de notre part. On s’en occupe.',
+          heading: 'Votre commande est en vérification',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: 'Votre paiement est bien reçu, mais l’atelier d’impression a mis votre commande en attente (adresse à vérifier ou article momentanément indisponible). Nous nous en occupons et revenons vers vous rapidement ; si elle ne peut pas être honorée, vous serez remboursé intégralement.' },
+            { type: 'p', text: recap },
+            { type: 'button', label: 'Voir ma commande', url: orders },
+          ],
+          reason: SHOP_REASON,
+        },
+        site,
+      );
+    case 'commande_remboursee':
+      return build(
+        `Commande ${input.reference} remboursée`,
+        {
+          preheader: 'Le remboursement est en cours vers votre carte.',
+          heading: 'Votre commande est remboursée',
+          blocks: [
+            { type: 'p', text: hello(input.name) },
+            { type: 'p', text: `Le remboursement de votre commande **${input.reference}** est lancé. Il apparaît sur votre compte bancaire sous 5 à 10 jours selon votre banque.` },
+            { type: 'p', text: recap },
+          ],
+          reason: SHOP_REASON,
+        },
+        site,
+      );
+  }
+}

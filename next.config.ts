@@ -17,7 +17,7 @@ const securityHeaders = [
       // Next.js injecte des scripts en ligne ; pour aller plus loin, voir le guide CSP à nonce (README).
       "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com" + (process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''),
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.supabase.co https://*.stripe.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.stripe.com https://*.printful.com",
       "font-src 'self'",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.stripe.com",
       // Champs de carte et validation bancaire (3-D Secure) : cadres hébergés par Stripe.

@@ -7,10 +7,11 @@ import { PageTransition } from '@/components/motion';
 import { signOut } from '@/app/(auth)/actions';
 import { getFleetAccess, ROLE_LABELS } from '@/lib/fleet-access';
 import { switchFleet } from './equipe/actions';
+import { shopIsOpen } from '@/lib/printful';
 
 export default async function AppLayout({ children }: LayoutProps<'/app'>) {
   const { profile } = await requireUser('/app');
-  const access = await getFleetAccess();
+  const [access, shopOpen] = await Promise.all([getFleetAccess(), shopIsOpen().catch(() => false)]);
   const fleets = access?.fleets ?? [];
   const initials = (profile.full_name || profile.email).split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
@@ -33,6 +34,7 @@ export default async function AppLayout({ children }: LayoutProps<'/app'>) {
               <Link href="/app/compte" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Mon compte</Link>
               <Link href="/app/equipe" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Mon équipe</Link>
               <Link href="/app/abonnement" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Abonnement</Link>
+              {shopOpen || profile.role === 'admin' ? <Link href="/app/boutique" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Boutique</Link> : null}
               {profile.role === 'admin' ? <Link href="/admin" className="rounded-lg px-3 py-2 transition-colors hover:bg-ground">Administration</Link> : null}
               <form action={signOut}>
                 <button type="submit" className="w-full rounded-lg px-3 py-2 text-left text-danger hover:bg-danger-soft">Se déconnecter</button>

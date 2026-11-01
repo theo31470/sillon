@@ -3,6 +3,7 @@ import { Logo, btn } from '@/components/ui';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { MobileMenu } from '@/components/mobile-menu';
 import { getSession } from '@/lib/auth';
+import { shopIsOpen } from '@/lib/printful';
 
 async function isLoggedIn() {
   try {
@@ -78,7 +79,8 @@ export async function SiteHeader() {
   );
 }
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const shop = await shopIsOpen().catch(() => false);
   return (
     <footer className="no-print mt-auto border-t border-line bg-ground">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] text-[15px] text-muted sm:px-6">
@@ -89,6 +91,7 @@ export function SiteFooter() {
         <div className="flex flex-wrap gap-x-6 gap-y-3">
           <Link href="/blog" className="link-underline transition-colors hover:text-ink">Blog</Link>
           <Link href="/fiches" className="link-underline transition-colors hover:text-ink">Fiches techniques</Link>
+          {shop ? <Link href="/app/boutique" className="link-underline transition-colors hover:text-ink">Boutique (membres)</Link> : null}
           <Link href="/mentions-legales" className="link-underline transition-colors hover:text-ink">Mentions légales</Link>
           <Link href="/confidentialite" className="link-underline transition-colors hover:text-ink">Confidentialité</Link>
           <Link href="/conditions" className="link-underline transition-colors hover:text-ink">Conditions</Link>

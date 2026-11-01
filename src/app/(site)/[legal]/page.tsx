@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { PHOTO_CREDITS } from '@/lib/photo-credits';
 import { SITE } from '@/lib/site';
+import { SHOP_MEMBER_DISCOUNT } from '@/lib/shop-shared';
 import { ANNUAL_DISCOUNT, COMPLET_PRICES, DIAGNOSTIC_DAILY_LIMIT, DIAGNOSTIC_MONTHLY_LIMIT, FREE_MACHINE_LIMIT, INVOICE_READINGS_MONTHLY, TEAM_GUESTS, TRIAL_DAYS } from '@/lib/plans';
 
 /**
@@ -10,7 +11,7 @@ import { ANNUAL_DISCOUNT, COMPLET_PRICES, DIAGNOSTIC_DAILY_LIMIT, DIAGNOSTIC_MON
  * Les éléments entre crochets viennent de src/lib/site.ts.
  */
 
-type Section = { h: string; p: string[] };
+type Section = { h: string; p: string[]; id?: string };
 type LegalPage = { title: string; intro?: string; sections: Section[] };
 
 const E = SITE.editor;
@@ -63,6 +64,7 @@ const pages: Record<string, LegalPage> = {
           'L’abonnement : informations de facturation (nom ou raison sociale, adresse, SIRET et numéro de TVA s’il y a lieu), historique des paiements, factures et avoirs. Les numéros de carte bancaire sont saisis dans un formulaire sécurisé de Stripe et ne passent jamais par Tracteurs & Co.',
           'La sécurité : journal technique des connexions et actions sensibles (adresse IP comprise), pour détecter les abus.',
           'Le formulaire de contact : nom, adresse e-mail, et si vous les indiquez téléphone et exploitation, avec votre message, pour vous répondre.',
+          'La boutique : articles commandés, adresse de livraison et téléphone saisis au paiement, pour préparer, expédier et suivre la commande.',
         ],
       },
       {
@@ -70,6 +72,7 @@ const pages: Record<string, LegalPage> = {
         p: [
           'Fournir le service (carnet d’entretien, rappels, coût de revient, rapports) : exécution du contrat.',
           'Facturer l’abonnement et tenir la comptabilité : obligation légale.',
+          'Traiter vos commandes de la boutique (fabrication, livraison, service après-vente) : exécution du contrat.',
           'Sécuriser les comptes et le site : intérêt légitime.',
           'Vous envoyer quelques nouveautés et conseils : intérêt légitime, désactivable à tout moment.',
           'Vos données ne sont jamais vendues ni utilisées pour de la publicité.',
@@ -78,7 +81,7 @@ const pages: Record<string, LegalPage> = {
       {
         h: 'Prestataires',
         p: [
-          'Vercel (hébergement du site, États-Unis), Supabase (base de données, Paris), Resend (envoi des e-mails, serveurs en Irlande), Stripe (paiements, Irlande).',
+          'Vercel (hébergement du site, États-Unis), Supabase (base de données, Paris), Resend (envoi des e-mails, serveurs en Irlande), Stripe (paiements, Irlande), Printful (fabrication et expédition des commandes de la boutique, Lettonie et États-Unis : il reçoit le nom, l’adresse de livraison, l’e-mail et le téléphone de l’acheteur).',
           'Anthropic (États-Unis) : l’aide au diagnostic transmet à l’intelligence artificielle Claude la description de panne que vous saisissez, et la lecture des factures d’atelier lui transmet la photo ou le PDF de la facture. N’y indiquez pas d’informations personnelles. Les factures ne sont pas conservées par Tracteurs & Co : seules les informations que vous validez sont enregistrées.',
           'Les transferts hors de l’Union européenne sont encadrés par les garanties prévues par le RGPD (clauses contractuelles types ou cadre de protection des données UE–États-Unis).',
         ],
@@ -167,7 +170,18 @@ const pages: Record<string, LegalPage> = {
         ],
       },
       {
-        h: '7. Litiges',
+        h: '7. Boutique',
+        id: 'boutique',
+        p: [
+          `La boutique (vêtements et objets aux couleurs de Tracteurs & Co) est réservée aux membres connectés. Les prix sont indiqués TTC, ${SITE.vatMention}. Les membres de la formule Complet bénéficient de ${SHOP_MEMBER_DISCOUNT} % de remise, déduits automatiquement ; la remise ne se cumule avec aucune autre offre.`,
+          'Les articles sont fabriqués à la demande par notre partenaire d’impression Printful, puis expédiés depuis ses ateliers, le plus souvent en Europe. Livraison en France métropolitaine (Corse comprise) ; les frais et le délai de livraison estimés sont indiqués avant le paiement. Le paiement se fait par carte bancaire via Stripe ; la commande est confirmée par e-mail, puis le numéro de suivi est envoyé à l’expédition.',
+          'Article défectueux, mal imprimé ou abîmé pendant le transport : signalez-le à ' + CONTACT + ' avec une photo dans les 30 jours suivant la réception. Il est remplacé ou remboursé, sans frais pour vous.',
+          'Droit de rétractation : vous disposez de 14 jours après la réception pour nous informer, à ' + CONTACT + ', que vous renoncez à votre achat, sans avoir à vous justifier. L’article doit nous être renvoyé non porté et dans son état d’origine, dans les 14 jours suivants, à l’adresse que nous vous indiquerons ; les frais de retour sont à votre charge. Nous vous remboursons le prix payé et les frais de livraison standard au plus tard 14 jours après avoir reçu l’article.',
+          'Les articles bénéficient de la garantie légale de conformité (articles L217-3 et suivants du Code de la consommation) et de la garantie contre les vices cachés (articles 1641 et suivants du Code civil).',
+        ],
+      },
+      {
+        h: '8. Litiges',
         p: [
           'Ces conditions sont soumises au droit français. En cas de difficulté, écrivez-nous d’abord à ' + CONTACT + ' : nous chercherons une solution amiable. À défaut, le litige sera porté devant les tribunaux compétents.',
         ],
@@ -196,7 +210,7 @@ export default async function LegalPage(props: PageProps<'/[legal]'>) {
       <h1 className="mb-4 text-4xl font-bold tracking-tight">{page.title}</h1>
       {page.intro ? <p className="mb-8 text-muted">{page.intro}</p> : <div className="mb-4" />}
       {page.sections.map((s) => (
-        <section key={s.h} className="mb-8">
+        <section key={s.h} id={s.id} className="mb-8 scroll-mt-24">
           <h2 className="mb-3 text-xl font-semibold">{s.h}</h2>
           {s.p.map((p) => <p key={p} className="mb-3 leading-relaxed text-muted">{p}</p>)}
         </section>

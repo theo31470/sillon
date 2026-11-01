@@ -8,6 +8,7 @@ import { euros, frDate, notifyBilling, priceLabelOf } from '@/lib/email/billing'
 import { isFullyDiscounted, issueInvoiceForStripeInvoice } from '@/lib/invoices/issue';
 import { rewardReferrer } from '@/lib/referrals';
 import { invoiceAttachment, onChargeRefunded } from '@/lib/invoices/notify';
+import { onShopCheckoutCompleted, onShopCheckoutExpired, onShopRefund } from '@/lib/shop';
 
 /**
  * Webhook Stripe : seule source de vérité pour les abonnements et paiements.
@@ -29,7 +30,16 @@ export async function POST(request: NextRequest) {
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        await onCheckoutCompleted(event.data.object);
+        // Boutique : paiement d'une commande (transmise ensuite à Printful).
+        if (event.data.object.metadata?.kind === 'boutique') await onShopCheckoutCompleted(event.data.object);
+        else await onCheckoutCompleted(event.data.object);
+        break;
+      case 'checkout.session.async_payment_succeeded':
+        // Moyen de paiement différé (virement, prélèvement) : la commande part une fois l'argent reçu.
+        if (event.data.object.metadata?.kind === 'boutique') await onShopCheckoutCompleted(event.data.object);
+        break;
+      case 'checkout.session.expired':
+        if (event.data.object.metadata?.kind === 'boutique') await onShopCheckoutExpired(event.data.object);
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
@@ -45,6 +55,7 @@ export async function POST(request: NextRequest) {
         break;
       case 'charge.refunded':
         await onChargeRefunded(event.data.object, event.id);
+        await onShopRefund(event.data.object);
         break;
       case 'invoice.payment_failed':
         await recordInvoice(event.data.object, 'failed');

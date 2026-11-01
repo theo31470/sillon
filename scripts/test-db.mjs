@@ -284,6 +284,18 @@ ok((await as(D, 'aal1', `update public.profiles set farm_name = 'Piraté' where 
 await throws(() => as(B, 'aal1', `update public.profiles set is_demo = true where id = '${B}'`), 'un membre ne se déclare pas compte de démonstration');
 await throws(() => c.query(`update public.profiles set is_demo = true where id = '${A}'`), 'un seul compte de démonstration');
 
+// --- Boutique ---
+const order = (uid) => c.query(`insert into public.shop_orders (user_id, email, items, subtotal_cents, shipping_cents, total_cents, status) values ($1, 'x@x.fr', '[]', 2500, 450, 2950, 'paid') returning id`, [uid]);
+await order(A);
+await order(B);
+ok((await as(A, 'aal1', `select * from public.shop_orders`)).rowCount === 1, 'boutique : chacun ne voit que ses commandes');
+ok((await as(ADM, 'aal2', `select * from public.shop_orders`)).rowCount === 2, 'boutique : l’admin (double authentification) voit toutes les commandes');
+ok((await as(null, 'aal1', `select * from public.shop_orders`)).rowCount === 0, 'boutique : un visiteur ne voit aucune commande');
+await throws(() => as(A, 'aal1', `insert into public.shop_orders (user_id, email, items, subtotal_cents, shipping_cents, total_cents) values ($1, 'a@x.fr', '[]', 1, 0, 1)`, [A]), 'boutique : un membre ne crée pas de commande lui-même');
+await throws(() => as(A, 'aal1', `update public.shop_orders set status = 'shipped'`), 'boutique : un membre ne change pas le statut de sa commande');
+await throws(() => as(A, 'aal1', `delete from public.shop_orders`), 'boutique : un membre ne supprime pas ses commandes');
+await throws(() => c.query(`insert into public.shop_orders (user_id, email, items, subtotal_cents, shipping_cents, total_cents, status) values ($1, 'x@x.fr', '[]', 1, 0, 1, 'livree')`, [A]), 'boutique : statut inconnu refusé');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

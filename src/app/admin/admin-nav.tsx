@@ -10,6 +10,7 @@ const main = [
   { href: '/admin/paiements', label: 'Abonnements & paiements' },
   { href: '/admin/factures', label: '↳ Factures' },
   { href: '/admin/codes-promo', label: '↳ Promos et parrainage' },
+  { href: '/admin/boutique', label: 'Boutique' },
   { href: '/admin/emails', label: 'E-mails' },
   { href: '/admin/blog', label: 'Blog' },
   { href: '/admin/fiches', label: 'Fiches techniques' },

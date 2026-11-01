@@ -34,6 +34,13 @@ export async function POST() {
       } catch (err) {
         console.error('[démo]', err);
       }
+      // Boutique : suivi des commandes en cours chez Printful (si une notification s'est perdue).
+      try {
+        const { printfulConfigured } = await import('@/lib/printful');
+        if (printfulConfigured()) console.info('[boutique] commandes relues :', await (await import('@/lib/shop')).syncOpenShopOrders());
+      } catch (err) {
+        console.error('[boutique]', err);
+      }
       // Relance unique des comptes gratuits restés sans visite depuis 14 jours.
       if (!r.skipped) console.info('[relances] inactifs :', await runInactiveNudges());
     } catch (err) {
