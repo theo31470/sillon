@@ -17,9 +17,22 @@ const main = [
   { href: '/admin/fiches/catalogue', label: '↳ Import par marque' },
   { href: '/admin/fiches/demandes', label: '↳ Fiches demandées' },
 ];
-const security = [{ href: '/admin/journal', label: 'Journal d’activité' }];
+const security = [
+  { href: '/admin/journal', label: 'Journal d’activité' },
+  { href: '/admin/maintenance', label: 'Mode maintenance' },
+];
 
-export function AdminNav({ pendingSheets, newMessages = 0, newRequests = 0 }: { pendingSheets: number; newMessages?: number; newRequests?: number }) {
+export function AdminNav({
+  pendingSheets,
+  newMessages = 0,
+  newRequests = 0,
+  maintenance = false,
+}: {
+  pendingSheets: number;
+  newMessages?: number;
+  newRequests?: number;
+  maintenance?: boolean;
+}) {
   const pathname = usePathname();
   const item = (l: { href: string; label: string }) => {
     const active =
@@ -35,6 +48,7 @@ export function AdminNav({ pendingSheets, newMessages = 0, newRequests = 0 }: { 
         {l.href === '/admin/messages' && newMessages > 0 ? (
           <span className="self-center rounded-full bg-wheat px-2 text-xs font-bold text-admin">{newMessages}</span>
         ) : null}
+        {l.href === '/admin/maintenance' && maintenance ? <span className="self-center rounded-full bg-warn px-2 text-xs font-bold text-admin">activé</span> : null}
         {l.href === '/admin/fiches/demandes' && newRequests > 0 ? (
           <span className="self-center rounded-full bg-wheat px-2 text-xs font-bold text-admin">{newRequests}</span>
         ) : null}

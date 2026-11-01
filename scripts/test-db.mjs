@@ -234,6 +234,12 @@ await c.query(`insert into public.member_nudges (user_id, kind) values ('${A}', 
 await throws(() => c.query(`insert into public.member_nudges (user_id, kind) values ('${A}', 'inactif')`), 'une relance n’est envoyée qu’une fois');
 ok((await as(A, 'aal1', 'select * from public.member_nudges')).rowCount === 0, 'un membre ne lit pas le suivi des relances');
 
+// --- Mode maintenance ---
+ok((await as(null, null, `select value->>'active' a from public.site_settings where key = 'maintenance'`)).rows[0]?.a === 'false', 'visiteur : lit l’état de maintenance');
+ok((await as(ADM, 'aal2', `update public.site_settings set value = '{"active": true}'`)).rowCount === 0, 'le mode maintenance ne se change que par le serveur');
+await throws(() => as(A, 'aal1', `insert into public.site_settings (key, value) values ('maintenance', '{}')`), 'un membre ne crée pas de réglage');
+await throws(() => c.query(`insert into public.site_settings (key) values ('autre')`), 'seules les clés prévues sont acceptées');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

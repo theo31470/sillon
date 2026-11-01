@@ -274,6 +274,10 @@ utilisés pour l’estimation sont dans `src/lib/ai.ts` (`PRICES`).
 - **Parrainage** : code personnel par membre (page Abonnement), lien `/p/CODE` (cookie 60 jours). Le filleul a 6,99 € de remise sur son premier paiement (coupon Stripe `parrainage-1-mois`, créé automatiquement), le parrain reçoit 6,99 € de crédit (solde client Stripe) au premier vrai paiement du filleul. Suivi dans Admin → Promos et parrainage.
 - **Relances des comptes gratuits** : un e-mail quand la limite de machines est atteinte, un autre après 14 jours sans visite (tournée quotidienne des rappels). Une seule fois chacun, uniquement si les annonces sont activées.
 
+## Mode maintenance
+
+Admin → Mode maintenance : ferme le site au public le temps d’une mise à jour. Le proxy (`src/proxy.ts`) lit l’état dans `site_settings` (cache de 15 s par instance) et sert `/maintenance` avec un code 503 à tous, sauf aux administrateurs. Les routes API (webhook Stripe, tâches planifiées) ne sont pas concernées. La page affiche une scène 3D (three.js, chargée uniquement sur cette page, `src/app/maintenance/scene.ts`) et se recharge seule à la réouverture (`/api/statut`). Aperçu à tout moment : `/maintenance?apercu=1` (admin).
+
 ## Tests et vérifications
 
 ```bash
