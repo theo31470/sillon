@@ -551,10 +551,22 @@ export async function createLabel(orderId: string, sellerId: string, sender: Sen
       created = await boxtal.createShipment({ ...request, dropoffPointCode: dropoff.code });
     } else {
       console.error('[bourse] bordereau', o.id, err);
+      // Problème du compte Boxtal de la plateforme (paiement, contrat) : rien à corriger côté vendeur.
+      if (err instanceof boxtal.BoxtalError && err.codes.some((c) => /Payment|Billing|Contract|Account/i.test(c))) {
+        await alertAdmins(`boxtal_compte_${new Date().toISOString().slice(0, 10)}`, 'Boxtal refuse de créer les bordereaux', [
+          `Erreur Boxtal : ${err.codes.join(', ')}.`,
+          'Vérifiez le moyen de paiement du compte Boxtal (paiement différé par prélèvement obligatoire pour l’API).',
+          `Vente concernée : ${o.ref} (${o.snapshot.title}).`,
+        ], `${site()}/admin/bourse`).catch(() => null);
+        throw new BourseError('La génération des bordereaux est momentanément indisponible : notre équipe est prévenue. Réessayez un peu plus tard.');
+      }
+      const detail = err instanceof boxtal.BoxtalError ? err.message.replace(/^[^:]*:\s*/, '') : '';
       throw new BourseError(
-        err instanceof boxtal.BoxtalError && err.status === 422
-          ? `Le transporteur refuse ces informations : ${err.message.replace(/^.*?: /, '')}. Vérifiez votre adresse et votre téléphone.`
-          : 'Le bordereau n’a pas pu être créé pour le moment. Réessayez dans quelques minutes.',
+        err instanceof boxtal.BoxtalError && err.status === 422 && detail && !detail.startsWith('Boxtal')
+          ? `Le transporteur refuse ces informations : ${detail}. Vérifiez votre adresse et votre téléphone.`
+          : err instanceof boxtal.BoxtalError && err.status === 422
+            ? 'Le transporteur refuse ces informations. Vérifiez votre adresse (numéro et rue) et votre téléphone portable.'
+            : 'Le bordereau n’a pas pu être créé pour le moment. Réessayez dans quelques minutes.',
       );
     }
   }
