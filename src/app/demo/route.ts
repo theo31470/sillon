@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   if (claims?.claims) return home('/app');
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'inconnue';
-  if (!rateLimit(`demo:${ip}`, 20, 60 * 60_000).ok) return home('/?demo=occupee');
+  if (!rateLimit(`demo:${ip}`, 20, 60 * 60_000).ok) return home('/gestion-de-parc?demo=occupee');
 
   try {
     const userId = await ensureDemoUser();
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     if (otpError) throw new Error(otpError.message);
   } catch (err) {
     console.error('[démo]', err);
-    return home('/?demo=indisponible');
+    return home('/gestion-de-parc?demo=indisponible');
   }
   return home('/app?demo=1');
 }

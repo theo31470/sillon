@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { Route } from 'next';
 import { Logo, btn } from '@/components/ui';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { MobileMenu } from '@/components/mobile-menu';
@@ -14,10 +15,10 @@ async function isLoggedIn() {
 }
 
 const SITE_LINKS = [
-  { href: '/#fonctions', label: 'Fonctionnalités' },
+  { href: '/gestion-de-parc', label: 'Gestion de parc' },
   { href: '/fiches', label: 'Fiches techniques' },
   { href: '/bourse', label: 'Bourse' },
-  { href: '/blog', label: 'Blog' },
+  { href: '/blog', label: 'Conseils' },
   { href: '/tarifs', label: 'Tarifs' },
 ];
 
@@ -84,20 +85,28 @@ export async function SiteFooter() {
   const shop = await shopIsOpen().catch(() => false);
   return (
     <footer className="no-print mt-auto border-t border-line bg-ground">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] text-[15px] text-muted sm:px-6">
-        <div className="flex items-center gap-4">
+      <div className="mx-auto flex max-w-6xl flex-wrap gap-x-10 gap-y-8 px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] text-[15px] text-muted sm:px-6">
+        <div className="flex flex-[1_1_220px] items-start gap-4">
           <Logo variant="embleme" height={64} />
-          <span>© {new Date().getFullYear()} Tracteurs & Co<br />Machinisme agricole</span>
+          <span>
+            © {new Date().getFullYear()} Tracteurs & Co
+            <br />
+            Tout pour le matériel agricole
+          </span>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-3">
-          <Link href="/blog" className="link-underline transition-colors hover:text-ink">Blog</Link>
-          <Link href="/fiches" className="link-underline transition-colors hover:text-ink">Fiches techniques</Link>
-          {shop ? <Link href="/app/boutique" className="link-underline transition-colors hover:text-ink">Boutique (membres)</Link> : null}
-          <Link href="/mentions-legales" className="link-underline transition-colors hover:text-ink">Mentions légales</Link>
-          <Link href="/confidentialite" className="link-underline transition-colors hover:text-ink">Confidentialité</Link>
-          <Link href="/conditions" className="link-underline transition-colors hover:text-ink">Conditions</Link>
-          <Link href="/contact" className="link-underline transition-colors hover:text-ink">Contact</Link>
-        </div>
+        {[
+          { title: 'Gérer', links: [['/gestion-de-parc', 'Gestion de parc'], ['/tarifs', 'Tarifs'], ['/app', 'Mon espace']] },
+          { title: 'S’informer', links: [['/fiches', 'Fiches techniques'], ['/blog', 'Conseils']] },
+          { title: 'Acheter & vendre', links: [['/bourse', 'Bourse au matériel'], ['/app/annonces/nouvelle', 'Vendre du matériel'], ...(shop ? [['/app/boutique', 'Boutique (membres)']] : [])] },
+          { title: 'Tracteurs & Co', links: [['/contact', 'Contact'], ['/conditions', 'Conditions'], ['/confidentialite', 'Confidentialité'], ['/mentions-legales', 'Mentions légales']] },
+        ].map((col) => (
+          <nav key={col.title} aria-label={col.title} className="flex min-w-[140px] flex-col gap-2">
+            <p className="font-semibold text-ink">{col.title}</p>
+            {col.links.map(([href, label]) => (
+              <Link key={href} href={href as Route} className="link-underline self-start transition-colors hover:text-ink">{label}</Link>
+            ))}
+          </nav>
+        ))}
       </div>
     </footer>
   );

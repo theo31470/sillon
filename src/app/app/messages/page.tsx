@@ -7,6 +7,7 @@ import { publicName, type Conversation, type Listing } from '@/lib/bourse';
 import { priceLabel } from '@/lib/bourse-shared';
 import { formatDate } from '@/lib/format';
 import { Card, btn } from '@/components/ui';
+import { BourseTabs } from '@/app/app/bourse-tabs';
 
 export const metadata: Metadata = { title: 'Messages · Bourse' };
 
@@ -36,12 +37,12 @@ export default async function MessagesPage() {
 
   return (
     <>
+      <BourseTabs />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
           <p className="text-muted">Vos échanges avec les acheteurs et les vendeurs de la bourse.</p>
         </div>
-        <Link href="/app/annonces" className="font-semibold text-brand-dark hover:underline">← Mes annonces</Link>
       </div>
       {convs.length === 0 ? (
         <Card className="flex flex-col items-start gap-3">

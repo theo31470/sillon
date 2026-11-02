@@ -8,6 +8,7 @@ import { LISTING_STATUS, listingPath, priceLabel } from '@/lib/bourse-shared';
 import { formatDate } from '@/lib/format';
 import { Badge, Card, Notice, btn } from '@/components/ui';
 import { deleteListing, setListingStatus } from './actions';
+import { BourseTabs } from '@/app/app/bourse-tabs';
 
 export const metadata: Metadata = { title: 'Mes annonces · Bourse' };
 
@@ -33,28 +34,18 @@ export default async function MyListingsPage(props: PageProps<'/app/annonces'>) 
   ]);
   const mine = (rows ?? []) as Listing[];
   const favorites = ((favRows ?? []) as unknown as { listings: Listing | null }[]).map((f) => f.listings).filter((l): l is Listing => Boolean(l));
-  const unread = (convs ?? []).filter((c) => {
-    const readAt = c.buyer_id === session.userId ? c.buyer_read_at : c.seller_read_at;
-    return !readAt || readAt < c.last_message_at;
-  }).length;
   const messagesFor = (id: string) => (convs ?? []).filter((c) => c.listing_id === id && c.seller_id === session.userId).length;
   const published = publiee ? mine.find((l) => l.ref === publiee) : null;
 
   return (
     <>
+      <BourseTabs />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mes annonces</h1>
           <p className="text-muted">Vendez votre matériel entre agriculteurs : annonces gratuites, messagerie protégée.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {payout?.payouts_enabled ? <Link href="/app/annonces/versements" className={btn.secondary}>Versements</Link> : null}
-          <Link href="/app/transactions" className={btn.secondary}>
-            Transactions{toHandle ? <span className="rounded-full bg-brand px-2 text-sm text-on-brand">{toHandle}</span> : null}
-          </Link>
-          <Link href="/app/messages" className={btn.secondary}>
-            Messages{unread ? <span className="rounded-full bg-brand px-2 text-sm text-on-brand">{unread}</span> : null}
-          </Link>
           <Link href="/app/annonces/nouvelle" className={btn.primary}>+ Déposer une annonce</Link>
         </div>
       </div>

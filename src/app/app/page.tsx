@@ -10,6 +10,7 @@ import { COST_KINDS } from '@/lib/types';
 import { Card, btn } from '@/components/ui';
 import { Kpi, MachineCard, STATUS_STYLE } from '@/components/fleet';
 import { Icon } from '@/components/sheets/icons';
+import { Shortcuts } from './shortcuts';
 
 export const metadata: Metadata = { title: 'Tableau de bord' };
 
@@ -47,6 +48,7 @@ export default async function DashboardPage() {
             <Link href="/fiches" className={btn.secondary}>Parcourir les fiches techniques</Link>
           </div>
         </Card>
+        <Shortcuts />
       </>
     );
   }
@@ -155,6 +157,8 @@ export default async function DashboardPage() {
           {fleet.map((m) => <MachineCard key={m.id} m={m} />)}
         </div>
       </section>
+
+      <Shortcuts />
     </>
   );
 }

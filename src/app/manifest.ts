@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Tracteurs & Co',
     short_name: 'Tracteurs & Co',
-    description: 'Le carnet de santé de votre matériel agricole : entretiens, compteurs, dépenses et coût de revient.',
+    description: 'Tout pour le matériel agricole : gestion de parc, fiches techniques et bourse au matériel d’occasion.',
     lang: 'fr',
     start_url: '/app',
     scope: '/',

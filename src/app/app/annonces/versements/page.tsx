@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { getSellerAccount, refreshSellerAccount } from '@/lib/bourse-pay';
@@ -6,6 +5,7 @@ import { BUYER_FEE, RELEASE_DAYS_AFTER_SHIPPING } from '@/lib/bourse-shared';
 import { SubmitButton } from '@/components/form-bits';
 import { Badge, Card, Notice } from '@/components/ui';
 import { openPayoutDashboard, startOnboarding } from './actions';
+import { BourseTabs } from '@/app/app/bourse-tabs';
 
 export const metadata: Metadata = { title: 'Recevoir des paiements · Bourse' };
 
@@ -18,12 +18,12 @@ export default async function PayoutsPage(props: PageProps<'/app/annonces/versem
 
   return (
     <>
+      <BourseTabs />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Recevoir des paiements</h1>
           <p className="max-w-3xl text-muted">Activez le paiement sécurisé : vos acheteurs paient sur le site, et l’argent arrive sur votre compte bancaire après la remise ou la réception.</p>
         </div>
-        <Link href="/app/annonces" className="font-semibold text-brand-dark hover:underline">← Mes annonces</Link>
       </div>
       {erreur === 'stripe' ? <Notice tone="red">Le service de paiement ne répond pas pour le moment. Réessayez dans quelques minutes.</Notice> : null}
       {erreur === 'patience' ? <Notice>Un instant : réessayez dans quelques minutes.</Notice> : null}

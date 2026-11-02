@@ -10,11 +10,11 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: {
-    default: 'Tracteurs & Co — le carnet de santé de votre matériel agricole',
+    default: 'Tracteurs & Co — gestion de parc, fiches techniques et bourse au matériel agricole',
     template: '%s · Tracteurs & Co',
   },
   description:
-    'Tracteurs & Co, machinisme agricole : entretiens, compteurs, coût de revient à l’heure, fiches techniques et aide au diagnostic de votre matériel.',
+    'Tout pour le matériel agricole : carnet d’entretien et coût de revient de votre parc, fiches techniques en accès libre, bourse pour acheter et vendre du matériel d’occasion entre agriculteurs.',
   applicationName: 'Tracteurs & Co',
   // Ajoutée à l’écran d’accueil d’un iPhone : s’ouvre comme une application.
   appleWebApp: { capable: true, title: 'Tracteurs & Co', statusBarStyle: 'black-translucent' },

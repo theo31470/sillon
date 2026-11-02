@@ -6,6 +6,7 @@ import type { ListingOrder } from '@/lib/bourse-pay';
 import { ORDER_STATUS } from '@/lib/bourse-shared';
 import { formatDate, formatEuros } from '@/lib/format';
 import { Badge, Card, btn } from '@/components/ui';
+import { BourseTabs } from '@/app/app/bourse-tabs';
 
 export const metadata: Metadata = { title: 'Mes transactions · Bourse' };
 
@@ -27,12 +28,12 @@ export default async function TransactionsPage() {
 
   return (
     <>
+      <BourseTabs />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mes transactions</h1>
           <p className="text-muted">Achats et ventes payés sur la bourse, avec le paiement sécurisé.</p>
         </div>
-        <Link href="/app/annonces" className="font-semibold text-brand-dark hover:underline">← Mes annonces</Link>
       </div>
 
       <Section title="Mes ventes" badge={todo ? `${todo} à traiter` : null} orders={sales} me="seller" empty="Aucune vente payée en ligne pour le moment." />
