@@ -139,7 +139,6 @@ export async function startShopPayment(params: { userId: string; email: string; 
     .single();
   if (error || !order) throw new Error(`Commande impossible à créer : ${error?.message}`);
   const orderId = order.id as string;
-  const r = params.recipient;
 
   const intent = await stripe().paymentIntents.create(
     {
@@ -151,11 +150,8 @@ export async function startShopPayment(params: { userId: string; email: string; 
       description: `Boutique Tracteurs & Co, commande ${orderReference(orderId)}`,
       statement_descriptor_suffix: 'BOUTIQUE',
       metadata: { kind: 'boutique', order_id: orderId, user_id: params.userId },
-      shipping: {
-        name: r.name,
-        phone: r.phone ?? undefined,
-        address: { line1: r.address1, line2: r.address2 ?? undefined, city: r.city, postal_code: r.zip, country: r.country_code },
-      },
+      // Pas d'adresse ici : le champ adresse de Stripe l'ajoute à la confirmation (Stripe refuse qu'elle soit posée
+      // côté serveur puis modifiée côté navigateur). L'adresse qui fait foi est celle enregistrée sur la commande.
     },
     { idempotencyKey: `boutique-${orderId}` },
   );

@@ -281,11 +281,14 @@ export async function startPurchase(params: {
       shipping_offer: offer,
       pickup_point: pickup,
       parcel: params.mode === 'envoi' && shipBy === 'boxtal' ? { weight_kg: Number(l.weight_kg), size: l.parcel_size, category: l.category } : null,
+      // Adresse vérifiée ici (c'est elle qui a servi au calcul du port) : elle fait foi, pas celle du paiement.
+      recipient: params.mode === 'envoi' ? params.recipient : null,
     })
     .select('id, ref')
     .single();
   if (error || !order) throw new Error(`Transaction non créée : ${error?.message}`);
-  const r = params.recipient;
+  // Pas d'adresse sur le paiement : le formulaire Stripe (champ adresse) l'y ajoute lui-même à la confirmation,
+  // et Stripe refuse qu'elle soit d'abord posée côté serveur puis modifiée côté navigateur.
   const intent = await stripe().paymentIntents.create(
     {
       amount: q.total,
@@ -296,9 +299,6 @@ export async function startPurchase(params: {
       statement_descriptor_suffix: 'BOURSE',
       transfer_group: `bourse-${order.id}`,
       metadata: { kind: 'bourse', order_id: order.id as string, listing_id: l.id, buyer_id: params.buyerId, seller_id: l.seller_id },
-      ...(r
-        ? { shipping: { name: r.name, phone: r.phone, address: { line1: r.address1, line2: r.address2 ?? undefined, city: r.city, postal_code: r.zip, country: 'FR' } } }
-        : {}),
     },
     { idempotencyKey: `bourse-${order.id}` },
   );
@@ -319,9 +319,10 @@ export async function settleBoursePayment(intentOrId: Stripe.PaymentIntent | str
 
   const s = intent.shipping;
   const recipient =
-    order.mode === 'envoi' && s?.address
+    order.recipient ??
+    (order.mode === 'envoi' && s?.address
       ? { name: s.name ?? '', address1: s.address.line1 ?? '', address2: s.address.line2 ?? null, city: s.address.city ?? '', zip: s.address.postal_code ?? '', phone: s.phone ?? null }
-      : null;
+      : null);
   const charge = typeof intent.latest_charge === 'string' ? intent.latest_charge : (intent.latest_charge?.id ?? null);
   try {
     const claimed = await setOrder(
