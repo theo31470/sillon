@@ -10,7 +10,9 @@ import {
   LISTING_CONDITIONS,
   MAX_LISTING_PHOTOS,
   MAX_PARCEL_KG,
+  PARCEL_SIZES,
   type ListingDelivery,
+  type ParcelSize,
   type ListingPhoto,
 } from '@/lib/bourse-shared';
 import { saveListing, uploadListingPhoto } from './actions';
@@ -34,6 +36,9 @@ export type ListingDraft = {
   delivery: ListingDelivery;
   weight_kg: string;
   shipping: string;
+  parcel_size: ParcelSize | '';
+  /** Le vendeur expédie lui-même (colis lourd, palette) au lieu du bordereau automatique. */
+  ship_self: boolean;
   photos: ListingPhoto[];
   published: boolean;
 };
@@ -57,6 +62,8 @@ export function ListingForm({ draft, estimate }: { draft: ListingDraft; estimate
   const [uploading, setUploading] = useState<string[]>([]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [delivery, setDelivery] = useState<ListingDelivery>(draft.delivery);
+  const [shipSelf, setShipSelf] = useState(draft.ship_self);
+  const [size, setSize] = useState<ParcelSize | ''>(draft.parcel_size);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function addFiles(files: FileList | null) {
@@ -188,13 +195,53 @@ export function ListingForm({ draft, estimate }: { draft: ListingDraft; estimate
             </div>
           </fieldset>
           {delivery !== 'main_propre' ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Poids du colis (kg)" htmlFor="l-weight" hint={`Emballage compris, ${MAX_PARCEL_KG} kg au plus.`}>
-                <Input id="l-weight" name="weight_kg" inputMode="decimal" defaultValue={draft.weight_kg} />
-              </Field>
-              <Field label="Frais de port pour l’acheteur (€)" htmlFor="l-ship" hint="Ce que vous coûte l’envoi (Colissimo, Mondial Relay…). Ajouté au prix pour l’acheteur.">
-                <Input id="l-ship" name="shipping" inputMode="decimal" defaultValue={draft.shipping} placeholder="Ex. : 12,90" />
-              </Field>
+            <div className="flex flex-col gap-4 rounded-2xl bg-ground p-4">
+              <input type="hidden" name="ship_self" value={shipSelf ? '1' : ''} />
+              <input type="hidden" name="parcel_size" value={shipSelf ? '' : size} />
+              <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Expédition">
+                {[
+                  [false, 'Bordereau automatique', `Jusqu’à ${MAX_PARCEL_KG} kg. L’acheteur choisit Mondial Relay, Colissimo ou Chronopost et paie le port ; vous imprimez le bordereau et déposez le colis.`],
+                  [true, 'J’expédie moi-même', 'Colis lourd, palette, transporteur : vous fixez les frais de port et donnez le numéro de suivi.'],
+                ].map(([self, label, hint]) => (
+                  <label key={String(self)} className={`flex cursor-pointer flex-col gap-1 rounded-xl border-2 bg-surface p-3 transition-colors ${shipSelf === self ? 'border-brand bg-brand-tint' : 'border-line hover:border-field'}`}>
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <input type="radio" name="ship_mode" checked={shipSelf === self} onChange={() => setShipSelf(self as boolean)} className="accent-brand" />
+                      {label as string}
+                    </span>
+                    <span className="text-xs text-muted">{hint as string}</span>
+                  </label>
+                ))}
+              </div>
+              {shipSelf ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Frais de port pour l’acheteur (€)" htmlFor="l-ship" hint="Ce que vous coûte l’envoi. Ajouté au prix pour l’acheteur, et reversé avec le prix.">
+                    <Input id="l-ship" name="shipping" inputMode="decimal" defaultValue={draft.shipping} placeholder="Ex. : 45" />
+                  </Field>
+                  <Field label="Poids (kg, facultatif)" htmlFor="l-weight" hint="Emballage compris.">
+                    <Input id="l-weight" name="weight_kg" inputMode="decimal" defaultValue={draft.weight_kg} />
+                  </Field>
+                </div>
+              ) : (
+                <>
+                  <Field label="Poids du colis (kg)" htmlFor="l-weight" hint={`Emballage compris, ${MAX_PARCEL_KG} kg au plus. Pesez-le : le transporteur vérifie.`}>
+                    <Input id="l-weight" name="weight_kg" inputMode="decimal" defaultValue={draft.weight_kg} className="max-w-40" />
+                  </Field>
+                  <fieldset className="flex flex-col gap-2">
+                    <legend className="mb-1 text-sm font-semibold">Taille du colis</legend>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {(Object.keys(PARCEL_SIZES) as ParcelSize[]).map((k) => (
+                        <label key={k} className={`flex cursor-pointer flex-col gap-0.5 rounded-xl border-2 bg-surface p-3 transition-colors ${size === k ? 'border-brand bg-brand-tint' : 'border-line hover:border-field'}`}>
+                          <span className="flex items-center gap-2 text-sm font-semibold">
+                            <input type="radio" name="size_choice" checked={size === k} onChange={() => setSize(k)} className="accent-brand" />
+                            {PARCEL_SIZES[k].label}
+                          </span>
+                          <span className="text-xs text-muted">{PARCEL_SIZES[k].hint}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </>
+              )}
             </div>
           ) : null}
         </section>

@@ -814,6 +814,7 @@ export type BourseOrderTemplate =
   | 'achat_confirme'
   | 'vente_conclue'
   | 'expediee'
+  | 'livree'
   | 'terminee_vendeur'
   | 'terminee_acheteur'
   | 'annulee_acheteur'
@@ -833,6 +834,10 @@ export type BourseOrderInput = {
   listingUrl: string | null;
   tracking: string | null;
   note: string | null;
+  /** Envoi avec bordereau automatique (Boxtal). */
+  boxtal?: boolean;
+  /** Point relais de livraison choisi par l'acheteur. */
+  pickup?: string | null;
 };
 
 const BOURSE_REASON = 'Vous recevez cet e-mail parce qu’il concerne une transaction sur la bourse au matériel de Tracteurs & Co.';
@@ -852,7 +857,11 @@ export function bourseOrderEmail(template: BourseOrderTemplate, i: BourseOrderIn
           { type: 'p', text: `Vous avez acheté **${i.title}** à ${i.other} pour **${i.total}**. Votre argent est conservé par Tracteurs & Co : il n’est versé au vendeur ${i.mode === 'main_propre' ? 'qu’au moment de la remise' : 'qu’après la réception du colis'}.` },
           i.mode === 'main_propre'
             ? { type: 'note', text: 'Convenez d’un rendez-vous par la messagerie. Au moment de la remise, vérifiez le matériel, puis donnez au vendeur le code à 6 chiffres affiché sur la page de la transaction. Ne le donnez jamais avant.', tone: 'info' }
-            : { type: 'note', text: 'Le vendeur prépare votre colis. Vous recevrez le numéro de suivi dès l’envoi. À réception, confirmez sur le site que tout est conforme.', tone: 'info' },
+            : {
+                type: 'note',
+                text: `Le vendeur prépare votre colis${i.pickup ? `, livré au point relais **${i.pickup}**` : ''}. Vous recevrez le suivi dès le dépôt. À réception, confirmez sur le site que tout est conforme.`,
+                tone: 'info',
+              },
         ],
       );
     case 'vente_conclue':
@@ -864,7 +873,9 @@ export function bourseOrderEmail(template: BourseOrderTemplate, i: BourseOrderIn
           { type: 'p', text: `**${i.other}** a acheté **${i.title}** et a payé sur le site. L’annonce est maintenant réservée. Vous recevrez **${i.payout}** sur votre compte bancaire ${i.mode === 'main_propre' ? 'dès la remise' : 'dès la réception du colis'}.` },
           i.mode === 'main_propre'
             ? { type: 'note', text: 'Convenez d’un rendez-vous par la messagerie. À la remise, l’acheteur vous donne un code à 6 chiffres : saisissez-le sur la page de la transaction pour recevoir votre argent.', tone: 'info' }
-            : { type: 'note', text: 'Expédiez le colis sous 3 jours ouvrés à l’adresse indiquée sur la page de la transaction, puis saisissez le transporteur et le numéro de suivi.', tone: 'info' },
+            : i.boxtal
+              ? { type: 'note', text: 'Sur la page de la transaction, cliquez sur « Générer mon bordereau » : imprimez-le, collez-le sur le colis et déposez-le sous 7 jours au point indiqué. Le port est déjà payé, le suivi est automatique.', tone: 'info' }
+              : { type: 'note', text: 'Expédiez le colis sous 7 jours à l’adresse indiquée sur la page de la transaction, puis saisissez le transporteur et le numéro de suivi.', tone: 'info' },
         ],
       );
     case 'expediee':
@@ -876,6 +887,17 @@ export function bourseOrderEmail(template: BourseOrderTemplate, i: BourseOrderIn
           { type: 'p', text: `${i.other} a expédié **${i.title}**.${i.tracking ? ` Suivi : **${i.tracking}**.` : ''}` },
           { type: 'note', text: 'À réception, vérifiez le colis puis confirmez sur le site que tout est conforme : le vendeur est alors payé. Un problème ? Signalez-le avant de confirmer : l’argent reste bloqué le temps de trouver une solution.', tone: 'info' },
         ],
+      );
+    case 'livree':
+      return mk(
+        `Votre colis est arrivé : ${i.title}`,
+        'Votre colis est arrivé',
+        'Vérifiez-le puis confirmez la réception.',
+        [
+          { type: 'p', text: `Le transporteur indique que **${i.title}** est livré${i.pickup ? ` au point relais ${i.pickup}` : ''}.` },
+          { type: 'note', text: 'Vérifiez le colis, puis confirmez la réception sur le site. Un problème ? Signalez-le sous 48 heures : passé ce délai, le vendeur est payé automatiquement.', tone: 'info' },
+        ],
+        'Confirmer la réception',
       );
     case 'terminee_vendeur':
       return mk(

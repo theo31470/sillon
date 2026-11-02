@@ -8,7 +8,7 @@ import { daysAgoIso, formatDate, formatEuros } from '@/lib/format';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
 import { Badge, Card, Input, btn } from '@/components/ui';
-import { dismissReports, moderateListing, resolveOrder, restoreListing } from './actions';
+import { dismissReports, enableBoxtalWebhooks, moderateListing, resolveOrder, restoreListing, testBoxtal } from './actions';
 
 export const metadata = { title: 'Bourse' };
 
@@ -85,6 +85,19 @@ export default async function AdminBoursePage() {
           </ul>
         </Card>
       ) : null}
+
+      <Card className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold">Envoi automatique (Boxtal)</h2>
+        <p className="text-sm text-muted">Bordereaux Mondial Relay, Colissimo, Chronopost… facturés au compte Boxtal (paiement différé par prélèvement). Testez la connexion après chaque changement de clés.</p>
+        <div className="flex flex-wrap items-start gap-3">
+          <ActionForm action={testBoxtal} resetOnSuccess={false} className="flex max-w-full flex-col gap-2 [&_[role=status]]:whitespace-pre-line">
+            <SubmitButton variant="secondary" pendingLabel="Test en cours…">Tester la connexion</SubmitButton>
+          </ActionForm>
+          <ActionForm action={enableBoxtalWebhooks} resetOnSuccess={false} className="flex flex-col gap-2">
+            <SubmitButton variant="secondary" pendingLabel="Activation…">Activer les notifications</SubmitButton>
+          </ActionForm>
+        </div>
+      </Card>
 
       <Card>
         <h2 className="mb-3 text-xl font-semibold">Signalements à traiter {reports.length ? <Badge tone="amber">{reports.length}</Badge> : null}</h2>

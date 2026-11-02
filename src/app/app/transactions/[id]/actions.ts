@@ -57,3 +57,28 @@ export async function disputeAction(_prev: FormState, formData: FormData) {
   if (reason.length < 10) return { error: 'Décrivez le problème en quelques mots (10 caractères au moins).' };
   return run(formData, 'litige', (o, u) => openDispute(o, u, reason), 'Problème signalé : l’argent est bloqué et notre équipe revient vers vous sous 48 h.');
 }
+
+const senderSchema = z.object({
+  name: z.string().trim().min(3, 'Indiquez vos nom et prénom.').max(80),
+  street: z.string().trim().min(4, 'Indiquez votre adresse (numéro et rue).').max(150),
+  zip: z.string().trim().regex(/^\d{5}$/, 'Code postal à 5 chiffres.'),
+  city: z.string().trim().min(1, 'Indiquez la commune.').max(80),
+  phone: z
+    .string()
+    .trim()
+    .refine((v) => /^(\+33|0033|0)[1-9](\d{2}){4}$/.test(v.replace(/[\s.-]/g, '')), 'Téléphone français à 10 chiffres (le transporteur vous prévient en cas de souci).'),
+});
+
+/** Le vendeur génère son bordereau prépayé. */
+export async function labelAction(_prev: FormState, formData: FormData) {
+  const sender = senderSchema.safeParse({
+    name: formData.get('name'),
+    street: formData.get('street'),
+    zip: formData.get('zip'),
+    city: formData.get('city'),
+    phone: formData.get('phone'),
+  });
+  if (!sender.success) return { error: sender.error.issues[0]?.message ?? 'Adresse incomplète.' };
+  const { createLabel } = await import('@/lib/bourse-pay');
+  return run(formData, 'bordereau', async (o, u) => void (await createLabel(o, u, sender.data)), 'Bordereau créé : téléchargez-le, imprimez-le et collez-le sur le colis.');
+}

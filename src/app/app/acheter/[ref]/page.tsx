@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { getListingByRef } from '@/lib/bourse';
-import { quote, securePaymentBlocker } from '@/lib/bourse-pay';
+import { quote, securePaymentBlocker, shippingMode } from '@/lib/bourse-pay';
 import { listingPath, priceLabel } from '@/lib/bourse-shared';
 import { SITE } from '@/lib/site';
 import { Card, Notice, btn } from '@/components/ui';
@@ -18,7 +18,8 @@ export default async function BuyPage(props: PageProps<'/app/acheter/[ref]'>) {
   if (!l) notFound();
   if (l.seller_id === session.userId) redirect(listingPath(l));
   const blocker = await securePaymentBlocker(l);
-  const modes = (l.delivery === 'les_deux' ? ['main_propre', 'envoi'] : [l.delivery]).filter((m) => m !== 'envoi' || l.shipping_cents !== null) as ('envoi' | 'main_propre')[];
+  const shipBy = shippingMode(l);
+  const modes = (l.delivery === 'les_deux' ? ['main_propre', 'envoi'] : [l.delivery]).filter((m) => m !== 'envoi' || shipBy !== null) as ('envoi' | 'main_propre')[];
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
@@ -41,7 +42,8 @@ export default async function BuyPage(props: PageProps<'/app/acheter/[ref]'>) {
       ) : (
         <BuyForm
           listing={{ ref: l.ref, title: l.title, photo: l.photos[0]?.url ?? null, price: priceLabel(l.price_cents), city: `${l.city} (${l.department})` }}
-          quotes={Object.fromEntries(modes.map((m) => [m, quote(l, m)])) as Record<'envoi' | 'main_propre', ReturnType<typeof quote>>}
+          quotes={Object.fromEntries(modes.map((m) => [m, quote(l, m, m === 'envoi' && shipBy === 'boxtal' ? 0 : undefined)])) as Record<'envoi' | 'main_propre', ReturnType<typeof quote>>}
+          autoShipping={shipBy === 'boxtal'}
           modes={modes}
           defaultName={profile.full_name}
           vatMention={SITE.vatMention}

@@ -1,7 +1,7 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/admin';
-import type { ListingCategory, ListingCondition, ListingDelivery, ListingPhoto, ListingStatus } from '@/lib/bourse-shared';
+import type { ListingCategory, ListingCondition, ListingDelivery, ListingPhoto, ListingStatus, ParcelSize } from '@/lib/bourse-shared';
 
 /** Bourse au matériel : lecture des annonces (règles d'accès appliquées par la base). */
 
@@ -28,6 +28,8 @@ export type Listing = {
   weight_kg: number | null;
   /** Frais de port fixés par le vendeur (envoi). */
   shipping_cents: number | null;
+  /** Format du colis, pour l'envoi automatique. */
+  parcel_size: ParcelSize | null;
   photos: ListingPhoto[];
   status: ListingStatus;
   moderation_note: string | null;

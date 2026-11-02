@@ -14,8 +14,10 @@ import {
   LISTING_CONDITIONS,
   MAX_LISTING_PHOTOS,
   MAX_PARCEL_KG,
+  PARCEL_SIZES,
   departmentOf,
   type ListingPhoto,
+  type ParcelSize,
 } from '@/lib/bourse-shared';
 import type { FormState } from '@/components/form-bits';
 
@@ -49,14 +51,23 @@ const listingSchema = z
     postal_code: z.string().trim().regex(/^\d{5}$/, 'Code postal à 5 chiffres.'),
     city: z.string().trim().min(1, 'Indiquez la commune.').max(100),
     delivery: z.enum(keys(DELIVERY_LABELS)),
-    weight_kg: number('Poids', MAX_PARCEL_KG),
-    shipping: number('Frais de port', 200),
+    weight_kg: number('Poids', 5000),
+    shipping: number('Frais de port', 2000),
+    parcel_size: z.union([z.enum(Object.keys(PARCEL_SIZES) as [ParcelSize, ...ParcelSize[]]), z.literal('')]),
+    ship_self: z.boolean(),
     photos: z.array(z.object({ path: z.string(), url: z.string().url(), w: z.number().optional(), h: z.number().optional() })).max(MAX_LISTING_PHOTOS),
     intent: z.enum(['brouillon', 'publier']),
   })
   .superRefine((v, ctx) => {
-    if (v.delivery !== 'main_propre' && v.shipping === null) ctx.addIssue({ code: 'custom', message: 'Indiquez les frais de port demandés à l’acheteur (0 si l’envoi est offert).', path: ['shipping'] });
-    if (v.delivery !== 'main_propre' && !v.weight_kg) ctx.addIssue({ code: 'custom', message: `Pour un envoi par colis, indiquez le poids (${MAX_PARCEL_KG} kg au plus ; au-delà, remise en main propre).`, path: ['weight_kg'] });
+    if (v.delivery !== 'main_propre') {
+      if (v.ship_self) {
+        if (v.shipping === null) ctx.addIssue({ code: 'custom', message: 'Indiquez les frais de port demandés à l’acheteur (0 si l’envoi est offert).', path: ['shipping'] });
+      } else {
+        if (!v.weight_kg) ctx.addIssue({ code: 'custom', message: 'Indiquez le poids du colis, emballage compris.', path: ['weight_kg'] });
+        else if (v.weight_kg > MAX_PARCEL_KG) ctx.addIssue({ code: 'custom', message: `Le bordereau automatique va jusqu’à ${MAX_PARCEL_KG} kg : au-delà, choisissez « J’expédie moi-même » ou la remise en main propre.`, path: ['weight_kg'] });
+        if (!v.parcel_size) ctx.addIssue({ code: 'custom', message: 'Choisissez la taille du colis.', path: ['parcel_size'] });
+      }
+    }
     if (v.intent === 'publier' && v.photos.length === 0) ctx.addIssue({ code: 'custom', message: 'Ajoutez au moins une photo pour publier l’annonce.', path: ['photos'] });
   });
 
@@ -93,6 +104,8 @@ export async function saveListing(_prev: FormState, formData: FormData): Promise
     delivery: str(formData, 'delivery'),
     weight_kg: str(formData, 'weight_kg'),
     shipping: str(formData, 'shipping'),
+    parcel_size: str(formData, 'parcel_size'),
+    ship_self: formData.get('ship_self') === '1',
     photos,
     intent: str(formData, 'intent') === 'publier' ? 'publier' : 'brouillon',
   });
@@ -129,7 +142,8 @@ export async function saveListing(_prev: FormState, formData: FormData): Promise
     department,
     delivery: v.delivery,
     weight_kg: v.delivery === 'main_propre' ? null : v.weight_kg,
-    shipping_cents: v.delivery === 'main_propre' || v.shipping === null ? null : Math.round(v.shipping * 100),
+    shipping_cents: v.delivery === 'main_propre' || !v.ship_self || v.shipping === null ? null : Math.round(v.shipping * 100),
+    parcel_size: v.delivery === 'main_propre' || v.ship_self || !v.parcel_size ? null : v.parcel_size,
     photos: v.photos,
     updated_at: new Date().toISOString(),
   };

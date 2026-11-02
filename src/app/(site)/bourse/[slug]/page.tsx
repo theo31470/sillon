@@ -5,7 +5,7 @@ import { after } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { countView, getListingByRef, searchListings, sellerCard } from '@/lib/bourse';
-import { securePaymentBlocker } from '@/lib/bourse-pay';
+import { securePaymentBlocker, shippingMode } from '@/lib/bourse-pay';
 import { BUYER_FEE, CATEGORY_SHORT, DELIVERY_LABELS, DEPARTMENTS, LISTING_CATEGORIES, LISTING_CONDITIONS, LISTING_STATUS, listingPath, priceLabel, refFromSlug } from '@/lib/bourse-shared';
 import { formatDate } from '@/lib/format';
 import { env } from '@/lib/env';
@@ -51,7 +51,8 @@ export default async function ListingPage(props: PageProps<'/bourse/[slug]'>) {
     l.sheet_id ? (await createClient()).from('tech_sheets').select('slug, title').eq('id', l.sheet_id).eq('status', 'published').maybeSingle().then((r) => r.data) : Promise.resolve(null),
     mine ? Promise.resolve('mine') : securePaymentBlocker(l).catch(() => 'indisponible'),
   ]);
-  const buyable = !blocker && (l.delivery === 'main_propre' || l.delivery === 'les_deux' || l.shipping_cents !== null);
+  const shipBy = shippingMode(l);
+  const buyable = !blocker && (l.delivery !== 'envoi' || shipBy !== null);
   const buyPath = `/app/acheter/${l.ref}`;
   const feeHint = `Paiement sécurisé · frais de service ${(BUYER_FEE.fixed / 100).toFixed(2).replace('.', ',')} € + ${BUYER_FEE.rate * 100} % à la charge de l’acheteur`;
   if (!mine) after(() => countView(l.id, l.views));
@@ -66,6 +67,7 @@ export default async function ListingPage(props: PageProps<'/bourse/[slug]'>) {
     ['Heures', l.hours !== null ? `${Math.round(Number(l.hours)).toLocaleString('fr-FR')} h` : ''],
     ['Remise', DELIVERY_LABELS[l.delivery]],
     ['Poids du colis', l.weight_kg ? `${String(l.weight_kg).replace('.', ',')} kg` : ''],
+    ['Livraison', l.delivery !== 'main_propre' ? (l.parcel_size && l.shipping_cents === null ? 'Point relais ou domicile (Mondial Relay, Colissimo, Chronopost…)' : l.shipping_cents !== null ? `Envoi par le vendeur : ${l.shipping_cents ? priceLabel(l.shipping_cents) : 'offert'}` : '') : ''],
   ].filter(([, v]) => v);
   const closed = l.status === 'vendue';
 

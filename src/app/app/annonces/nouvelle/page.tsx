@@ -55,6 +55,8 @@ export default async function NewListingPage(props: PageProps<'/app/annonces/nou
     delivery: m ? 'main_propre' : 'les_deux',
     weight_kg: '',
     shipping: '',
+    parcel_size: '',
+    ship_self: false,
     photos: [],
     published: false,
   };

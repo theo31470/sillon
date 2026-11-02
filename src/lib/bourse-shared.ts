@@ -133,7 +133,7 @@ export const HANDOVER_MAX_DAYS = 21;
 
 export const ORDER_STATUS = {
   pending: 'Paiement en cours',
-  paid: 'Payée, en attente de remise',
+  paid: 'Payée, à remettre ou expédier',
   shipped: 'Expédiée',
   completed: 'Terminée',
   canceled: 'Annulée',
@@ -168,3 +168,54 @@ export function trackingLink(carrier: string | null, number: string | null) {
       return null;
   }
 }
+
+// ---------------------------------------------------------------------
+// Envoi automatique (Boxtal)
+// ---------------------------------------------------------------------
+
+/** Formats de colis : dimensions types (cm) pour calculer le port. */
+export const PARCEL_SIZES = {
+  petit: { label: 'Petit', hint: 'boîte à chaussures (30 × 22 × 12 cm)', dims: [30, 22, 12] },
+  moyen: { label: 'Moyen', hint: 'carton de déménagement (45 × 35 × 25 cm)', dims: [45, 35, 25] },
+  grand: { label: 'Grand', hint: 'gros carton (70 × 50 × 30 cm)', dims: [70, 50, 30] },
+} as const;
+export type ParcelSize = keyof typeof PARCEL_SIZES;
+
+/** Sans dépôt du colis sous ce délai après le paiement, la vente est annulée et l'acheteur remboursé. */
+export const SHIP_MAX_DAYS = 7;
+/** Après la livraison, l'acheteur a ce délai pour signaler un problème avant le versement automatique. */
+export const RELEASE_DAYS_AFTER_DELIVERY = 2;
+
+/** Offre de transport proposée à l'acheteur (prix TTC en centimes). */
+export type ShippingOption = {
+  code: string;
+  carrier: string;
+  service: string;
+  delivery: 'PICKUP_POINT' | 'HOME';
+  collection: 'DROPOFF_POINT' | 'POST_OFFICE';
+  price_cents: number;
+  eta: string | null;
+};
+
+export type ParcelPointOption = {
+  code: string;
+  name: string;
+  street: string;
+  zip: string;
+  city: string;
+  distance: number | null;
+  locker: boolean;
+};
+
+/** Suivi Boxtal en français. */
+export const TRACKING_LABELS: Record<string, string> = {
+  ANNOUNCED: 'Bordereau créé, en attente de dépôt',
+  SHIPPED: 'Déposé, pris en charge',
+  IN_TRANSIT: 'En cours d’acheminement',
+  OUT_FOR_DELIVERY: 'En cours de livraison',
+  FAILED_ATTEMPT: 'Livraison reportée',
+  REACHED_DELIVERY_PICKUP_POINT: 'Disponible au point relais',
+  DELIVERED: 'Livré',
+  RETURNED: 'Retourné à l’expéditeur',
+  EXCEPTION: 'Incident de transport',
+};

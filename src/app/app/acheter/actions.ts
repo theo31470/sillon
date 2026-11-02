@@ -6,7 +6,8 @@ import { getSession, requireUser } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { createServiceClient } from '@/lib/supabase/admin';
 import { getListingByRef } from '@/lib/bourse';
-import { BourseError, settleBoursePayment, startPurchase } from '@/lib/bourse-pay';
+import { BourseError, pickupPoints, settleBoursePayment, shippingOptions, startPurchase } from '@/lib/bourse-pay';
+import type { ParcelPointOption, ShippingOption } from '@/lib/bourse-shared';
 
 const recipientSchema = z.object({
   name: z.string().trim().min(2, 'Indiquez le nom du destinataire.').max(120),
@@ -24,6 +25,8 @@ export async function startBoursePurchase(input: {
   recipient: z.input<typeof recipientSchema> | null;
   expectedTotal: number;
   acceptedTerms: boolean;
+  offerCode?: string | null;
+  pickupPointCode?: string | null;
 }): Promise<{ ok: true; orderId: string; clientSecret: string } | { ok: false; error: string }> {
   const { session, profile } = await requireUser(`/app/acheter/${input.ref}`);
   if (!input.acceptedTerms) return { ok: false, error: 'Cochez la case des conditions de la bourse pour continuer.' };
@@ -39,7 +42,7 @@ export async function startBoursePurchase(input: {
     recipient = parsed.data;
   }
   try {
-    const r = await startPurchase({ buyerId: session.userId, buyerEmail: profile.email, customerId: profile.stripe_customer_id, listing, mode, recipient, expectedTotal: Math.round(Number(input.expectedTotal)) });
+    const r = await startPurchase({ buyerId: session.userId, buyerEmail: profile.email, customerId: profile.stripe_customer_id, listing, mode, recipient, expectedTotal: Math.round(Number(input.expectedTotal)), offerCode: input.offerCode ? String(input.offerCode).slice(0, 80) : null, pickupPointCode: input.pickupPointCode ? String(input.pickupPointCode).slice(0, 40) : null });
     return { ok: true, ...r };
   } catch (err) {
     if (err instanceof BourseError) return { ok: false, error: err.message };
@@ -60,5 +63,43 @@ export async function finishBoursePurchase(orderId: string) {
   } catch (err) {
     console.error('[bourse] fin de paiement', orderId, err);
     return { ok: false };
+  }
+}
+
+const place = z.object({ zip: z.string().trim().regex(/^\d{5}$/), city: z.string().trim().min(1).max(100) });
+
+/** Modes de livraison et prix réels jusqu'à l'adresse de l'acheteur. */
+export async function getShippingOptions(input: { ref: string; zip: string; city: string }): Promise<{ ok: true; options: ShippingOption[] } | { ok: false; error: string }> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
+  const p = place.safeParse(input);
+  if (!p.success) return { ok: false, error: 'Adresse incomplète.' };
+  if (!rateLimit(`bourse-port:${session.userId}`, 40, 10 * 60_000).ok) return { ok: false, error: 'Trop de demandes : patientez quelques minutes.' };
+  const listing = await getListingByRef(String(input.ref));
+  if (!listing) return { ok: false, error: 'Annonce introuvable.' };
+  try {
+    const options = await shippingOptions(listing, p.data.zip, p.data.city);
+    if (!options.length) return { ok: false, error: 'Aucun transporteur ne prend ce colis jusqu’à cette adresse. Contactez le vendeur, ou choisissez la remise en main propre.' };
+    return { ok: true, options };
+  } catch (err) {
+    console.error('[bourse] cotation', err);
+    return { ok: false, error: 'Le calcul des frais de port est momentanément indisponible. Réessayez dans un instant.' };
+  }
+}
+
+/** Points relais proches de l'adresse de l'acheteur. */
+export async function getPickupPoints(input: { offerCode: string; zip: string; city: string; street: string }): Promise<{ ok: true; points: ParcelPointOption[] } | { ok: false; error: string }> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
+  const p = place.safeParse(input);
+  if (!p.success || !/^[A-Z]{4}-[A-Za-z0-9]{2,60}$/.test(String(input.offerCode))) return { ok: false, error: 'Adresse incomplète.' };
+  if (!rateLimit(`bourse-relais:${session.userId}`, 40, 10 * 60_000).ok) return { ok: false, error: 'Trop de demandes : patientez quelques minutes.' };
+  try {
+    const points = await pickupPoints(input.offerCode, p.data.zip, p.data.city, String(input.street ?? '').slice(0, 200) || null);
+    if (!points.length) return { ok: false, error: 'Aucun point relais trouvé près de cette adresse : choisissez un autre transporteur.' };
+    return { ok: true, points };
+  } catch (err) {
+    console.error('[bourse] points relais', err);
+    return { ok: false, error: 'La liste des points relais est momentanément indisponible. Réessayez dans un instant.' };
   }
 }

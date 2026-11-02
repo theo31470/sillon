@@ -5,14 +5,14 @@ import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/admin';
 import { publicName } from '@/lib/bourse';
-import { handoverCode, settleBoursePayment, type ListingOrder } from '@/lib/bourse-pay';
-import { CARRIERS, HANDOVER_MAX_DAYS, ORDER_STATUS, RELEASE_DAYS_AFTER_SHIPPING, trackingLink } from '@/lib/bourse-shared';
+import { getSellerAccount, handoverCode, sellerPayout, settleBoursePayment, syncShipment, trackingLabel, type ListingOrder } from '@/lib/bourse-pay';
+import { CARRIERS, HANDOVER_MAX_DAYS, ORDER_STATUS, RELEASE_DAYS_AFTER_DELIVERY, RELEASE_DAYS_AFTER_SHIPPING, SHIP_MAX_DAYS, trackingLink } from '@/lib/bourse-shared';
 import { formatDate, formatEuros } from '@/lib/format';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
 import { PaySteps } from '@/components/pay-steps';
 import { Badge, Card, Input, Notice, Select, Textarea, btn } from '@/components/ui';
-import { cancelAction, disputeAction, handoverAction, receiptAction, shippedAction } from './actions';
+import { cancelAction, disputeAction, handoverAction, labelAction, receiptAction, shippedAction } from './actions';
 import { PurchaseCelebration } from './purchase-celebration';
 
 export const metadata: Metadata = { title: 'Transaction · Bourse' };
@@ -32,7 +32,7 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
   const { id } = await props.params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { session, profile } = await requireUser(`/app/transactions/${id}`);
-  const { fete, redirect_status } = await props.searchParams;
+  const { fete, redirect_status, bordereau } = await props.searchParams;
   const supabase = await createClient();
   const load = async () => (await supabase.from('listing_orders').select('*').eq('id', id).maybeSingle()).data as ListingOrder | null;
   let o = await load();
@@ -45,17 +45,28 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
   const isBuyer = o.buyer_id === session.userId;
   const isSeller = o.seller_id === session.userId;
   if (!isBuyer && !isSeller) notFound();
+  // Colis Boxtal : suivi relu à la visite (au plus toutes les 10 minutes).
+  if (o.boxtal_order_id && ['paid', 'shipped'].includes(o.status) && !o.delivered_at && msSince(o.updated_at) > 10 * 60_000) {
+    o = await syncShipment(o).catch((err) => {
+      console.error('[bourse] suivi', err);
+      return o!;
+    });
+  }
+  const auto = o.shipping_by === 'boxtal';
 
   const db = createServiceClient();
-  const [{ data: other }, { data: conv }] = await Promise.all([
+  const [{ data: other }, { data: conv }, sellerAccount, { data: me }] = await Promise.all([
     db.from('profiles').select('full_name').eq('id', (isBuyer ? o.seller_id : o.buyer_id) ?? '').maybeSingle(),
     o.listing_id && o.buyer_id
       ? supabase.from('listing_conversations').select('id').eq('listing_id', o.listing_id).eq('buyer_id', o.buyer_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    isSeller && auto && o.status === 'paid' && !o.boxtal_order_id ? getSellerAccount(session.userId) : Promise.resolve(null),
+    isSeller && auto && o.status === 'paid' && !o.boxtal_order_id ? db.from('listings').select('postal_code, city').eq('id', o.listing_id ?? '').maybeSingle() : Promise.resolve({ data: null }),
   ]);
+  const sender = (sellerAccount as { sender?: { name: string; street: string; zip: string; city: string; phone: string } | null } | null)?.sender ?? null;
   const otherName = publicName(other?.full_name);
   const s = o.snapshot;
-  const sellerGets = o.price_cents + o.shipping_cents;
+  const sellerGets = sellerPayout(o);
   const track = o.tracking_url ?? trackingLink(o.carrier, o.tracking_number);
 
   if (redirect_status === 'failed' && o.status === 'pending') {
@@ -73,6 +84,7 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
       ? [
           { label: 'Payé', done: Boolean(o.paid_at) },
           { label: 'Expédié', done: Boolean(o.shipped_at) },
+          ...(auto ? [{ label: 'Livré', done: Boolean(o.delivered_at) || o.status === 'completed' }] : []),
           { label: isBuyer ? 'Reçu' : 'Vendeur payé', done: o.status === 'completed' },
         ]
       : [
@@ -98,7 +110,7 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
         </span>
         <div className="min-w-0 flex-[1_1_240px]">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={TONE[o.status]}>{ORDER_STATUS[o.status]}</Badge>
+            <Badge tone={TONE[o.status]}>{o.status === 'paid' ? (o.mode === 'envoi' ? 'Payée, à expédier' : 'Payée, à remettre') : ORDER_STATUS[o.status]}</Badge>
             <span className="text-sm text-muted">
               {isBuyer ? 'Achat' : 'Vente'} n° {o.ref} · {o.mode === 'envoi' ? 'envoi par colis' : 'remise en main propre'}
             </span>
@@ -151,14 +163,25 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
       {isBuyer && o.status === 'paid' && o.mode === 'envoi' ? (
         <Card className="flex flex-col gap-2">
           <h2 className="text-xl font-semibold">En attente d’expédition</h2>
-          <p className="text-muted">{otherName} prépare votre colis. Vous recevrez un e-mail avec le numéro de suivi dès l’envoi.</p>
+          <p className="text-muted">
+            {otherName} prépare votre colis{auto && o.boxtal_order_id ? ' : le bordereau est imprimé, il ne reste qu’à le déposer' : ''}. Vous recevrez un e-mail dès que le transporteur l’aura pris en charge. Sans dépôt sous{' '}
+            {SHIP_MAX_DAYS} jours, vous êtes remboursé automatiquement.
+          </p>
+          {auto ? <Delivery o={o} /> : null}
         </Card>
       ) : null}
       {isBuyer && o.status === 'shipped' ? (
         <Card className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Votre colis est en route</h2>
+          <h2 className="text-xl font-semibold">{o.delivered_at ? 'Votre colis est arrivé' : 'Votre colis est en route'}</h2>
+          {auto && o.tracking_status ? (
+            <p className="flex items-center gap-2 font-semibold">
+              <span className={`size-2.5 rounded-full ${o.delivered_at ? 'bg-success' : 'track-current bg-brand'}`} aria-hidden="true" />
+              {trackingLabel(o.tracking_status)}
+            </p>
+          ) : null}
+          {auto ? <Delivery o={o} /> : null}
           <p className="text-muted">
-            {o.carrier} · n° <span className="font-semibold text-ink">{o.tracking_number}</span>
+            {o.carrier} · n° <span className="font-semibold text-ink">{o.tracking_number ?? '—'}</span>
             {track ? (
               <>
                 {' '}·{' '}
@@ -168,7 +191,8 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
           </p>
           <p className="text-sm text-muted">
             Une fois le colis reçu et vérifié, confirmez la réception : le vendeur est alors payé. Sans nouvelles de votre part, il l’est automatiquement le{' '}
-            {o.release_at ? formatDate(o.release_at, { day: 'numeric', month: 'long' }) : `${RELEASE_DAYS_AFTER_SHIPPING}e jour`}.
+            {o.release_at ? formatDate(o.release_at, { day: 'numeric', month: 'long' }) : `${RELEASE_DAYS_AFTER_SHIPPING}e jour`}
+            {o.delivered_at ? ` (${RELEASE_DAYS_AFTER_DELIVERY} jours après la livraison)` : ''}.
           </p>
           <ActionForm action={receiptAction} className="flex flex-col items-start gap-2">
             <input type="hidden" name="id" value={o.id} />
@@ -202,7 +226,62 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
           </ActionForm>
         </Card>
       ) : null}
-      {isSeller && o.mode === 'envoi' && o.recipient && ['paid', 'shipped', 'disputed'].includes(o.status) ? (
+      {isSeller && auto && ['paid', 'shipped', 'disputed'].includes(o.status) ? (
+        <Card className="flex flex-col gap-3">
+          {o.status === 'paid' && !o.boxtal_order_id ? (
+            <>
+              <h2 className="text-xl font-semibold">Préparez l’envoi</h2>
+              <p className="text-muted">
+                Emballez le matériel ({o.parcel ? `${String(o.parcel.weight_kg).replace('.', ',')} kg, format ${o.parcel.size}` : 'colis'}), puis générez votre bordereau : il est déjà payé. Imprimez-le, collez-le sur le
+                colis et déposez-le sous {SHIP_MAX_DAYS} jours {o.shipping_offer?.collection === 'POST_OFFICE' ? 'dans un bureau de poste' : `dans un point ${o.shipping_offer?.carrier ?? 'relais'}`}.
+              </p>
+              <Delivery o={o} seller />
+              <ActionForm action={labelAction} className="flex flex-col gap-3" resetOnSuccess={false}>
+                <input type="hidden" name="id" value={o.id} />
+                <p className="text-sm font-semibold">Votre adresse d’expédition</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input name="name" required maxLength={80} defaultValue={sender?.name ?? profile.full_name} placeholder="Prénom et nom" aria-label="Prénom et nom" autoComplete="name" />
+                  <Input name="phone" required maxLength={20} defaultValue={sender?.phone ?? ''} placeholder="Téléphone" aria-label="Téléphone" inputMode="tel" autoComplete="tel" />
+                  <Input name="street" required maxLength={150} defaultValue={sender?.street ?? ''} placeholder="Numéro et rue" aria-label="Numéro et rue" autoComplete="street-address" className="sm:col-span-2" />
+                  <Input name="zip" required maxLength={5} inputMode="numeric" pattern="\d{5}" defaultValue={sender?.zip ?? me?.postal_code ?? ''} placeholder="Code postal" aria-label="Code postal" autoComplete="postal-code" />
+                  <Input name="city" required maxLength={80} defaultValue={sender?.city ?? me?.city ?? ''} placeholder="Commune" aria-label="Commune" autoComplete="address-level2" />
+                </div>
+                <SubmitButton pendingLabel="Création du bordereau…" className="self-start">Générer mon bordereau</SubmitButton>
+              </ActionForm>
+            </>
+          ) : o.status === 'paid' ? (
+            <>
+              <h2 className="text-xl font-semibold">Bordereau prêt</h2>
+              {bordereau === 'attente' ? <Notice tone="gray">Le transporteur prépare encore le bordereau : réessayez dans une minute.</Notice> : null}
+              <a href={`/app/transactions/${o.id}/bordereau`} target="_blank" rel="noopener" className={`${btn.primary} self-start`}>Télécharger le bordereau (PDF)</a>
+              <ol className="flex list-decimal flex-col gap-1 pl-5 text-muted">
+                <li>Imprimez le bordereau et collez-le bien à plat sur le colis.</li>
+                <li>
+                  Déposez le colis avant le {o.release_at ? formatDate(o.release_at, { day: 'numeric', month: 'long' }) : `${SHIP_MAX_DAYS}e jour`}
+                  {o.dropoff_point ? ` au point ${o.dropoff_point.name}, ${o.dropoff_point.street}, ${o.dropoff_point.zip} ${o.dropoff_point.city} (ou tout autre point ${o.shipping_offer?.carrier ?? 'relais'})` : o.shipping_offer?.collection === 'POST_OFFICE' ? ' dans un bureau de poste' : ` dans un point ${o.shipping_offer?.carrier ?? 'relais'}`}.
+                </li>
+                <li>C’est tout : le suivi se met à jour tout seul et l’acheteur est prévenu.</li>
+              </ol>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-semibold">Colis en route</h2>
+              <p className="flex items-center gap-2 font-semibold">{trackingLabel(o.tracking_status) ?? 'Expédié'}</p>
+              <p className="text-sm text-muted">
+                {o.carrier} · n° {o.tracking_number ?? '—'}
+                {track ? (
+                  <>
+                    {' '}·{' '}
+                    <a href={track} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-dark underline underline-offset-4">Suivre le colis</a>
+                  </>
+                ) : null}
+                {o.status === 'shipped' && o.release_at ? ` · versement le ${formatDate(o.release_at, { day: 'numeric', month: 'long' })} au plus tard` : ''}
+              </p>
+            </>
+          )}
+        </Card>
+      ) : null}
+      {isSeller && !auto && o.mode === 'envoi' && o.recipient && ['paid', 'shipped', 'disputed'].includes(o.status) ? (
         <Card className="flex flex-col gap-3">
           <h2 className="text-xl font-semibold">{o.status === 'paid' ? 'À expédier' : 'Adresse de livraison'}</h2>
           <address className="rounded-xl bg-ground px-4 py-3 not-italic leading-relaxed">
@@ -227,8 +306,8 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
           {o.status === 'paid' ? (
             <>
               <p className="text-sm text-muted">
-                Expédiez le colis avec un numéro de suivi (les frais de port payés par l’acheteur, {formatEuros(o.shipping_cents)}, vous sont reversés avec le prix), puis indiquez-le ici. Vous êtes
-                payé dès que l’acheteur confirme la réception, au plus tard {RELEASE_DAYS_AFTER_SHIPPING} jours après l’expédition.
+                Expédiez le colis sous {SHIP_MAX_DAYS} jours avec un numéro de suivi (les frais de port payés par l’acheteur, {formatEuros(o.shipping_cents)}, vous sont reversés avec le prix), puis indiquez-le ici.
+                Vous êtes payé dès que l’acheteur confirme la réception, au plus tard {RELEASE_DAYS_AFTER_SHIPPING} jours après l’expédition.
               </p>
               <ActionForm action={shippedAction} className="flex flex-wrap items-start gap-2">
                 <input type="hidden" name="id" value={o.id} />
@@ -266,7 +345,9 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
         <h2 className="mb-3 text-xl font-semibold">Montants</h2>
         <dl className="flex max-w-md flex-col gap-2 text-[15px]">
           <div className="flex justify-between gap-3"><dt className="text-muted">Prix</dt><dd className="tabular-nums">{formatEuros(o.price_cents)}</dd></div>
-          {o.shipping_cents ? <div className="flex justify-between gap-3"><dt className="text-muted">Frais de port</dt><dd className="tabular-nums">{formatEuros(o.shipping_cents)}</dd></div> : null}
+          {o.shipping_cents && (isBuyer || !auto) ? (
+            <div className="flex justify-between gap-3"><dt className="text-muted">Frais de port{auto && o.shipping_offer ? ` (${o.shipping_offer.carrier})` : ''}</dt><dd className="tabular-nums">{formatEuros(o.shipping_cents)}</dd></div>
+          ) : null}
           {isBuyer ? (
             <>
               <div className="flex justify-between gap-3"><dt className="text-muted">Frais de service</dt><dd className="tabular-nums">{formatEuros(o.fee_cents)}</dd></div>
@@ -276,8 +357,38 @@ export default async function TransactionPage(props: PageProps<'/app/transaction
             <div className="flex justify-between gap-3 border-t border-line pt-2 font-bold"><dt>Vous recevez</dt><dd className="tabular-nums">{formatEuros(sellerGets)}</dd></div>
           )}
         </dl>
-        {isSeller ? <p className="mt-3 text-sm text-muted">Aucune commission pour vous : les frais de service sont payés par l’acheteur.</p> : null}
+        {isSeller ? (
+          <p className="mt-3 text-sm text-muted">
+            Aucune commission pour vous : les frais de service sont payés par l’acheteur{auto ? ', et les frais de port paient le bordereau' : ''}.
+          </p>
+        ) : null}
       </Card>
+    </div>
+  );
+}
+
+/** Durée écoulée depuis une date (hors rendu : règle « pureté » des composants). */
+function msSince(iso: string | null | undefined) {
+  return iso ? Date.now() - new Date(iso).getTime() : Infinity;
+}
+
+/** Transporteur et point relais choisis par l'acheteur. */
+function Delivery({ o, seller = false }: { o: ListingOrder; seller?: boolean }) {
+  if (!o.shipping_offer) return null;
+  const p = o.pickup_point;
+  return (
+    <div className="flex flex-col gap-1 rounded-xl bg-ground px-4 py-3 text-sm">
+      <span className="font-semibold">
+        {o.shipping_offer.carrier} · {o.shipping_offer.delivery === 'PICKUP_POINT' ? 'livraison en point relais' : 'livraison à domicile'}
+      </span>
+      {p ? (
+        <span className="text-muted">
+          {seller ? 'Point relais de l’acheteur : ' : 'Votre point relais : '}
+          {p.name}, {p.street}, {p.zip} {p.city}
+        </span>
+      ) : o.recipient && !seller ? (
+        <span className="text-muted">{o.recipient.name}, {o.recipient.address1}, {o.recipient.zip} {o.recipient.city}</span>
+      ) : null}
     </div>
   );
 }

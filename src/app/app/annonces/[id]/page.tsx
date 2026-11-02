@@ -56,6 +56,8 @@ export default async function EditListingPage(props: PageProps<'/app/annonces/[i
             delivery: l.delivery,
             weight_kg: l.weight_kg !== null ? String(l.weight_kg).replace('.', ',') : '',
             shipping: l.shipping_cents !== null ? String(l.shipping_cents / 100).replace('.', ',') : '',
+            parcel_size: l.parcel_size ?? '',
+            ship_self: l.shipping_cents !== null,
             photos: l.photos,
             published,
           }}
