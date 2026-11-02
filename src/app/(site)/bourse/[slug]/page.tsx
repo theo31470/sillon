@@ -5,7 +5,8 @@ import { after } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { countView, getListingByRef, searchListings, sellerCard } from '@/lib/bourse';
-import { CATEGORY_SHORT, DELIVERY_LABELS, DEPARTMENTS, LISTING_CATEGORIES, LISTING_CONDITIONS, LISTING_STATUS, listingPath, priceLabel, refFromSlug } from '@/lib/bourse-shared';
+import { securePaymentBlocker } from '@/lib/bourse-pay';
+import { BUYER_FEE, CATEGORY_SHORT, DELIVERY_LABELS, DEPARTMENTS, LISTING_CATEGORIES, LISTING_CONDITIONS, LISTING_STATUS, listingPath, priceLabel, refFromSlug } from '@/lib/bourse-shared';
 import { formatDate } from '@/lib/format';
 import { env } from '@/lib/env';
 import { JsonLd } from '@/components/json-ld';
@@ -41,14 +42,18 @@ export default async function ListingPage(props: PageProps<'/bourse/[slug]'>) {
 
   const session = await getSession().catch(() => null);
   const mine = session?.userId === l.seller_id;
-  const [seller, favorite, similar, sheet] = await Promise.all([
+  const [seller, favorite, similar, sheet, blocker] = await Promise.all([
     sellerCard(l.seller_id),
     session && !mine
       ? (await createClient()).from('listing_favorites').select('listing_id').eq('listing_id', l.id).maybeSingle().then((r) => Boolean(r.data))
       : Promise.resolve(false),
     searchListings({ category: l.category, page: 1 }).then((r) => r.listings.filter((x) => x.id !== l.id).slice(0, 4)),
     l.sheet_id ? (await createClient()).from('tech_sheets').select('slug, title').eq('id', l.sheet_id).eq('status', 'published').maybeSingle().then((r) => r.data) : Promise.resolve(null),
+    mine ? Promise.resolve('mine') : securePaymentBlocker(l).catch(() => 'indisponible'),
   ]);
+  const buyable = !blocker && (l.delivery === 'main_propre' || l.delivery === 'les_deux' || l.shipping_cents !== null);
+  const buyPath = `/app/acheter/${l.ref}`;
+  const feeHint = `Paiement sécurisé · frais de service ${(BUYER_FEE.fixed / 100).toFixed(2).replace('.', ',')} € + ${BUYER_FEE.rate * 100} % à la charge de l’acheteur`;
   if (!mine) after(() => countView(l.id, l.views));
 
   const site = env.siteUrl().replace(/\/$/, '');
@@ -152,16 +157,32 @@ export default async function ListingPage(props: PageProps<'/bourse/[slug]'>) {
                 </div>
               ) : session ? (
                 <>
+                  {buyable ? (
+                    <Link href={buyPath} className={btn.primary}>
+                      <LockIcon /> Acheter
+                    </Link>
+                  ) : null}
                   <ContactBox listingId={l.id} refCode={l.ref} sellerName={seller?.name ?? 'le vendeur'} />
                   <FavoriteButton listingId={l.id} initial={favorite} />
                 </>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <Link href={`/connexion?suite=${encodeURIComponent(canonical)}`} className={btn.primary}>Se connecter pour contacter le vendeur</Link>
+                  {buyable ? (
+                    <Link href={`/connexion?suite=${encodeURIComponent(buyPath)}`} className={btn.primary}>
+                      <LockIcon /> Acheter
+                    </Link>
+                  ) : null}
+                  <Link href={`/connexion?suite=${encodeURIComponent(canonical)}`} className={buyable ? btn.secondary : btn.primary}>Se connecter pour contacter le vendeur</Link>
                   <Link href={`/inscription?suite=${encodeURIComponent(canonical)}`} className={btn.secondary}>Créer un compte gratuit</Link>
                 </div>
               )}
-              <p className="text-xs text-muted">Le paiement sécurisé avec envoi en point relais arrive très bientôt sur la bourse.</p>
+              {!closed && !mine ? (
+                buyable ? (
+                  <p className="text-xs text-muted">{feeHint}. Le vendeur n’est payé qu’une fois le matériel entre vos mains.</p>
+                ) : (
+                  <p className="text-xs text-muted">Paiement sécurisé pas encore activé par ce vendeur : convenez du règlement par la messagerie.</p>
+                )
+              ) : null}
             </section>
 
             {seller ? (
@@ -183,6 +204,7 @@ export default async function ListingPage(props: PageProps<'/bourse/[slug]'>) {
               <ul className="flex list-disc flex-col gap-1 pl-5 text-muted">
                 <li>Échangez par la messagerie du site, sans donner vos coordonnées.</li>
                 <li>Pour une machine, voyez-la tourner avant d’acheter.</li>
+                <li>Payez sur le site avec le paiement sécurisé : le vendeur n’est payé qu’après la remise ou la réception.</li>
                 <li>Refusez tout paiement par mandat, coupon ou virement à l’étranger.</li>
               </ul>
               {session && !mine ? (
@@ -208,5 +230,14 @@ export default async function ListingPage(props: PageProps<'/bourse/[slug]'>) {
         ) : null}
       </div>
     </div>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
   );
 }

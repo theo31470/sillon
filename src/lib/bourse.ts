@@ -26,6 +26,8 @@ export type Listing = {
   department: string;
   delivery: ListingDelivery;
   weight_kg: number | null;
+  /** Frais de port fixés par le vendeur (envoi). */
+  shipping_cents: number | null;
   photos: ListingPhoto[];
   status: ListingStatus;
   moderation_note: string | null;

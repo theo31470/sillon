@@ -54,6 +54,7 @@ export default async function NewListingPage(props: PageProps<'/app/annonces/nou
     city: billing?.country === 'FR' ? billing.city : '',
     delivery: m ? 'main_propre' : 'les_deux',
     weight_kg: '',
+    shipping: '',
     photos: [],
     published: false,
   };

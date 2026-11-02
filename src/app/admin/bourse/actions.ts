@@ -42,3 +42,23 @@ export async function restoreListing(formData: FormData) {
   revalidatePath('/admin/bourse');
   revalidatePath('/bourse');
 }
+
+/** Litige ou blocage : l'équipe rembourse l'acheteur ou paie le vendeur. */
+export async function resolveOrder(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { session } = await requireAdmin('/admin/bourse');
+  const id = z.string().uuid().safeParse(formData.get('id'));
+  const decision = formData.get('decision') === 'payer' ? 'payer' : formData.get('decision') === 'rembourser' ? 'rembourser' : null;
+  const note = String(formData.get('note') ?? '').trim().slice(0, 300);
+  if (!id.success || !decision) return { error: 'Décision invalide.' };
+  const { adminResolve, BourseError } = await import('@/lib/bourse-pay');
+  try {
+    await adminResolve(id.data, decision, note);
+  } catch (err) {
+    if (err instanceof BourseError) return { error: err.message };
+    console.error('[bourse] décision admin', id.data, err);
+    return { error: 'Stripe n’a pas accepté l’opération : voir les journaux.' };
+  }
+  await logAudit(session, `bourse.transaction_${decision}`, { type: 'listing_order', id: id.data }, { note });
+  revalidatePath('/admin/bourse');
+  return { ok: true, message: decision === 'payer' ? 'Vendeur payé.' : 'Acheteur remboursé.' };
+}

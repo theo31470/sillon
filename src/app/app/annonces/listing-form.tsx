@@ -33,6 +33,7 @@ export type ListingDraft = {
   city: string;
   delivery: ListingDelivery;
   weight_kg: string;
+  shipping: string;
   photos: ListingPhoto[];
   published: boolean;
 };
@@ -187,9 +188,14 @@ export function ListingForm({ draft, estimate }: { draft: ListingDraft; estimate
             </div>
           </fieldset>
           {delivery !== 'main_propre' ? (
-            <Field label="Poids du colis (kg)" htmlFor="l-weight" hint={`Emballage compris, ${MAX_PARCEL_KG} kg au plus. Il sert à calculer les frais de port pour l’acheteur.`}>
-              <Input id="l-weight" name="weight_kg" inputMode="decimal" defaultValue={draft.weight_kg} className="sm:max-w-40" />
-            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Poids du colis (kg)" htmlFor="l-weight" hint={`Emballage compris, ${MAX_PARCEL_KG} kg au plus.`}>
+                <Input id="l-weight" name="weight_kg" inputMode="decimal" defaultValue={draft.weight_kg} />
+              </Field>
+              <Field label="Frais de port pour l’acheteur (€)" htmlFor="l-ship" hint="Ce que vous coûte l’envoi (Colissimo, Mondial Relay…). Ajouté au prix pour l’acheteur.">
+                <Input id="l-ship" name="shipping" inputMode="decimal" defaultValue={draft.shipping} placeholder="Ex. : 12,90" />
+              </Field>
+            </div>
           ) : null}
         </section>
       </div>
@@ -211,7 +217,7 @@ export function ListingForm({ draft, estimate }: { draft: ListingDraft; estimate
           <input type="checkbox" name="negotiable" defaultChecked={draft.negotiable} className="size-5 accent-brand" />
           Prix à débattre
         </label>
-        <p className="text-xs text-muted">L’annonce est gratuite. Vous recevez le prix affiché ; l’acheteur paie de petits frais de service lors du paiement sécurisé.</p>
+        <p className="text-xs text-muted">L’annonce est gratuite. Avec le paiement sécurisé, vous recevez le prix affiché ; l’acheteur paie de petits frais de service.</p>
         {state?.error ? <p role="alert" className="rounded-[10px] bg-danger-soft px-4 py-3 text-sm text-danger">{state.error}</p> : null}
         <SubmitButton name="intent" value="publier" pendingLabel="Publication…" className="w-full">
           {draft.published ? 'Enregistrer les modifications' : 'Publier l’annonce'}

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import type { Listing } from '@/lib/bourse';
+import { getSellerAccount } from '@/lib/bourse-pay';
 import { LISTING_STATUS, listingPath, priceLabel } from '@/lib/bourse-shared';
 import { formatDate } from '@/lib/format';
 import { Badge, Card, Notice, btn } from '@/components/ui';
@@ -23,10 +24,12 @@ export default async function MyListingsPage(props: PageProps<'/app/annonces'>) 
   const { session } = await requireUser('/app/annonces');
   const { publiee, supprimee } = await props.searchParams;
   const supabase = await createClient();
-  const [{ data: rows }, { data: favRows }, { data: convs }] = await Promise.all([
+  const [{ data: rows }, { data: favRows }, { data: convs }, payout, { count: toHandle }] = await Promise.all([
     supabase.from('listings').select('*').eq('seller_id', session.userId).order('created_at', { ascending: false }),
     supabase.from('listing_favorites').select('listing_id, listings(*)').eq('user_id', session.userId).order('created_at', { ascending: false }).limit(30),
     supabase.from('listing_conversations').select('id, listing_id, buyer_id, seller_id, last_message_at, buyer_read_at, seller_read_at').or(`buyer_id.eq.${session.userId},seller_id.eq.${session.userId}`),
+    getSellerAccount(session.userId).catch(() => null),
+    supabase.from('listing_orders').select('id', { count: 'exact', head: true }).eq('seller_id', session.userId).eq('status', 'paid'),
   ]);
   const mine = (rows ?? []) as Listing[];
   const favorites = ((favRows ?? []) as unknown as { listings: Listing | null }[]).map((f) => f.listings).filter((l): l is Listing => Boolean(l));
@@ -45,6 +48,10 @@ export default async function MyListingsPage(props: PageProps<'/app/annonces'>) 
           <p className="text-muted">Vendez votre matériel entre agriculteurs : annonces gratuites, messagerie protégée.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {payout?.payouts_enabled ? <Link href="/app/annonces/versements" className={btn.secondary}>Versements</Link> : null}
+          <Link href="/app/transactions" className={btn.secondary}>
+            Transactions{toHandle ? <span className="rounded-full bg-brand px-2 text-sm text-on-brand">{toHandle}</span> : null}
+          </Link>
           <Link href="/app/messages" className={btn.secondary}>
             Messages{unread ? <span className="rounded-full bg-brand px-2 text-sm text-on-brand">{unread}</span> : null}
           </Link>
@@ -59,6 +66,21 @@ export default async function MyListingsPage(props: PageProps<'/app/annonces'>) 
         </Notice>
       ) : null}
       {supprimee ? <Notice tone="gray">Annonce supprimée.</Notice> : null}
+      {toHandle ? (
+        <Notice tone="green">
+          {toHandle === 1 ? 'Une vente payée vous attend' : `${toHandle} ventes payées vous attendent`} : remettez ou expédiez le matériel.{' '}
+          <Link href="/app/transactions" className="font-semibold underline underline-offset-4">Voir mes ventes</Link>
+        </Notice>
+      ) : null}
+      {mine.some((l) => l.status === 'en_ligne') && !payout?.payouts_enabled ? (
+        <Card className="flex flex-wrap items-center gap-4 border-brand/40 bg-brand-tint">
+          <div className="min-w-0 flex-[1_1_320px]">
+            <p className="font-semibold">Vendez plus vite avec le paiement sécurisé</p>
+            <p className="text-sm text-muted">Les acheteurs paient sur le site, l’argent est mis de côté et vous est versé à la remise. Gratuit pour vous, 5 minutes pour l’activer.</p>
+          </div>
+          <Link href="/app/annonces/versements" className={btn.primary}>{payout ? 'Terminer l’activation' : 'Activer'}</Link>
+        </Card>
+      ) : null}
 
       {mine.length === 0 ? (
         <Card className="flex flex-col items-start gap-3">

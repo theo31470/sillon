@@ -9,6 +9,7 @@ import { isFullyDiscounted, issueInvoiceForStripeInvoice } from '@/lib/invoices/
 import { rewardReferrer } from '@/lib/referrals';
 import { invoiceAttachment, onChargeRefunded } from '@/lib/invoices/notify';
 import { onShopRefund, settleShopPayment } from '@/lib/shop';
+import { onBourseRefund, settleBoursePayment } from '@/lib/bourse-pay';
 
 /**
  * Webhook Stripe : seule source de vérité pour les abonnements et paiements.
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest) {
       case 'payment_intent.succeeded':
         // Boutique : commande payée sur le site (transmise ensuite à Printful). Les abonnements passent par invoice.paid.
         if (event.data.object.metadata?.kind === 'boutique') await settleShopPayment(event.data.object);
+        // Bourse au matériel : achat payé, l'argent reste bloqué jusqu'à la remise ou la réception.
+        if (event.data.object.metadata?.kind === 'bourse') await settleBoursePayment(event.data.object);
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
@@ -51,6 +54,7 @@ export async function POST(request: NextRequest) {
       case 'charge.refunded':
         await onChargeRefunded(event.data.object, event.id);
         await onShopRefund(event.data.object);
+        await onBourseRefund(event.data.object);
         break;
       case 'invoice.payment_failed':
         await recordInvoice(event.data.object, 'failed');

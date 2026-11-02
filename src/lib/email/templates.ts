@@ -809,3 +809,105 @@ export function listingMessageEmail(input: { name?: string | null; from: string;
     site,
   );
 }
+
+export type BourseOrderTemplate =
+  | 'achat_confirme'
+  | 'vente_conclue'
+  | 'expediee'
+  | 'terminee_vendeur'
+  | 'terminee_acheteur'
+  | 'annulee_acheteur'
+  | 'annulee_vendeur'
+  | 'litige';
+
+export type BourseOrderInput = {
+  name?: string | null;
+  /** L'autre partie (« Paul M. »). */
+  other: string;
+  ref: string;
+  title: string;
+  total: string;
+  payout: string;
+  mode: 'envoi' | 'main_propre';
+  url: string;
+  listingUrl: string | null;
+  tracking: string | null;
+  note: string | null;
+};
+
+const BOURSE_REASON = 'Vous recevez cet e-mail parce qu’il concerne une transaction sur la bourse au matériel de Tracteurs & Co.';
+
+/** E-mails des transactions de la bourse (paiement sécurisé). */
+export function bourseOrderEmail(template: BourseOrderTemplate, i: BourseOrderInput, siteUrl: string): BuiltEmail {
+  const site = siteUrl.replace(/\/$/, '');
+  const mk = (subject: string, heading: string, preheader: string, blocks: EmailContent['blocks'], button = 'Voir la transaction') =>
+    build(subject, { preheader, heading, blocks: [{ type: 'p', text: hello(i.name) }, ...blocks, { type: 'button', label: button, url: i.url }], reason: BOURSE_REASON }, site);
+  switch (template) {
+    case 'achat_confirme':
+      return mk(
+        `Achat ${i.ref} confirmé : ${i.title}`,
+        'Votre achat est confirmé',
+        `${i.total} payés en toute sécurité.`,
+        [
+          { type: 'p', text: `Vous avez acheté **${i.title}** à ${i.other} pour **${i.total}**. Votre argent est conservé par Tracteurs & Co : il n’est versé au vendeur ${i.mode === 'main_propre' ? 'qu’au moment de la remise' : 'qu’après la réception du colis'}.` },
+          i.mode === 'main_propre'
+            ? { type: 'note', text: 'Convenez d’un rendez-vous par la messagerie. Au moment de la remise, vérifiez le matériel, puis donnez au vendeur le code à 6 chiffres affiché sur la page de la transaction. Ne le donnez jamais avant.', tone: 'info' }
+            : { type: 'note', text: 'Le vendeur prépare votre colis. Vous recevrez le numéro de suivi dès l’envoi. À réception, confirmez sur le site que tout est conforme.', tone: 'info' },
+        ],
+      );
+    case 'vente_conclue':
+      return mk(
+        `Vendu ! ${i.title}`,
+        'Vous avez un acheteur',
+        `${i.other} a payé en toute sécurité.`,
+        [
+          { type: 'p', text: `**${i.other}** a acheté **${i.title}** et a payé sur le site. L’annonce est maintenant réservée. Vous recevrez **${i.payout}** sur votre compte bancaire ${i.mode === 'main_propre' ? 'dès la remise' : 'dès la réception du colis'}.` },
+          i.mode === 'main_propre'
+            ? { type: 'note', text: 'Convenez d’un rendez-vous par la messagerie. À la remise, l’acheteur vous donne un code à 6 chiffres : saisissez-le sur la page de la transaction pour recevoir votre argent.', tone: 'info' }
+            : { type: 'note', text: 'Expédiez le colis sous 3 jours ouvrés à l’adresse indiquée sur la page de la transaction, puis saisissez le transporteur et le numéro de suivi.', tone: 'info' },
+        ],
+      );
+    case 'expediee':
+      return mk(
+        `Votre achat ${i.ref} est en route`,
+        'Votre colis est en route',
+        i.tracking ?? 'Le vendeur a expédié votre colis.',
+        [
+          { type: 'p', text: `${i.other} a expédié **${i.title}**.${i.tracking ? ` Suivi : **${i.tracking}**.` : ''}` },
+          { type: 'note', text: 'À réception, vérifiez le colis puis confirmez sur le site que tout est conforme : le vendeur est alors payé. Un problème ? Signalez-le avant de confirmer : l’argent reste bloqué le temps de trouver une solution.', tone: 'info' },
+        ],
+      );
+    case 'terminee_vendeur':
+      return mk(
+        `Paiement envoyé : ${i.payout}`,
+        'Votre argent est en route',
+        `${i.payout} virés sur votre compte.`,
+        [{ type: 'p', text: `La vente de **${i.title}** est terminée. **${i.payout}** ont été versés sur votre compte de paiement : ils arrivent sur votre compte bancaire sous 2 à 5 jours ouvrés.` }],
+      );
+    case 'terminee_acheteur':
+      return mk(`Achat ${i.ref} terminé`, 'Merci pour votre achat', 'La transaction est terminée.', [
+        { type: 'p', text: `La transaction pour **${i.title}** est terminée et le vendeur a été payé. Bonne utilisation !` },
+      ]);
+    case 'annulee_acheteur':
+      return mk(`Achat ${i.ref} annulé et remboursé`, 'Vous êtes remboursé', `${i.total} remboursés.`, [
+        { type: 'p', text: i.note ?? `Votre achat de **${i.title}** est annulé.` },
+        { type: 'p', text: `Le remboursement de **${i.total}** est en cours : il apparaît sous 5 à 10 jours selon votre banque.` },
+      ]);
+    case 'annulee_vendeur':
+      return mk(`Vente ${i.ref} annulée`, 'La vente est annulée', 'L’acheteur a été remboursé.', [
+        { type: 'p', text: `La vente de **${i.title}** est annulée et l’acheteur remboursé. Votre annonce est de nouveau en ligne.` },
+        ...(i.note ? [{ type: 'note' as const, text: i.note }] : []),
+      ]);
+    case 'litige':
+      return mk(
+        `Réclamation sur la vente ${i.ref}`,
+        'L’acheteur signale un problème',
+        'Le paiement est suspendu le temps de trouver une solution.',
+        [
+          { type: 'p', text: `${i.other} signale un problème avec **${i.title}** :` },
+          { type: 'note', text: i.note ?? 'Aucun détail.', tone: 'danger' },
+          { type: 'p', text: 'Le paiement est suspendu. Répondez-lui par la messagerie pour trouver une solution ; l’équipe Tracteurs & Co tranchera si besoin.' },
+        ],
+      );
+  }
+}

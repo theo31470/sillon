@@ -321,6 +321,18 @@ await as(B, 'aal1', `insert into public.listing_favorites (user_id, listing_id) 
 ok((await as(A, 'aal1', `select * from public.listing_favorites`)).rowCount === 0, 'bourse : les favoris sont privés');
 await throws(() => as(B, 'aal1', `insert into public.listing_reports (listing_id, reporter_id, reason) values ($1, $2, 'arnaque')`, [L, B]), 'bourse : les signalements passent par le serveur');
 
+// --- Bourse : paiement sécurisé ---
+const O1 = (await c.query(`insert into public.listing_orders (listing_id, buyer_id, seller_id, snapshot, mode, status, price_cents, fee_cents, total_cents) values ($1, $2, $3, '{}', 'main_propre', 'paid', 250000, 4000, 254000) returning id`, [L, B, A])).rows[0].id;
+ok((await as(B, 'aal1', `select id from public.listing_orders`)).rowCount === 1, 'paiement : l’acheteur voit sa transaction');
+ok((await as(A, 'aal1', `select id from public.listing_orders`)).rowCount === 1, 'paiement : le vendeur voit sa transaction');
+ok((await as(C3, 'aal1', `select id from public.listing_orders`)).rowCount === 0, 'paiement : un tiers ne voit rien');
+await throws(() => as(B, 'aal1', `update public.listing_orders set status = 'completed' where id = $1`, [O1]), 'paiement : l’acheteur ne change pas le statut lui-même');
+await throws(() => as(A, 'aal1', `update public.listing_orders set status = 'completed' where id = $1`, [O1]), 'paiement : le vendeur ne se débloque pas les fonds lui-même');
+await throws(() => c.query(`insert into public.listing_orders (listing_id, buyer_id, seller_id, snapshot, mode, status, price_cents, fee_cents, total_cents) values ($1, $2, $3, '{}', 'envoi', 'paid', 250000, 4000, 254000)`, [L, C3, A]), 'paiement : une seule vente en cours par annonce');
+await c.query(`insert into public.seller_accounts (user_id, stripe_account_id) values ($1, 'acct_test')`, [A]);
+ok((await as(B, 'aal1', `select * from public.seller_accounts`)).rowCount === 0, 'paiement : le compte de versement d’un vendeur reste privé');
+await throws(() => as(A, 'aal1', `update public.seller_accounts set payouts_enabled = true`), 'paiement : le vendeur ne s’autorise pas les versements lui-même');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

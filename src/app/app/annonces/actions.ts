@@ -50,10 +50,12 @@ const listingSchema = z
     city: z.string().trim().min(1, 'Indiquez la commune.').max(100),
     delivery: z.enum(keys(DELIVERY_LABELS)),
     weight_kg: number('Poids', MAX_PARCEL_KG),
+    shipping: number('Frais de port', 200),
     photos: z.array(z.object({ path: z.string(), url: z.string().url(), w: z.number().optional(), h: z.number().optional() })).max(MAX_LISTING_PHOTOS),
     intent: z.enum(['brouillon', 'publier']),
   })
   .superRefine((v, ctx) => {
+    if (v.delivery !== 'main_propre' && v.shipping === null) ctx.addIssue({ code: 'custom', message: 'Indiquez les frais de port demandés à l’acheteur (0 si l’envoi est offert).', path: ['shipping'] });
     if (v.delivery !== 'main_propre' && !v.weight_kg) ctx.addIssue({ code: 'custom', message: `Pour un envoi par colis, indiquez le poids (${MAX_PARCEL_KG} kg au plus ; au-delà, remise en main propre).`, path: ['weight_kg'] });
     if (v.intent === 'publier' && v.photos.length === 0) ctx.addIssue({ code: 'custom', message: 'Ajoutez au moins une photo pour publier l’annonce.', path: ['photos'] });
   });
@@ -90,6 +92,7 @@ export async function saveListing(_prev: FormState, formData: FormData): Promise
     city: str(formData, 'city'),
     delivery: str(formData, 'delivery'),
     weight_kg: str(formData, 'weight_kg'),
+    shipping: str(formData, 'shipping'),
     photos,
     intent: str(formData, 'intent') === 'publier' ? 'publier' : 'brouillon',
   });
@@ -126,6 +129,7 @@ export async function saveListing(_prev: FormState, formData: FormData): Promise
     department,
     delivery: v.delivery,
     weight_kg: v.delivery === 'main_propre' ? null : v.weight_kg,
+    shipping_cents: v.delivery === 'main_propre' || v.shipping === null ? null : Math.round(v.shipping * 100),
     photos: v.photos,
     updated_at: new Date().toISOString(),
   };

@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/admin';
 import type { Listing } from '@/lib/bourse';
-import { LISTING_STATUS, REPORT_REASONS, listingPath, priceLabel, type ReportReason } from '@/lib/bourse-shared';
-import { daysAgoIso, formatDate } from '@/lib/format';
+import type { ListingOrder } from '@/lib/bourse-pay';
+import { ORDER_STATUS, LISTING_STATUS, REPORT_REASONS, listingPath, priceLabel, type ReportReason } from '@/lib/bourse-shared';
+import { daysAgoIso, formatDate, formatEuros } from '@/lib/format';
 import { ActionForm } from '@/components/action-form';
 import { SubmitButton } from '@/components/form-bits';
-import { Badge, Card, Input } from '@/components/ui';
-import { dismissReports, moderateListing, restoreListing } from './actions';
+import { Badge, Card, Input, btn } from '@/components/ui';
+import { dismissReports, moderateListing, resolveOrder, restoreListing } from './actions';
 
 export const metadata = { title: 'Bourse' };
 
@@ -17,14 +18,20 @@ export default async function AdminBoursePage() {
   await requireAdmin('/admin/bourse');
   const db = createServiceClient();
   const since = daysAgoIso(7);
-  const [{ data: reportRows }, { data: recentRows }, online, week, convs, sold] = await Promise.all([
+  const [{ data: reportRows }, { data: recentRows }, online, week, convs, sold, { data: orderRows }, { data: doneRows }] = await Promise.all([
     db.from('listing_reports').select('id, listing_id, reason, details, created_at').is('handled_at', null).order('created_at', { ascending: false }).limit(100),
     db.from('listings').select('*').neq('status', 'brouillon').order('created_at', { ascending: false }).limit(40),
     db.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'en_ligne'),
     db.from('listings').select('id', { count: 'exact', head: true }).gte('published_at', since),
     db.from('listing_conversations').select('id', { count: 'exact', head: true }).gte('created_at', since),
     db.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'vendue'),
+    db.from('listing_orders').select('*').in('status', ['paid', 'shipped', 'disputed']).order('paid_at', { ascending: true }).limit(100),
+    db.from('listing_orders').select('fee_cents').eq('status', 'completed').gte('completed_at', daysAgoIso(30)),
   ]);
+  const active = (orderRows ?? []) as ListingOrder[];
+  const disputes = active.filter((o) => o.status === 'disputed');
+  const ongoing = active.filter((o) => o.status !== 'disputed');
+  const fees30 = (doneRows ?? []).reduce((n, r) => n + (r.fee_cents as number), 0);
   const reports = (reportRows ?? []) as Report[];
   const reportedIds = [...new Set(reports.map((r) => r.listing_id))];
   const { data: reportedRows } = reportedIds.length ? await db.from('listings').select('*').in('id', reportedIds) : { data: [] };
@@ -35,6 +42,8 @@ export default async function AdminBoursePage() {
     ['Publiées sur 7 jours', week.count ?? 0],
     ['Conversations sur 7 jours', convs.count ?? 0],
     ['Annonces vendues', sold.count ?? 0],
+    ['Ventes en cours (paiement sécurisé)', ongoing.length],
+    ['Frais de service sur 30 jours', formatEuros(fees30)],
   ] as const;
 
   return (
@@ -43,7 +52,7 @@ export default async function AdminBoursePage() {
         <h1 className="text-3xl font-bold tracking-tight">Bourse au matériel</h1>
         <p className="text-muted">Annonces des membres, signalements et modération.</p>
       </div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {kpis.map(([k, v]) => (
           <Card key={k} className="flex flex-col gap-1">
             <span className="text-sm text-muted">{k}</span>
@@ -51,6 +60,31 @@ export default async function AdminBoursePage() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <h2 className="mb-3 text-xl font-semibold">Litiges {disputes.length ? <Badge tone="red">{disputes.length}</Badge> : null}</h2>
+        {disputes.length === 0 ? (
+          <p className="rounded-xl bg-ground px-4 py-3 text-sm text-muted">Aucun litige en cours.</p>
+        ) : (
+          <ul className="divide-y divide-line-soft">
+            {disputes.map((o) => (
+              <OrderRow key={o.id} o={o} />
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {ongoing.length ? (
+        <Card>
+          <h2 className="mb-3 text-xl font-semibold">Ventes en cours</h2>
+          <p className="mb-2 text-sm text-muted">Argent conservé en attendant la remise ou la réception. Versement ou remboursement automatique à la date indiquée.</p>
+          <ul className="divide-y divide-line-soft">
+            {ongoing.map((o) => (
+              <OrderRow key={o.id} o={o} />
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       <Card>
         <h2 className="mb-3 text-xl font-semibold">Signalements à traiter {reports.length ? <Badge tone="amber">{reports.length}</Badge> : null}</h2>
@@ -125,5 +159,34 @@ export default async function AdminBoursePage() {
         )}
       </Card>
     </>
+  );
+}
+
+function OrderRow({ o }: { o: ListingOrder }) {
+  return (
+    <li className="flex flex-col gap-2 py-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <Badge tone={o.status === 'disputed' ? 'red' : 'amber'}>{ORDER_STATUS[o.status]}</Badge>
+        <span className="font-semibold">{o.snapshot.title}</span>
+        <span className="text-sm text-muted">
+          n° {o.ref} · {formatEuros(o.total_cents)} payés{o.paid_at ? ` le ${formatDate(o.paid_at)}` : ''} · {o.mode === 'envoi' ? `envoi${o.tracking_number ? ` (${o.carrier} ${o.tracking_number})` : ''}` : 'main propre'}
+          {o.release_at ? ` · échéance ${formatDate(o.release_at)}` : ''}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-3 text-sm">
+        {o.buyer_id ? <Link href={`/admin/membres/${o.buyer_id}`} className="font-semibold text-brand-dark hover:underline">Acheteur</Link> : null}
+        {o.seller_id ? <Link href={`/admin/membres/${o.seller_id}`} className="font-semibold text-brand-dark hover:underline">Vendeur</Link> : null}
+      </div>
+      {o.dispute_reason ? <p className="rounded-xl bg-danger-soft px-3 py-2 text-sm">Motif de l’acheteur : {o.dispute_reason}</p> : null}
+      <details>
+        <summary className="cursor-pointer text-sm font-semibold text-muted hover:text-ink">Trancher</summary>
+        <ActionForm action={resolveOrder} className="mt-2 flex flex-wrap items-start gap-2">
+          <input type="hidden" name="id" value={o.id} />
+          <Input name="note" placeholder="Explication envoyée aux deux membres" maxLength={300} className="min-h-10 w-72 py-1.5 text-sm" />
+          <SubmitButton variant="danger" name="decision" value="rembourser" pendingLabel="…">Rembourser l’acheteur</SubmitButton>
+          <button type="submit" name="decision" value="payer" className={btn.small}>Payer le vendeur</button>
+        </ActionForm>
+      </details>
+    </li>
   );
 }

@@ -41,6 +41,12 @@ export async function POST() {
       } catch (err) {
         console.error('[boutique]', err);
       }
+      // Bourse : versements automatiques après réception, remises jamais faites, paiements abandonnés.
+      try {
+        console.info('[bourse] automatique :', await (await import('@/lib/bourse-pay')).runBourseAutomation());
+      } catch (err) {
+        console.error('[bourse]', err);
+      }
       // Relance unique des comptes gratuits restés sans visite depuis 14 jours.
       if (!r.skipped) console.info('[relances] inactifs :', await runInactiveNudges());
     } catch (err) {

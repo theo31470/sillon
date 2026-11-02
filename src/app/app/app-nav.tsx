@@ -19,7 +19,7 @@ const links = [
 ];
 
 const isActive = (pathname: string, href: string) =>
-  href === '/app' ? pathname === '/app' : href === '/app/annonces' ? pathname.startsWith('/app/annonces') || pathname.startsWith('/app/messages') : pathname.startsWith(href);
+  href === '/app' ? pathname === '/app' : href === '/app/annonces' ? ['/app/annonces', '/app/messages', '/app/transactions', '/app/acheter'].some((p) => pathname.startsWith(p)) : pathname.startsWith(href);
 
 /** Navigation du haut, sur grand écran. */
 export function AppNav({ isAdmin }: { isAdmin: boolean }) {

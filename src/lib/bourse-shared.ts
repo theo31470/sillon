@@ -116,3 +116,55 @@ export const DEPARTMENTS: Record<string, string> = {
   '92': 'Hauts-de-Seine', '93': 'Seine-Saint-Denis', '94': 'Val-de-Marne', '95': 'Val-d’Oise', '971': 'Guadeloupe', '972': 'Martinique', '973': 'Guyane',
   '974': 'La Réunion', '976': 'Mayotte',
 };
+
+// ---------------------------------------------------------------------
+// Paiement sécurisé
+// ---------------------------------------------------------------------
+
+/** Frais de service payés par l'acheteur : 0,70 € + 4 % du prix, plafonnés à 40 €. */
+export const BUYER_FEE = { fixed: 70, rate: 0.04, cap: 4000 } as const;
+export const buyerFee = (priceCents: number) => Math.min(BUYER_FEE.cap, BUYER_FEE.fixed + Math.round(priceCents * BUYER_FEE.rate));
+/** Plafond du paiement sécurisé (limites des cartes bancaires) : au-delà, règlement direct entre les deux parties. */
+export const SECURE_PAYMENT_MAX = 500_000;
+/** Envoi : fonds versés au vendeur 10 jours après l'expédition sans réclamation. */
+export const RELEASE_DAYS_AFTER_SHIPPING = 10;
+/** Main propre : sans remise 21 jours après le paiement, la vente est annulée et l'acheteur remboursé. */
+export const HANDOVER_MAX_DAYS = 21;
+
+export const ORDER_STATUS = {
+  pending: 'Paiement en cours',
+  paid: 'Payée, en attente de remise',
+  shipped: 'Expédiée',
+  completed: 'Terminée',
+  canceled: 'Annulée',
+  refunded: 'Remboursée',
+  disputed: 'Litige en cours',
+  abandoned: 'Paiement abandonné',
+} as const;
+export type OrderStatus = keyof typeof ORDER_STATUS;
+
+export const CARRIERS = ['Colissimo', 'Chronopost', 'Mondial Relay', 'Relais Colis', 'DPD', 'GLS', 'UPS', 'DHL', 'Transporteur'] as const;
+
+/** Lien de suivi public du transporteur (null si inconnu). */
+export function trackingLink(carrier: string | null, number: string | null) {
+  if (!carrier || !number) return null;
+  const n = encodeURIComponent(number.trim());
+  switch (carrier) {
+    case 'Colissimo':
+      return `https://www.laposte.fr/outils/suivre-vos-envois?code=${n}`;
+    case 'Chronopost':
+      return `https://www.chronopost.fr/tracking-no-cms/suivi-page?listeNumerosLT=${n}`;
+    case 'Mondial Relay':
+      return `https://www.mondialrelay.fr/suivi-de-colis/?NumeroExpedition=${n}`;
+    case 'DPD':
+      return `https://trace.dpd.fr/fr/trace/${n}`;
+    case 'GLS':
+      return `https://gls-group.com/FR/fr/suivi-colis?match=${n}`;
+    case 'UPS':
+      return `https://www.ups.com/track?tracknum=${n}`;
+    case 'DHL':
+      return `https://www.dhl.com/fr-fr/home/suivi.html?tracking-id=${n}`;
+    default:
+      return null;
+  }
+}
