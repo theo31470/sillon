@@ -121,7 +121,7 @@ function webTools({ searches, fetches, pageTokens = 6000, allowedDomains }: WebT
 export type WebSource = { name: string; url: string };
 
 /** Fait tourner un échange avec outils web jusqu'au bout (reprend les pauses). */
-async function runWithWebTools(params: {
+export async function runWithWebTools(params: {
   system: string;
   prompt: string;
   searches: number;

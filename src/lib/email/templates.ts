@@ -784,3 +784,28 @@ export function shopEmail(template: ShopTemplate, input: ShopEmailInput, siteUrl
       );
   }
 }
+
+// ---------------------------------------------------------------------
+// Bourse au matériel
+// ---------------------------------------------------------------------
+
+/** Nouveau message reçu sur une annonce (un seul e-mail tant que les messages précédents ne sont pas lus). */
+export function listingMessageEmail(input: { name?: string | null; from: string; listingTitle: string; preview: string; url: string; seller: boolean }, siteUrl: string): BuiltEmail {
+  const site = siteUrl.replace(/\/$/, '');
+  return build(
+    `${input.from} vous a écrit : ${input.listingTitle}`,
+    {
+      preheader: input.preview.slice(0, 120),
+      heading: input.seller ? 'Un acheteur s’intéresse à votre annonce' : 'Le vendeur vous a répondu',
+      blocks: [
+        { type: 'p', text: hello(input.name) },
+        { type: 'p', text: `**${input.from}** vous a envoyé un message à propos de « ${input.listingTitle} » :` },
+        { type: 'note', text: input.preview.length > 400 ? `${input.preview.slice(0, 400)}…` : input.preview, tone: 'info' },
+        { type: 'button', label: 'Répondre', url: input.url },
+        { type: 'p', text: 'Pour votre sécurité, échangez et payez sur Tracteurs & Co : ne communiquez pas vos coordonnées bancaires et méfiez-vous des demandes de paiement par mandat, coupon ou virement à l’étranger.' },
+      ],
+      reason: 'Vous recevez cet e-mail parce que vous avez une conversation en cours sur la bourse au matériel de Tracteurs & Co.',
+    },
+    site,
+  );
+}

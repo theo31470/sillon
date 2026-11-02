@@ -6,6 +6,9 @@ import { getMachine } from '@/lib/fleet';
 import { getFleetAccess } from '@/lib/fleet-access';
 import { invoiceQuota } from '@/lib/invoice-reader';
 import { InvoiceReader } from '../invoice-reader';
+import { ResaleCard, type ResaleView } from '../resale-card';
+import { latestValuation, valuationQuota } from '@/lib/valuation';
+import { priceLabel } from '@/lib/bourse-shared';
 import { listPublishedSheets } from '@/lib/content';
 import { dueLabel } from '@/lib/maintenance';
 import { euros } from '@/lib/costs';
@@ -24,6 +27,9 @@ export async function generateMetadata(props: PageProps<'/app/materiel/[id]'>): 
   return { title: m?.name ?? 'Machine' };
 }
 
+// Estimation du prix de revente : recherche web par Claude (jusqu'à une minute).
+export const maxDuration = 120;
+
 const ORIGIN_SHORT = { constructeur: 'Constructeur', presse: 'Presse', utilisateurs: 'Utilisateurs', general: 'Repère indicatif' } as const;
 
 export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>) {
@@ -37,10 +43,25 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
   const canWrite = m.role !== 'lecture';
   const paid = profile.plan !== 'free';
   const fleetLabel = owner ? null : (await getFleetAccess())?.fleets.find((f) => f.ownerId === m.user_id)?.label ?? 'un parc partagé';
-  const [sheets, invoices] = await Promise.all([
+  const [sheets, invoices, valuation, valuations] = await Promise.all([
     listPublishedSheets({ category: 'machine' }),
     owner && paid ? invoiceQuota(session.userId).catch(() => null) : Promise.resolve(null),
+    owner ? latestValuation(m.id).catch(() => null) : Promise.resolve(null),
+    owner && paid ? valuationQuota(session.userId).catch(() => null) : Promise.resolve(null),
   ]);
+  const resale: ResaleView = valuation
+    ? {
+        low: priceLabel(valuation.low_cents),
+        mid: priceLabel(valuation.mid_cents),
+        high: priceLabel(valuation.high_cents),
+        date: formatDate(valuation.created_at, { day: 'numeric', month: 'long', year: undefined }),
+        method: valuation.details.method,
+        newPrice: valuation.details.newPrice ? priceLabel(Math.round(valuation.details.newPrice) * 100) : null,
+        comparables: valuation.details.comparables.map((c) => ({ ...c, price: priceLabel(Math.round(c.price) * 100) })),
+        notes: valuation.details.notes,
+        bonus: valuation.details.maintenanceBonus,
+      }
+    : null;
   const today = new Date().toISOString().slice(0, 10);
   const hoursNow = Number(m.hours);
   const e = m.economics;
@@ -54,6 +75,7 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
           ['entretien', 'Entretien'],
           ['depenses', 'Dépenses'],
           ['cout', 'Coût de revient'],
+          ['revente', 'Revente'],
           ['compteur', 'Compteur'],
           ['infos', 'Informations'],
         ]
@@ -306,6 +328,17 @@ export default async function MachinePage(props: PageProps<'/app/materiel/[id]'>
       </section>
 
       {/* Coût de revient */}
+      {owner ? (
+        <section id="revente" className="scroll-mt-6">
+          <Card>
+            <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold">
+              Revente <Badge tone="blue">Nouveau</Badge>
+            </h2>
+            <ResaleCard machineId={m.id} view={resale} paid={paid} remaining={valuations?.remaining ?? 0} />
+          </Card>
+        </section>
+      ) : null}
+
       <section id="cout" className="scroll-mt-6">
         <Card className="overflow-hidden p-0">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line p-4 sm:p-6">

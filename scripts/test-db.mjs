@@ -296,6 +296,31 @@ await throws(() => as(A, 'aal1', `update public.shop_orders set status = 'shippe
 await throws(() => as(A, 'aal1', `delete from public.shop_orders`), 'boutique : un membre ne supprime pas ses commandes');
 await throws(() => c.query(`insert into public.shop_orders (user_id, email, items, subtotal_cents, shipping_cents, total_cents, status) values ($1, 'x@x.fr', '[]', 1, 0, 1, 'livree')`, [A]), 'boutique : statut inconnu refusé');
 
+// --- Bourse au matériel ---
+await c.query(`update public.profiles set suspended = false where id in ('${A}', '${B}')`);
+const L = (await as(A, 'aal1', `insert into public.listings (seller_id, title, category, condition, price_cents, postal_code, city, department, status) values ($1, 'Herse rotative 3 m', 'travail_sol', 'bon', 250000, '34740', 'Vendargues', '34', 'en_ligne') returning id`, [A])).rows[0].id;
+ok(Boolean(L), 'bourse : un membre publie une annonce');
+await as(A, 'aal1', `insert into public.listings (seller_id, title, category, condition, price_cents, postal_code, city, department) values ($1, 'Brouillon de pièce', 'pieces', 'bon', 1000, '34740', 'Vendargues', '34')`, [A]);
+ok((await as(null, 'aal1', `select id from public.listings`)).rowCount === 1, 'bourse : un visiteur voit les annonces en ligne, pas les brouillons');
+ok((await as(A, 'aal1', `select id from public.listings`)).rowCount === 2, 'bourse : le vendeur voit aussi ses brouillons');
+await throws(() => as(B, 'aal1', `insert into public.listings (seller_id, title, category, condition, price_cents, postal_code, city, department) values ($1, 'Annonce usurpée', 'pieces', 'bon', 1000, '34740', 'Vendargues', '34')`, [A]), 'bourse : on ne publie pas au nom d’un autre');
+ok((await as(B, 'aal1', `update public.listings set price_cents = 100 where id = $1`, [L])).rowCount === 0, 'bourse : on ne modifie pas l’annonce d’un autre');
+await throws(() => as(A, 'aal1', `update public.listings set status = 'moderee' where id = $1`, [L]), 'bourse : le vendeur ne se modère pas lui-même');
+await c.query(`update public.listings set status = 'moderee' where id = $1`, [L]);
+ok((await as(A, 'aal1', `update public.listings set status = 'en_ligne' where id = $1`, [L])).rowCount === 0, 'bourse : une annonce modérée ne se remet pas en ligne');
+ok((await as(null, 'aal1', `select id from public.listings where id = $1`, [L])).rowCount === 0, 'bourse : une annonce modérée disparaît du public');
+await c.query(`update public.listings set status = 'en_ligne' where id = $1`, [L]);
+await throws(() => as(D, 'aal1', `insert into public.listings (seller_id, title, category, condition, price_cents, postal_code, city, department) values ($1, 'Démo qui publie', 'pieces', 'bon', 1000, '34740', 'Vendargues', '34')`, [D]), 'bourse : la démo ne publie pas');
+const conv = (await c.query(`insert into public.listing_conversations (listing_id, buyer_id, seller_id) values ($1, $2, $3) returning id`, [L, B, A])).rows[0].id;
+await c.query(`insert into public.listing_messages (conversation_id, sender_id, body) values ($1, $2, 'Toujours dispo ?')`, [conv, B]);
+ok((await as(B, 'aal1', `select * from public.listing_messages`)).rowCount === 1, 'bourse : l’acheteur lit la conversation');
+ok((await as(A, 'aal1', `select * from public.listing_messages`)).rowCount === 1, 'bourse : le vendeur lit la conversation');
+ok((await as(C3, 'aal1', `select * from public.listing_messages`)).rowCount === 0, 'bourse : un tiers ne lit pas les messages');
+await throws(() => as(B, 'aal1', `insert into public.listing_messages (conversation_id, sender_id, body) values ($1, $2, 'direct')`, [conv, B]), 'bourse : les messages passent par le serveur');
+await as(B, 'aal1', `insert into public.listing_favorites (user_id, listing_id) values ($1, $2)`, [B, L]);
+ok((await as(A, 'aal1', `select * from public.listing_favorites`)).rowCount === 0, 'bourse : les favoris sont privés');
+await throws(() => as(B, 'aal1', `insert into public.listing_reports (listing_id, reporter_id, reason) values ($1, $2, 'arnaque')`, [L, B]), 'bourse : les signalements passent par le serveur');
+
 await c.end();
 await server.stop();
 console.log(failures ? `\n${failures} test(s) en échec` : '\nTous les tests passent');

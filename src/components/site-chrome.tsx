@@ -16,6 +16,7 @@ async function isLoggedIn() {
 const SITE_LINKS = [
   { href: '/#fonctions', label: 'Fonctionnalités' },
   { href: '/fiches', label: 'Fiches techniques' },
+  { href: '/bourse', label: 'Bourse' },
   { href: '/blog', label: 'Blog' },
   { href: '/tarifs', label: 'Tarifs' },
 ];

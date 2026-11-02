@@ -15,9 +15,11 @@ const links = [
   { href: '/app/materiel', label: 'Mon parc', short: 'Mon parc', icon: svg(<><circle cx="7" cy="16.5" r="3.5" /><circle cx="18" cy="17.5" r="2.5" /><path d="M10.5 16.5h5M4 13V8h6l2 5h6.5l1.5 2" /><path d="M10 8V5h-4v3" /></>) },
   { href: '/app/diagnostic', label: 'Diagnostic', short: 'Diagnostic', icon: svg(<><path d="M14.5 6.5a4 4 0 0 0-5.3 5.3L4 17l3 3 5.2-5.2a4 4 0 0 0 5.3-5.3l-2.4 2.4-2.6-.4-.4-2.6z" /></>) },
   { href: '/fiches', label: 'Fiches techniques', short: 'Fiches', icon: svg(<><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5" /><path d="M8 8h8M8 11.5h5" /></>) },
+  { href: '/app/annonces', label: 'Bourse', short: 'Bourse', icon: svg(<><path d="M3 9.5 12 4l9 5.5" /><path d="M5 9v10h14V9" /><path d="M9 19v-5h6v5" /><path d="M14.5 7.5h4" /></>) },
 ];
 
-const isActive = (pathname: string, href: string) => (href === '/app' ? pathname === '/app' : pathname.startsWith(href));
+const isActive = (pathname: string, href: string) =>
+  href === '/app' ? pathname === '/app' : href === '/app/annonces' ? pathname.startsWith('/app/annonces') || pathname.startsWith('/app/messages') : pathname.startsWith(href);
 
 /** Navigation du haut, sur grand écran. */
 export function AppNav({ isAdmin }: { isAdmin: boolean }) {
@@ -49,7 +51,7 @@ export function AppTabBar() {
   const pathname = usePathname();
   return (
     <nav aria-label="Navigation de l’application" className="tabbar no-print fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur-md md:hidden">
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-lg grid-cols-5">
         {links.map((l) => {
           const active = isActive(pathname, l.href);
           return (

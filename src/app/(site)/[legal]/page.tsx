@@ -65,6 +65,7 @@ const pages: Record<string, LegalPage> = {
           'La sécurité : journal technique des connexions et actions sensibles (adresse IP comprise), pour détecter les abus.',
           'Le formulaire de contact : nom, adresse e-mail, et si vous les indiquez téléphone et exploitation, avec votre message, pour vous répondre.',
           'La boutique : articles commandés, adresse de livraison et téléphone saisis au paiement, pour préparer, expédier et suivre la commande.',
+          'La bourse au matériel : vos annonces (publiques, avec votre prénom, l’initiale de votre nom, votre commune et votre département), vos messages avec les autres membres, vos favoris et vos signalements. Pour l’estimation du prix de revente, la marque, le modèle, l’année et les heures de la machine sont transmis à l’intelligence artificielle Claude, qui cherche des prix publics.',
         ],
       },
       {
@@ -181,7 +182,18 @@ const pages: Record<string, LegalPage> = {
         ],
       },
       {
-        h: '8. Litiges',
+        h: '8. Bourse au matériel',
+        id: 'bourse',
+        p: [
+          'La bourse permet aux membres de publier gratuitement des annonces de matériel agricole (machines, outils, pièces, pneus, outillage) et d’échanger avec les acheteurs par la messagerie du site. Tracteurs & Co héberge les annonces : la vente se conclut entre l’acheteur et le vendeur, qui en restent seuls responsables.',
+          'Le vendeur garantit qu’il est propriétaire du bien ou autorisé à le vendre, que l’annonce, les photos et l’état décrit sont exacts, et publie une seule annonce par objet. Il signale s’il vend à titre professionnel. Sont interdits : tout bien hors du matériel agricole et de son outillage, les produits phytopharmaceutiques, les carburants, les animaux, les biens d’origine douteuse, et toute annonce trompeuse.',
+          'L’annonce montre le prénom et l’initiale du nom du vendeur, sa commune et son département ; jamais son adresse, son téléphone ni son e-mail. Les messages ne sont lus que par les deux parties, et par l’équipe en cas de signalement.',
+          'Tout membre peut signaler une annonce. L’équipe peut retirer une annonce contraire à ces règles et suspendre un compte en cas d’abus. Ne payez jamais par mandat, coupon ou virement à l’étranger : le paiement sécurisé du site, qui ne verse l’argent au vendeur qu’après la réception, arrive très prochainement, avec ses conditions.',
+          'Conformément à la loi, les plateformes de vente doivent déclarer chaque année à l’administration fiscale les vendeurs ayant réalisé au moins 30 ventes ou 2 000 € de ventes dans l’année par l’intermédiaire du paiement du site.',
+        ],
+      },
+      {
+        h: '9. Litiges',
         p: [
           'Ces conditions sont soumises au droit français. En cas de difficulté, écrivez-nous d’abord à ' + CONTACT + ' : nous chercherons une solution amiable. À défaut, le litige sera porté devant les tribunaux compétents.',
         ],

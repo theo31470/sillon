@@ -9,7 +9,7 @@ export default async function SignUpPage(props: PageProps<'/inscription'>) {
   const { formule, periode, parrain, suite, demo } = await props.searchParams;
   const invited = typeof parrain === 'string' && /^[A-Z0-9]{4,12}$/.test(parrain);
   const next =
-    typeof suite === 'string' && suite.startsWith('/invitation/')
+    typeof suite === 'string' && (suite.startsWith('/invitation/') || suite.startsWith('/bourse/') || suite.startsWith('/app/annonces'))
       ? safeNext(suite)
       : formule === 'complet' || invited
         ? `/app/abonnement${periode === 'annuel' ? '?periode=annuel' : ''}`
