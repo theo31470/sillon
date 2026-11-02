@@ -63,7 +63,9 @@ export async function sellerOnboardingUrl(userId: string, email: string) {
         settings: { payouts: { schedule: { interval: 'daily' } } },
         metadata: { user_id: userId },
       },
-      { idempotencyKey: `vendeur-${userId}` },
+      // Clé valable 10 minutes : protège du double clic sans rejouer indéfiniment une ancienne erreur
+      // (Stripe renvoie la même réponse pendant 24 h pour une même clé, même après correction du compte).
+      { idempotencyKey: `vendeur-${userId}-${Math.floor(Date.now() / 600_000)}` },
     );
     const { error } = await createServiceClient().from('seller_accounts').insert({ user_id: userId, stripe_account_id: created.id });
     if (error) throw new Error(`Compte vendeur non enregistré : ${error.message}`);
